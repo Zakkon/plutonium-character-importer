@@ -5563,20 +5563,7 @@ class UIObj_Class_StartingProficiencies extends UIObj_BaseClassComponent{
         </div>
     </div>
     <div class="block">
-        <div class="mr-1 bold inline-block">Weapons:</div>
-        <div class="inline-block mr-1">simple weapons<div class="ve-small veapp__msg-warning inline-block" title="">
-        </div>,
-        </div>
-        <div class="inline-block mr-1"><a href="https://5etools-mirror-1.github.io/items.html#hand%20crossbow_phb" onmouseover="Renderer.hover.pHandleLinkMouseOver(event, this)" onmouseleave="Renderer.hover.handleLinkMouseLeave(event, this)" onmousemove="Renderer.hover.handleLinkMouseMove(event, this)" data-vet-page="items.html" data-vet-source="phb" data-vet-hash="hand%20crossbow_phb" ontouchstart="Renderer.hover.handleTouchStart(event, this)">hand crossbow</a>
-        <div class="ve-small veapp__msg-warning inline-block" title="">
-        </div>,
-        </div>
-        <div class="inline-block mr-1">
-        <a href="https://5etools-mirror-1.github.io/items.html#longsword_phb" onmouseover="Renderer.hover.pHandleLinkMouseOver(event, this)" onmouseleave="Renderer.hover.handleLinkMouseLeave(event, this)" onmousemove="Renderer.hover.handleLinkMouseMove(event, this)" data-vet-page="items.html" data-vet-source="phb" data-vet-hash="longsword_phb" ontouchstart="Renderer.hover.handleTouchStart(event, this)">longsword</a>
-        <div class="ve-small veapp__msg-warning inline-block" title="">
-        </div>,</div><div class="inline-block mr-1">
-        <a href="https://5etools-mirror-1.github.io/items.html#rapier_phb" onmouseover="Renderer.hover.pHandleLinkMouseOver(event, this)" onmouseleave="Renderer.hover.handleLinkMouseLeave(event, this)" onmousemove="Renderer.hover.handleLinkMouseMove(event, this)" data-vet-page="items.html" data-vet-source="phb" data-vet-hash="rapier_phb" ontouchstart="Renderer.hover.handleTouchStart(event, this)" style="">rapier</a><div class="ve-small veapp__msg-warning inline-block" title=""></div>,</div><div class="inline-block "><a href="https://5etools-mirror-1.github.io/items.html#shortsword_phb" onmouseover="Renderer.hover.pHandleLinkMouseOver(event, this)" onmouseleave="Renderer.hover.handleLinkMouseLeave(event, this)" onmousemove="Renderer.hover.handleLinkMouseMove(event, this)" data-vet-page="items.html" data-vet-source="phb" data-vet-hash="shortsword_phb" ontouchstart="Renderer.hover.handleTouchStart(event, this)" style="">shortsword</a><div class="ve-small veapp__msg-warning inline-block" title=""></div>
-        </div>
+        <div class="mr-1 bold inline-block">Weapons:</div></div>
     </div><div class="block">
         <div class="mr-1 bold inline-block">Saving Throws:</div><div class="inline-block mr-1">Dexterity<div class="ve-small veapp__msg-warning inline-block" title=""></div>,</div><div class="inline-block ">Charisma<div class="ve-small veapp__msg-warning inline-block" title=""></div></div>
         </div></div>`;
@@ -5667,7 +5654,7 @@ class UIObj_Class_SkillSelect extends UIObj_BaseClassComponent{
                     <div class="ve-flex-v-center w-100">
                         <div class="ve-flex-v-center">
                             <div class="ve-inline-flex-v-center">
-                                <span class="help help--hover" onmouseover="Renderer.hover.pHandleLinkMouseOver(event, this)" onmouseleave="Renderer.hover.handleLinkMouseLeave(event, this)" onmousemove="Renderer.hover.handleLinkMouseMove(event, this)" data-vet-page="skill" data-vet-source="PHB" data-vet-hash="animal%20handling_phb" data-vet-is-faux-page="true" ontouchstart="Renderer.hover.handleTouchStart(event, this)">
+                                <span class="help help--hover">
                                 `+toTitleCase(option)+`
                                 </span><div class="ml-1 ve-small ve-muted" title="`+ABILITY_ABV_TO_FULL[ability]+`">(`+toTitleCase(ability)+`)
                                 </div></div></div>
@@ -5682,9 +5669,10 @@ class UIObj_Class_SkillSelect extends UIObj_BaseClassComponent{
 class UIObj_Class_LevelSelect extends UIObj_BaseClassComponent{
     _features = null;
     _isRadio = true;
-    _isForceSelect = true;
+    _isForceSelect = false; //used with _maxPreviousLevel when we want to force the user to choose levels over a certain one
     _maxPreviousLevel = 0;
     _list = null;
+    _list2 = null;
     _fnsOnChange = null;
     constructor(parentDiv, opts) {
         super(parentDiv);
@@ -5745,78 +5733,63 @@ class UIObj_Class_LevelSelect extends UIObj_BaseClassComponent{
         
         console.log(this._features);
 
-        const $cbAll = this._isRadio ? null : $(`<input type="checkbox" name="cb-select-all">`);
-        const $wrpList = $(`<div class="veapp__list mb-1"></div>`);
+        let $cbAll = this._isRadio ? null : $(`<input type="checkbox" name="cb-select-all">`);
+        let $wrpList = $(`<div class="veapp__list mb-1"></div>`);
         this._list = new List({
             $wrpList: $wrpList,
             fnSort: null,
             isUseJquery: true,
         });
-
+        /* this._list2 = new RowList({
+            $wrpList: $wrpList,
+            //fnSort: null,
+            isUseJquery: true,
+        });
+ */
         this._listSelectClickHandler = new ListSelectClickHandler({list: this._list});
 
         for (let ix = 0; ix < this._features.length; ++ix) {
-            const $cb = this._render_$getCbRow(ix); //Create radio button
+            let cb = this._render_$getCbRow(ix); //Create radio button
             const $dispFeatures = $(`<span class="col-9-5"></span>`);
             const fnUpdateRowText = ()=>$dispFeatures.text(this.constructor._getRowText(this._features[ix]));
             fnUpdateRowText();
-            const $li = $(`<label class="w-100 ve-flex veapp__list-row veapp__list-row-hoverable ${this._isRadio && this._isForceSelect
-                && ix <= this._maxPreviousLevel ? `list-multi-selected` : ""} ${ix < this._maxPreviousLevel ? `ve-muted` : ""}">
-				<span class="col-1 ve-flex-vh-center">${$cb[0].outerHTML}</span>
-				<span class="col-1-5 ve-text-center">${ix + 1}</span>
-				${$dispFeatures[0].outerHTML}
-			</label>`).click((evt)=>{
+
+            //Create a wrapper object that contains info about if the whole thing should be grayed out or not. Also feels clicks
+            //Then inside that, add a span which contains a radio button
+            //Next to that span, add a label which has the level number
+            //And next to that, add the text for what features we will get
+            let li = $(`<label class="w-100 ve-flex veapp__list-row veapp__list-row-hoverable
+                ${this._isRadio && this._isForceSelect && ix <= this._maxPreviousLevel ? `list-multi-selected`
+                : ""} ${ix < this._maxPreviousLevel ? `ve-muted` : ""}"></label>`).click((evt)=>{
                 this._handleSelectClick(listItem, evt);
             }
             );
+            let liSpan = $('<span class="col-1 ve-flex-vh-center"></span>');
+            console.log(cb);
+            cb.appendTo(liSpan);
+            //liSpan.append(cb[0]);
+            li.append(liSpan);
+            li.append($(`<span class="col-1-5 ve-text-center">${ix + 1}</span>`));
+            li.append($dispFeatures);
 
-            const listItem = new ListItem(ix, $li, "", {}, {
-                cbSel: $cb[0],
+            //We need to seriously make a better replacement for this
+            let listItem = new ListItem(ix, li, "", {}, {
+                cbSel: cb[0], //Original, This somehow breaks the line button from appearing checked.
                 fnUpdateRowText,
-            },);
+            });
+            let rowLi = new RowListItem(ix, li, {
+
+            });
             this._list.addItem(listItem);
+            //this._list2.addItem(rowLi);
         }
 
         if (!this._isRadio) {this._listSelectClickHandler.bindSelectAllCheckbox($cbAll);}
 
         this._list.init();
+        //this._list2.init();
+        //this._list2._doRender();
         $wrpList.appendTo(listDiv);
-
-       /*  $(`<div class="ve-flex-col min-h-0">
-			<div class="ve-flex-v-stretch input-group mb-1 no-shrink">
-				<label class="btn btn-5et col-1 px-1 ve-flex-vh-center">${$cbAll}</label>
-				<button class="btn-5et col-1-5">Level</button>
-				<button class="btn-5et col-9-5">Features</button>
-			</div>
-
-			${$wrpList}
-		</div>`).appendTo(listDiv); */
-
-        /* for(let f of features){
-            //Get the number at the end
-            //console.log(f);
-            if (typeof f === 'string' || f instanceof String){}
-            else{f = f.classFeature;}
-            let words = f.split("|");
-            //Find the word that is just a number
-            let lvlNum = -1;
-            for(let word of words){if(Number.parseInt(word)){lvlNum = Number.parseInt(word);}}
-            levelSlots[lvlNum-1].push(words[0]);
-        }
-        
-        for(let lvl = 1; lvl <= 20; ++lvl){
-            let featureText = "";
-            for(let i = 0; i < levelSlots[lvl-1].length; ++i){
-                featureText += levelSlots[lvl-1][i];
-                if(i+1<levelSlots[lvl-1].length){featureText += ", ";}
-            }
-            let html = `<label class="w-100 ve-flex veapp__list-row veapp__list-row-hoverable list-multi-selected">
-                <span class="col-1 ve-flex-vh-center"><input type="radio" class="no-events"></span>
-                <span class="col-1-5 ve-text-center">`+lvl+`</span>
-                <span class="col-9-5">`+featureText+`</span>
-            </label>`;
-            listDiv.append($.parseHTML(html));
-        } */
     }
     setChosenLevel(level){
 
@@ -5857,6 +5830,10 @@ class UIObj_Class_LevelSelect extends UIObj_BaseClassComponent{
             }
         });
         console.log("HandleSelectClickRadio complete");
+        //Debug
+        for(let it of list.items){
+            //it.data.cbSel.checked = true;
+        }
     }
     onchange(fn) {
         this._fnsOnChange.push(fn);
@@ -5952,6 +5929,59 @@ class DataUtil{
             source,
             displayText,
         };
+    }
+}
+class RowList{
+    _items = [];
+    _isInit = false;
+    _isDirty = false;
+    _isUseJquery = true;
+    _$wrpList = null;
+    constructor(data){
+        this.items = [];
+        this._isUseJquery = data.isUseJquery;
+        this._$wrpList = data.$wrpList;
+    }
+    init(){
+        if (this._isInit)
+            return;
+
+        this._isInit = true;
+    }
+    addItem(item){
+
+        this._isDirty = true;
+        this._items.push(item);
+
+        /* if (this._isFuzzy)
+            this._fuzzySearch.addDoc({
+                ix: listItem.ix,
+                s: listItem.searchText
+            }); */
+    }
+    _doRender() {
+        const len = this._items.length;
+        console.log(this._isUseJquery);
+        if (this._isUseJquery) {
+            this._$wrpList.children().detach();
+            for (let i = 0; i < len; ++i)
+                this._$wrpList.append(this._items[i].ele);
+        } else {
+            this._$wrpList[0].innerHTML = "";
+            const frag = document.createDocumentFragment();
+            for (let i = 0; i < len; ++i)
+                frag.appendChild(this._items[i].ele);
+            this._$wrpList[0].appendChild(frag);
+        }
+
+        this._isDirty = false;
+        //this._trigger("updated");
+    }
+}
+class RowListItem{
+    ele = null;
+    constructor(itemIndex, element, data){
+        this.ele = element;
     }
 }
 class List {
