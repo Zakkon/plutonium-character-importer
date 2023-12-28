@@ -1,0 +1,7 @@
+HOW PFORMDATA IS CREATED
+for(const _0x1862c4_ftoptsel of this['_compClass']['compsClassFeatureOptionsSelect'][_0x3b89aa_ix])
+{
+    //by converting it into a formdata, we get a lot of improvements. in all, it makes the feature readable and usable by foundry
+    const _0x195903_ftoform=await _0x1862c4_ftoptsel['pGetFormData']()
+    ....
+}

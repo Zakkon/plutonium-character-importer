@@ -1,0 +1,9 @@
+{
+  "name": "plutonium-character-importer",
+  "title": "Plutonium Character Importer",
+  "description": "Imports characters into FoundryVTT via Plutonium",
+  "version": "0.1.0",
+  "author": "Zakkon",
+  "scripts": ["main.js"],
+  "styles": ["style.css"]
+}
