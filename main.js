@@ -1,3 +1,5 @@
+import TestClass from './charactermancer/testclass.js';
+import Charactermancer_Util from './charactermancer/test_util.js'
 const NAME = "dnd5e-zakkons-helpers";
 
 //Runs on foundry init
@@ -7,6 +9,8 @@ Hooks.on('init', function () {
 async function getActorHeaderButtons(sheet, buttons) {
 
   if ( !sheet.object.canUserModify(game.user) ) return;
+
+  console.log(Charactermancer_Util);
 
   // Push a new button to the front of the list
   buttons.unshift({
@@ -35,10 +39,8 @@ class CharacterImporter{
   _conFinalWithModifiers
   static AppTaskRunner;
   static TaskClosure;
-  static ImportListClass;
   static Charactermancer_Class_ProficiencyImportModeSelect;
   static Charactermancer_FeatureOptionsSelect;
-  static Charactermancer_Util;
   static Charactermancer_Class_Util;
   static DataUtil;
   static api;
@@ -57,10 +59,8 @@ class CharacterImporter{
     if(!pl){console.error("Could not find Plutonium"); return;}
     CharacterImporter.AppTaskRunner = pl.api.util.apps.AppTaskRunner;
     CharacterImporter.TaskClosure = pl.api.util.apps.TaskClosure;
-    CharacterImporter.ImportListClass = pl.api.importer.ImportListClass;
     CharacterImporter.Charactermancer_Class_ProficiencyImportModeSelect = pl.api.charactermancer.Charactermancer_Class_ProficiencyImportModeSelect;
     CharacterImporter.Charactermancer_FeatureOptionsSelect = pl.api.charactermancer.Charactermancer_FeatureOptionsSelect;
-    CharacterImporter.Charactermancer_Util = pl.api.charactermancer.Charactermancer_Util;
     CharacterImporter.Charactermancer_Class_Util = pl.api.charactermancer.Charactermancer_Class_Util;
     CharacterImporter.DataUtil = pl.api.util.apps.DataUtil;
     CharacterImporter.api = pl.api;
@@ -5194,6 +5194,8 @@ class CharacterImporter{
         data.subclassFeature = data.subclassFeature.concat(parsed.subclassFeature);
     }
     this._data = data;
+    console.log("Data fetched");
+    console.log(this._data);
 
     //Prep class feature info
     const isIgnoredLookup = {
@@ -5226,6 +5228,7 @@ class CharacterImporter{
       if (sc.subclassFeatures) sc.subclassFeatures = sc.subclassFeatures.filter(it => !it.isIgnored);
     } */
     }
+    console.log(this._data);
   }
   createState(){
     //_state is the object which contains all the choices we have made during the character creation process
@@ -5279,15 +5282,7 @@ class CharacterImporter{
     console.log(allClassFeatures);
     return allClassFeatures;
   }
-  async _class_pGetMinMaxLevel(classIndex){
-    //based on async[_0x1467c8(0xa8)]
-    let min=0, max=0;
-    if(this['_compsClassLevelSelect'][classIndex]){ //Just make sure we actually have the class matching the index cached
-      const data=await this['_compsClassLevelSelect'][classIndex]['pGetFormData']()['data'];
-      min=Math.min(...data)+1,max=Math.max(...data)+1;
-    }
-    return {'lvlMin':min,'lvlMax':max};
-  }
+  
   async _class_pRenderFeatureOptionsSelects_({ix: _0x4ba617, propCntAsi: _0x5c4b09, filteredFeatures: _0xcaac0c, $stgFeatureOptions: _0x15b372}) {
     const _0x18cef0 = _0x1467c8,
     //Grab our existing feature options. We need to figure out how this works!
@@ -5300,11 +5295,11 @@ class CharacterImporter{
     //Prepare the existing feature checker, if possible. Todo: check if this ever gets set to anything not null
     const _0x4548cc_exstFeatureChk = this['_existingClassMetas'][_0x4ba617] ? new CharacterImporter.Charactermancer_Class_Util['ExistingFeatureChecker'](this['_actor']) : null
     //filteredFeatures is just all the features for our class, there are some rare cases when we don't want to import certain features
-      , _0x336be4 = CharacterImporter.Charactermancer_Util.getImportableFeatures(_0xcaac0c)
+      , _0x336be4 = Charactermancer_Util.getImportableFeatures(_0xcaac0c)
       , _0x117b40 = MiscUtil.copy(_0x336be4); //Create a copy of it as well
 
       //Temporarily commenting this out
-      /* CharacterImporter.Charactermancer_Util['doApplyFilterToFeatureEntries_bySource'](_0x117b40, this['_modalFilterClasses']['pageFilter'],
+      /* Charactermancer_Util['doApplyFilterToFeatureEntries_bySource'](_0x117b40, this['_modalFilterClasses']['pageFilter'],
       this['_modalFilterClasses']['pageFilter']['filterBox']['getValues']()); //Get our filters (by source or other things) */
 
     //Somehow group features by options set
@@ -5346,29 +5341,7 @@ class CharacterImporter{
         '$stgFeatureOptions': _0x15b372
     });
   }
-  async createFeatureOptionSets({ix: _0x4ba617, propCntAsi: _0x5c4b09, filteredFeatures: _0xcaac0c, $stgFeatureOptions: _0x15b372}){
-    //this function mimics _class_pRenderFeatureOptionsSelects_
-    //Prepare the existing feature checker, if possible. Todo: check if this ever gets set to anything not null
-    console.log("Input features:");
-    console.log(_0xcaac0c);
-    const //_0x4548cc_exstFeatureChk = this['_existingClassMetas'][_0x4ba617] ? new CharacterImporter.Charactermancer_Class_Util['ExistingFeatureChecker'](this['_actor']) : null,
-    //filteredFeatures is just all the features for our class, there are some rare cases when we don't want to import certain features
-      //_0x336be4 = CharacterImporter.Charactermancer_Util.getImportableFeatures(_0xcaac0c),
-      _0x117b40 = MiscUtil.copy(_0xcaac0c);//_0x336be4); //Create a copy of it as well
-    
-    //Create groups of optionsets
-    const _0x21ae90 = CharacterImporter.Charactermancer_Util.getFeaturesGroupedByOptionsSet(_0x117b40)
-      //, {lvlMin: _0x1dec8f, lvlMax: _0x38b4f6} = await this._class_pGetMinMaxLevel(_0x4ba617)
-      ;
-
-    /* console.log("lvlMin: " + lvlMin);
-    console.log("lvlMax: " + lvlMax); */
-    console.log(_0x21ae90);
-    return _0x21ae90;
-  }
-  getClassFeatureFormData(_class, feature){
-
-  }
+  
 
   async startImport(){
     //Time to call the Plutonium API
@@ -5379,7 +5352,7 @@ class CharacterImporter{
       //await pl.api.util.documents.pUpdateDocument(this.actor, {system: {abilities: {str: {value: 12}}}}, {isRender:true});
       await this.createTaskRunner(pl);
       //await this.tryGetFeatureFormData();
-      
+      //TestClass.funFunction();
 
     }
     //UtilDocuments.pUpdateDocument(this.actor, {system: {abilities: {str: {value: 12}}}}, {isRender: false});
@@ -5485,7 +5458,7 @@ class CharacterImporter{
 
       //Not sure what an imporlistclass is yet
       //which has a PageFilterClassesRaw
-      const _0x53be9f_impl=new CharacterImporter.ImportListClass({'actor':this._actor}); //actor is of course this._actor
+      const _0x53be9f_impl=new CharacterImporter.api.importer.ImportListClass({'actor':this._actor}); //actor is of course this._actor
       await _0x53be9f_impl.pInit(); //importListClassObj.pInit();
       
       //this._compClass.modalFilterClasses.pageFilter.filterBox.getValues(); //this obj basically contains info about what sources were toggled on during creation
@@ -5556,14 +5529,15 @@ class CharacterImporter{
           _0x49f53d_cls_copy['_foundryHpIncreaseCustomFormula']=_0x30c459;
         }
 
-        _0x49f53d_cls_copy['_foundryAllFeatures']=[]; //This seems to get filled in the following for loop. Not sure where though
-        //We could probably fill the array here, but we do risk writing creating duplicates if the actor already has the feature
-        //lets try it anyway
-        //the objects we input are supposed to have: {entity, source, page, type, hash, className}
-        //the classFeatures we have in the class object right now won't fit.
-        let formData = await this.tryGetFeatureFormData();
-        if(formData?.data?.features?.length) //If our class gave us at least 1 feature
-            _0x49f53d_cls_copy['_foundryAllFeatures'].push(...formData.data.features);
+        _0x49f53d_cls_copy['_foundryAllFeatures']=[];
+        //Debug, circumvent the whole UI and just create formDatas using the features we have on hand
+        let formDatas = await this._getFeatureFormData(_0x49f53d_cls_copy.classFeatures);
+        console.log(formDatas);
+        for(let fd of formDatas){
+          if(fd?.data?.features?.length) //If our class gave us at least 1 feature
+            _0x49f53d_cls_copy['_foundryAllFeatures'].push(...fd.data.features);
+        }
+        console.log("foundryAllFeatures");
         console.log(_0x49f53d_cls_copy._foundryAllFeatures);
 
         //Again ask the UI, this time for our class's FeatureOption's select
@@ -5647,16 +5621,8 @@ class CharacterImporter{
         
         //END TEST
 
-        //This has to be the big import function
         console.log("pImportClass time!");
-        console.log(_0x49f53d_cls_copy);
-        await _0x53be9f_impl.pImportClass(_0x49f53d_cls_copy,{
-          'filterValues':_0x37641b,
-          'isCharactermancer':!![],
-          'spellSlotLevelSelection':null,//_0x2c5e9a?.['isAnyChoice']()?_0x2c5e9a['getFlagsChoicesState']():null,
-          'taskRunner':myRunner
-        });
-        //This works! Now we just need it to include class features, such as Rage and Unarmoed Defense
+        await this._importApplyClassToActor(_0x49f53d_cls_copy, _0x53be9f_impl, myRunner, _0x37641b);
 
         /* for(const _0x1cafa7 of this['_compClass']['compsClassFeatureOptionsSelect'][_0x3b89aa_ix]){
           const _0x454e55=await _0x1cafa7['pGetFormData']();
@@ -5671,11 +5637,9 @@ class CharacterImporter{
     }
   }
 
-  async tryGetFeatureFormData(){
-    const ix = 0;
-    //Our features need to have that entity property
-    console.log(this._data.class[0]);
-    const features = [this._data.class[0].classFeatures[0]];
+  /**Returns an array of formData. Converts classFeature objects into formDatas that FoundryVTT can import to actors, and beautifies the 'entries' string array. Requires the classFeature objects to be prepared with the 'loadeds' property. */
+  async _getFeatureFormData(features){
+    if(features.length && features[0].loadeds == null){console.error("Given features were not sufficiently prepared");}
     //We dont have that yet, so we need to figure out a way to create them.
     //when new Charactermancer_Class_LevelSelect is called, they don't have the entity property yet
     //its not changed in the constructor either
@@ -5683,15 +5647,17 @@ class CharacterImporter{
     //THe difference seems to be that a Charactermancer_Class_LevelSelect is created with a 'feature'
     //while Charactermancer_FeatureOptionsSelect is created with an 'optionsSet' which is similar but a bit different
     //this entire conversion is done in Charactermancer_Util.getFeaturesGroupedByOptionsSet
-    let featuresGroupedByOptionsSet = await this.createFeatureOptionSets({filteredFeatures: features});
-    //const {lvlMin: _0x1dec8f, lvlMax: _0x38b4f6} = await this._class_pGetMinMaxLevel(ix);
-    //now that we have the optionsSet, we can create a Charactermancer_FeatureOptionsSelect
+
+    //Send the features (they shouldn't have an 'entity' property yet). This function will create the 'entity' property, then pass it along and create optionSets from them.
+    let featuresGroupedByOptionsSet = await this._createFeatureOptionSets({filteredFeatures: features});
+    //Wow that we have the optionsSet, we can create a Charactermancer_FeatureOptionsSelect, which we can later use to grab the formData
 
     let counter = 0;
-    let output = [];
+    let featOptSelects = [];
     for (const obj of featuresGroupedByOptionsSet) { //For each group
       //Get optionSets from this group
         const {topLevelFeature: topL, optionsSets: optSets} = obj;
+        console.log("input optionSets:"); console.log(optSets);
         //if (topL.level < _0x1dec8f || topL.level > _0x38b4f6) { continue; } //we are not going to bother with the level of the feature for now
         if (topL.name.toLowerCase() === 'ability score improvement') {counter++; continue; }
         //Loop through the optionSets
@@ -5706,7 +5672,7 @@ class CharacterImporter{
                 'level': topL.level,
                 'modalFilterSpells': null,//this._parent['compSpell']['modalFilterSpells']
             });
-            output.push(feOptSel); //Debug
+            featOptSelects.push(feOptSel); //Debug
             /* this['_compsClassFeatureOptionsSelect'][_0x4ba617]['push'](feOptSel),
             feOptSel['findAndCopyStateFrom'](_0x4b61c1_existingFeatures); */
         }
@@ -5717,11 +5683,51 @@ class CharacterImporter{
     }) */
     //;
     
-    console.log(output);
-    let formData = await output[0].pGetFormData();
-    return formData;
+    console.log(featOptSelects);
+    let output = [];
+    for(let i = 0; i < featOptSelects.length; ++i){
+      output.push(await featOptSelects[i].pGetFormData())
+    }
+    return output;
   }
-  
+  /** Used by _getFeatureFormData to create option sets. Only worry about the filteredFeatures input parameter for now.*/
+  async _createFeatureOptionSets({ix: _0x4ba617, propCntAsi: _0x5c4b09, filteredFeatures: inputFeatures, $stgFeatureOptions: _0x15b372}){
+    //this function mimics _class_pRenderFeatureOptionsSelects_
+    const //_0x4548cc_exstFeatureChk = this['_existingClassMetas'][_0x4ba617] ? new CharacterImporter.Charactermancer_Class_Util['ExistingFeatureChecker'](this['_actor']) : null,
+    //filteredFeatures is just all the features for our class, there are some rare cases when we don't want to import certain features
+      //_0x336be4 = Charactermancer_Util.getImportableFeatures(inputFeatures),
+      _0x117b40 = MiscUtil.copy(inputFeatures);//_0x336be4); //Create a copy of it as well
+    
+    //Create groups of optionsets
+    const optionSets = Charactermancer_Util.getFeaturesGroupedByOptionsSet(_0x117b40)
+      //, {lvlMin: _0x1dec8f, lvlMax: _0x38b4f6} = await this._class_pGetMinMaxLevel(_0x4ba617)
+      ;
+
+    /* console.log("lvlMin: " + lvlMin);
+    console.log("lvlMax: " + lvlMax); */
+    console.log(optionSets);
+    return optionSets;
+  }
+  /**Unstable. Tries to gather which levels you actually need to pull data for, based on UI. Intended for use with UI. */
+  async _class_pGetMinMaxLevel(classIndex){
+    //you can call it like this: const {lvlMin: min, lvlMax: max} = await this._class_pGetMinMaxLevel(classIx);
+    //based on async[_0x1467c8(0xa8)]
+    let min=0, max=0;
+    if(this['_compsClassLevelSelect'][classIndex]){ //Just make sure we actually have the class matching the index cached
+      const data=await this['_compsClassLevelSelect'][classIndex]['pGetFormData']()['data'];
+      min=Math.min(...data)+1,max=Math.max(...data)+1;
+    }
+    return {'lvlMin':min,'lvlMax':max};
+  }
+  /**Imports features, skills, class, etc to the actor. The things imported depend on what is listed in the _class object. */
+  async _importApplyClassToActor(_class, importList, taskRunner, filterValues){
+    return await importList.pImportClass(_class,{
+      'filterValues':filterValues,
+      'isCharactermancer':!![],
+      'spellSlotLevelSelection':null,//_0x2c5e9a?.['isAnyChoice']()?_0x2c5e9a['getFlagsChoicesState']():null,
+      'taskRunner':taskRunner
+    });
+  }
 }
 
 class MancerBaseComponent{
@@ -5737,7 +5743,8 @@ class MancerBaseComponent{
     };
   }
 }
-class ImporterUtils{
+class ImporterUtils {
+
   static unpackUidClassFeature (uid, opts) {
     //uid should look like Rage|Barbarian|PHB|1
     opts = opts || {};
