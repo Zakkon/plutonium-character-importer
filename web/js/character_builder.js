@@ -5674,6 +5674,7 @@ class UIObj_Class_LevelSelect extends UIObj_BaseClassComponent{
     _list = null;
     _list2 = null;
     _fnsOnChange = null;
+    _chosenIx = 0;
     constructor(parentDiv, opts) {
         super(parentDiv);
         this._fnsOnChange = [];
@@ -5696,7 +5697,7 @@ class UIObj_Class_LevelSelect extends UIObj_BaseClassComponent{
         if(classChoice == null){return;}
         this.render();
         this.refreshSelectLevelList(classChoice);
-        this.setChosenLevel(1);
+        this.setChosenIx(0);
     }
     render(){
         let selectLevelsHTML = `
@@ -5740,12 +5741,6 @@ class UIObj_Class_LevelSelect extends UIObj_BaseClassComponent{
             fnSort: null,
             isUseJquery: true,
         });
-        /* this._list2 = new RowList({
-            $wrpList: $wrpList,
-            //fnSort: null,
-            isUseJquery: true,
-        });
- */
         this._listSelectClickHandler = new ListSelectClickHandler({list: this._list});
 
         for (let ix = 0; ix < this._features.length; ++ix) {
@@ -5765,9 +5760,7 @@ class UIObj_Class_LevelSelect extends UIObj_BaseClassComponent{
             }
             );
             let liSpan = $('<span class="col-1 ve-flex-vh-center"></span>');
-            console.log(cb);
             cb.appendTo(liSpan);
-            //liSpan.append(cb[0]);
             li.append(liSpan);
             li.append($(`<span class="col-1-5 ve-text-center">${ix + 1}</span>`));
             li.append($dispFeatures);
@@ -5777,28 +5770,32 @@ class UIObj_Class_LevelSelect extends UIObj_BaseClassComponent{
                 cbSel: cb[0], //Original, This somehow breaks the line button from appearing checked.
                 fnUpdateRowText,
             });
-            let rowLi = new RowListItem(ix, li, {
 
-            });
             this._list.addItem(listItem);
-            //this._list2.addItem(rowLi);
         }
 
         if (!this._isRadio) {this._listSelectClickHandler.bindSelectAllCheckbox($cbAll);}
 
         this._list.init();
-        //this._list2.init();
-        //this._list2._doRender();
         $wrpList.appendTo(listDiv);
     }
-    setChosenLevel(level){
-
+    setChosenIx(ix){
+        //ix should be level -1
+        //Make the UI respond to this
+        this._handleSelectClick(this._list._items[ix], null);
+        this._chosenIx = ix;
+    }
+    getChosenIx(){
+        return this._chosenIx;
     }
 
     _handleSelectClick(listItem, evt) {
         if (!this._isRadio){return this._listSelectClickHandler.handleSelectClick(listItem, evt);}
 
         const isCheckedOld = listItem.data.cbSel.checked;
+        //Make sure we can't toggle off the radio button by clicking it again
+        if(isCheckedOld){return;}
+
         const isDisabled = this._handleSelectClickRadio(this._list, listItem, evt);
         if (isDisabled){return;}
 
@@ -5806,8 +5803,11 @@ class UIObj_Class_LevelSelect extends UIObj_BaseClassComponent{
         if (isCheckedOld !== isCheckedNu){this._doRunFnsOnchange();}
     }
     _handleSelectClickRadio(list, item, evt) {
-        evt.preventDefault();
-        evt.stopPropagation();
+        if(evt){
+            evt.preventDefault();
+            evt.stopPropagation();
+        }
+        
 
         if (item.data.cbSel.disabled){return true;}
 
@@ -5819,7 +5819,8 @@ class UIObj_Class_LevelSelect extends UIObj_BaseClassComponent{
                     return;
                 }
 
-                it.data.cbSel.checked = true; //original
+                this._chosenIx = it.ix;
+                it.data.cbSel.checked = true;
                 it.ele.addClass("list-multi-selected");
             }
             else
@@ -5829,11 +5830,6 @@ class UIObj_Class_LevelSelect extends UIObj_BaseClassComponent{
                 else {it.ele.removeClass("list-multi-selected");}    
             }
         });
-        console.log("HandleSelectClickRadio complete");
-        //Debug
-        for(let it of list.items){
-            //it.data.cbSel.checked = true;
-        }
     }
     onchange(fn) {
         this._fnsOnChange.push(fn);
@@ -5895,7 +5891,7 @@ class SheetCompiler {
         let classesShortInfo = [];
         let sourcesUsed = [];
         for(let i = 0; i < classes.length; ++i){
-            let levelOfClass = 1;
+            let levelOfClass = ui_class.compLevelSelector.getChosenIx()+1;
             let cl = classes[i];
             classesShortInfo.push({name: cl.name, source: cl.source, level: levelOfClass});
             if(!sourcesUsed.includes(cl.source)){sourcesUsed.push(cl.source);}
