@@ -1,0 +1,6 @@
+CLASS
+- Make subclass dropdown be locked until high enough level
+- Make subclass change name of the "gain subclass" feature (Primal path for Barbarians)
+- Make swapping between classes preserve level
+- Add choices that appear lower down once high enough level is chosen
+- Minimalize entire class choice page (useful when multiclassing)
