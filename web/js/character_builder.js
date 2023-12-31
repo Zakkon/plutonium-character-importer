@@ -104,6 +104,7 @@ class UIObj_Class {
     parentDiv;
     curClass = null;
     curSubclass = null;
+    temp_newClassChoice = null;
 
     mainDiv;
     holder_classSubclass;
@@ -128,6 +129,7 @@ class UIObj_Class {
         this.parentDiv = parentDiv;
         this.holder_textRollers = sidebarParentDiv;
     }
+    /**Create UI components */
     createClassChoiceDiv(){
         var mainDiv = $('<div>', { class: 'classChoicePage' });
         this.mainDiv = mainDiv;
@@ -231,6 +233,7 @@ class UIObj_Class {
         this.holder_levelSelect = $(`<div class="ve-flex-col"><div>`);
         this.holder_levelSelect.appendTo(extraInfoDiv);
         this.compLevelSelector = new UIObj_Class_LevelSelect(this.holder_levelSelect);
+        this.compLevelSelector.onchange(() => this.e_onChangeLevelSelect());
 
         this.createClassTextRollers();
 
@@ -251,7 +254,6 @@ class UIObj_Class {
         // Populate the dropdown menu with options
         var options = [];
         for(let c of this.getClasses()){options.push(c.name);}
-        console.log(this.getClasses());
         options.unshift("-");
     
         // Loop through the options and create option elements
@@ -271,14 +273,17 @@ class UIObj_Class {
         else if(!show && !extraInfoPage.hasClass(hi)){extraInfoPage.addClass(hi);}
     }
 
-    e_onChangeLevelSelect(lvl){
+    async e_onChangeLevelSelect(){
         //Check if any of the features allow us to make a choice (like skill proficiencies)
+        this.renderNewFeatureOptionsSelects();
     }
     e_onChangeSelectedClass(classDropdown){
         //var subclassDropdown = document.getElementById('class_dropdown_subclass');
         //Check if we need to rebuild subclass choices
         let choice = classDropdown[0].selectedIndex > 0 ? ContentGetter.getClasses()[classDropdown[0].selectedIndex-1] : null;
-        if(choice != this.curClass){
+        let lastClass = this.curClass;
+        this.curClass = choice;
+        if(choice != this.lastClass){
             //refreshSubclassChoiceOptions(subclassDropdown, choice);
             this.compHpIncreaseMode.refresh(choice);
             this.compHitPoints.refresh(choice);
@@ -292,7 +297,6 @@ class UIObj_Class {
         if (classDropdown[0].selectedIndex > 0) { this.setShowMoreClassOptions(this.mainDiv, true);
             //Get the class we chose
             let chosenClass = this.compClassSubclass.lastClassOptions[classDropdown[0].selectedIndex-1];
-            console.log(chosenClass);
             this.compClassSubclass.setSubclassDropdownInactive(false);
             let content = ContentGetter.getSubclasses();
             //Warning: we should add some compability between "PHB" and "phb" (a common typo)
@@ -304,13 +308,12 @@ class UIObj_Class {
         }
         
     
-        this.curClass = choice;
+        
     }
     e_onChangeSelectedSubclass(subclassDropdown){
         console.log("change subclass");
         //Check if we need to rebuild subclass choices
         let choice = subclassDropdown[0].selectedIndex > 0 ? ContentGetter.getSubclasses()[subclassDropdown[0].selectedIndex-1] : null;
-        console.log(choice);
         if(choice != this.curSubclass){
             this.compClassTextRoller_Subclass.render(choice, true);
         }
@@ -325,6 +328,50 @@ class UIObj_Class {
         this.curSubclass = choice;
     }
     
+    async renderNewFeatureOptionsSelects(){
+        //First we need to get the features to parse through
+        let cls = this.curClass;
+        let lvl = this.compLevelSelector.getLevelSelected();
+        const filteredFeatures = ContentGetter.getFeaturesFromClass(this.curClass);
+        
+        let features = MiscUtil.copy(filteredFeatures);
+
+        
+        //let loadedFeatures = await ContentGetter.cookClassFeatures(cls);
+        console.log("RENDER NEW FEATURE OPTIONS SELECTS");
+        const curLvl = 3;
+        features = features.filter(f => f.level == curLvl);
+        const foundryData = ContentGetter._getFoundryData();
+        console.log(features);
+        for(let f of features)
+        {
+            let _entryData = f.entryData;
+            //Check if there is any entryData, if not, try to set it
+            if(!_entryData){
+                //In this case, let's ask our foundry.json file if they know if this feature should have any entryData
+                let foundryFeature = this.getFoundryDataForFeature(f, foundryData);
+                if(foundryFeature){
+                    console.log(foundryFeature.entryData);
+                    _entryData = foundryFeature.entryData;
+                }
+            }
+            //Maybe it was set during the previous if statement, check again
+            if(_entryData){
+                let ui = new UIObj_ClassFeatureOptionsSelect(this.parentDiv, {options:_entryData});
+                ui.render();
+            }
+        }
+        //const featOptSets = MyDataUtil.getFeaturesGroupedByOptionsSet(features);
+        //console.log(featOptSets);
+    }
+    getFoundryDataForFeature(feature, foundryData){
+        const filtered = foundryData.classFeature.filter(f => f.name == feature.name && f.className == feature.className
+            && f.source == feature.source && f.classSource == feature.classSource && f.level == feature.level);
+        //Should only recieve one answer here
+        if(filtered.length > 1){console.error("found too many entries");}
+        if(filtered.length < 0){return null;} //Dont expect all classFeatures to be listed in here
+        return filtered[0];
+    }
 }
 class UIObj_BaseClassComponent {
     parentElement;
@@ -590,14 +637,14 @@ class UIObj_Class_SkillSelect extends UIObj_BaseClassComponent{
     }
     render(){
         let skillProfOptionsHTML = `
-     <hr class="hr-2">
-        <div class="bold mb-2">Skill Proficiencies</div>
-        <div class="ve-flex-col">
-            <div class="mb-1">Choose three Skill Proficiencies:</div>
-            <div id="skill_proficiency_choice_parent" class="ve-flex-col w-100 overflow-y-auto">
+        <hr class="hr-2">
+            <div class="bold mb-2">Skill Proficiencies</div>
+            <div class="ve-flex-col">
+                <div class="mb-1">Choose three Skill Proficiencies:</div>
+                <div id="skill_proficiency_choice_parent" class="ve-flex-col w-100 overflow-y-auto">
+                </div>
             </div>
-        </div>
-    </hr>`;
+        </hr>`;
         
         this.parentElement.append($.parseHTML(skillProfOptionsHTML));
     }
@@ -721,6 +768,7 @@ class UIObj_Class_LevelSelect extends UIObj_BaseClassComponent{
         //Clear all our past html (if any exists)
         this.empty();
         if(classChoice == null){return;}
+        this.curClass = classChoice ;
         this.render();
         this.refreshSelectLevelList(classChoice);
         this.setChosenIx(0);
@@ -742,6 +790,7 @@ class UIObj_Class_LevelSelect extends UIObj_BaseClassComponent{
             </div>
         `;
         
+        //this.onchange(() => {this.renderNewFeatureOptionsSelects});
         this.parentElement.append($.parseHTML(selectLevelsHTML));
     }
     refreshSelectLevelList(classInfo){
@@ -813,8 +862,9 @@ class UIObj_Class_LevelSelect extends UIObj_BaseClassComponent{
     getChosenIx(){
         return this._chosenIx;
     }
+    getLevelSelected(){return this.getChosenIx()+1;}
 
-    _handleSelectClick(listItem, evt) {
+    async _handleSelectClick(listItem, evt) {
         if (!this._isRadio){return this._listSelectClickHandler.handleSelectClick(listItem, evt);}
 
         const isCheckedOld = listItem.data.cbSel.checked;
@@ -825,7 +875,9 @@ class UIObj_Class_LevelSelect extends UIObj_BaseClassComponent{
         if (isDisabled){return;}
 
         const isCheckedNu = listItem.data.cbSel.checked;
-        if (isCheckedOld !== isCheckedNu){this._doRunFnsOnchange();}
+        if (isCheckedOld !== isCheckedNu){
+            await this._doRunFnsOnchange();
+        }
     }
     _handleSelectClickRadio(list, item, evt) {
         if(evt){
@@ -856,11 +908,12 @@ class UIObj_Class_LevelSelect extends UIObj_BaseClassComponent{
             }
         });
     }
+    /**Caches a function to call later when _doRunFnsOnchange is called*/
     onchange(fn) {
         this._fnsOnChange.push(fn);
     }
 
-    _doRunFnsOnchange() {
+    async _doRunFnsOnchange() {
         this._fnsOnChange.forEach(fn=>fn());
     }
 
@@ -874,6 +927,7 @@ class UIObj_Class_LevelSelect extends UIObj_BaseClassComponent{
 
         return $cb;
     }
+
     static _getRowText(lvl) {
         return lvl.map(f=>f.tableDisplayName || f.name).join(", ") || "\u2014";
     }
@@ -890,13 +944,6 @@ class UIObj_Class_LevelSelect extends UIObj_BaseClassComponent{
             return result;
           },
         []);
-    }
-}
-class UIObj_ClassInfo {
-    constructor(parentElement){
-         //CLASS TEXT (RIGHT SIDE)
-         this.compClassTextSelector = new UIObj_ClassTextRoller(parentDiv);
-         this.compClassTextSelector.render(null);
     }
 }
 class UIObj_ClassTextRoller extends UIObj_BaseClassComponent{
@@ -923,7 +970,6 @@ class UIObj_ClassTextRoller extends UIObj_BaseClassComponent{
         contentHolder.appendTo(contentHolderParent);
 
         const collapseButton = $("<div class=\"py-1 pl-2 clickable ve-muted\">[‒]</div>").click(() => {
-            console.log("collapse button pressed");
             collapseButton.text(collapseButton.text() === '[+]' ? '[‒]' : "[+]");
             //if ($wrpTable) { $wrpTable.toggleVe(); }
             this.entriesHolder.toggleVe();
@@ -988,6 +1034,30 @@ class UIObj_ClassTextRoller extends UIObj_BaseClassComponent{
         holder.append(container);
     }
 }
+class UIObj_ClassFeatureOptionsSelect extends UIObj_BaseClassComponent{
+    constructor(parentDiv, opts){
+        super(parentDiv);
+    }
+    render(){
+        let skillProfOptionsHTML = `
+        <hr class="hr-2">
+           <div class="bold mb-2">Skill Proficiencies</div>
+           <div class="ve-flex-col">
+               <div class="mb-1">Choose three Skill Proficiencies:</div>
+               <div id="skill_proficiency_choice_parent" class="ve-flex-col w-100 overflow-y-auto">
+               </div>
+           </div>
+       </hr>`;
+           
+        this.parentElement.append($.parseHTML(skillProfOptionsHTML));
+    }
+    pIsExpertise(){
+
+    }
+}
+class UIObj_Class_ExpertiseSelect extends UIObj_Class_SkillSelect{
+
+}
 class SheetCompiler {
     static INCLUDE_SOURCE_CONTENT = true;
     cachedContent;
@@ -1030,7 +1100,7 @@ class SheetCompiler {
 }
 class MyDataUtil{
     static SRC_PHB = "PHB";
-    /**Takes a UID from a class feature (like Rage|Barbarian|1|PHB) and unpacks it into separate values*/
+    /**Takes a UID from a class feature (like Rage|Barbarian|1|PHB) and unpacks it into separate values. Returns name, className, classSource, level, source, displayText */
     static unpackUidClassFeature (uid, opts) {
         opts = opts || {};
         if (opts.isLower) uid = uid.toLowerCase();
@@ -1048,6 +1118,80 @@ class MyDataUtil{
         };
     }
     
+    static getFeaturesGroupedByOptionsSet(allFeatures) {
+        return allFeatures.map(topLevelFeature=>{
+            const optionsSets = [];
+
+            let optionsStack = [];
+            let lastOptionsSetId = null;
+            topLevelFeature.loadeds.forEach(l=>{
+                const optionsSetId = MiscUtil.get(l, "optionsMeta", "setId") || null;
+                if (lastOptionsSetId !== optionsSetId) {
+                    if (optionsStack.length)
+                        optionsSets.push(optionsStack);
+                    optionsStack = [l];
+                    lastOptionsSetId = optionsSetId;
+                } else {
+                    optionsStack.push(l);
+                }
+            }
+            );
+            if (optionsStack.length)
+                optionsSets.push(optionsStack);
+
+            return {
+                topLevelFeature,
+                optionsSets
+            };
+        }
+        );
+    }
+
+
+    static async pInitClassFeatureLoadeds({classFeature, className, ...opts}) {
+        if (typeof classFeature !== "object")
+            throw new Error(`Expected an object of the form {classFeature: "<UID>"}`);
+
+        const unpacked = MyDataUtil.unpackUidClassFeature(classFeature.classFeature);
+
+        classFeature.hash = UrlUtil.URL_TO_HASH_BUILDER["classFeature"](unpacked);
+
+        const {name, level, source} = unpacked;
+        classFeature.name = name;
+        classFeature.level = level;
+        classFeature.source = source;
+
+        const entityRoot = ContentGetter.getClassFeatureByUID(classFeature.classFeature);
+        /* const entityRoot = await DataLoader.pCacheAndGet("raw_classFeature", classFeature.source, classFeature.hash, {
+            isCopy: true
+        }); */
+        const loadedRoot = {
+            type: "classFeature",
+            entity: entityRoot,
+            page: "classFeature",
+            source: classFeature.source,
+            hash: classFeature.hash,
+            className,
+        };
+        console.log(entityRoot);
+
+       /*  const isIgnored = await this._pGetIgnoredAndApplySideData(entityRoot, "classFeature");
+        if (isIgnored) {
+            classFeature.isIgnored = true;
+            return;
+        }
+
+        const {entityRoot: entityRootNxt, subLoadeds} = await this._pLoadSubEntries(this._getPostLoadWalker(), entityRoot, {
+            ...opts,
+            ancestorType: "classFeature",
+            ancestorMeta: {
+                _ancestorClassName: className,
+            },
+        }, );
+        loadedRoot.entity = entityRootNxt;
+
+        classFeature.loadeds = [loadedRoot, ...subLoadeds]; */
+    }
 }
 //#region List
 class List {
@@ -1958,6 +2102,15 @@ String.prototype.escapeQuotes = String.prototype.escapeQuotes || function() {
     return this.replace(/'/g, `&apos;`).replace(/"/g, `&quot;`).replace(/</g, `&lt;`).replace(/>/g, `&gt;`);
 }
 ;
+Array.prototype.pSerialAwaitMap || Object.defineProperty(Array.prototype, "pSerialAwaitMap", {
+	enumerable: false,
+	writable: true,
+	value: async function (fnMap) {
+		const out = [];
+		for (let i = 0, len = this.length; i < len; ++i) out.push(await fnMap(this[i], i, this));
+		return out;
+	},
+});
 //#endregion
 
 //#region Jquery Extensions
@@ -7380,6 +7533,4645 @@ class ContentGetter{
         }
         return data;
     }
+    /**Grabs JSON information from a file filled with information used in specific circumstances, such as figuring out class feature options (which proficiencies you get to choose between)
+     * when you level up as one of the base classes
+     */
+    static _getFoundryData(){
+        const _foundry = `{
+            "class": [
+                {
+                    "name": "Sorcerer",
+                    "source": "PHB",
+                    "advancement": [
+                        {
+                            "type": "ScaleValue",
+                            "configuration": {
+                                "identifier": "sorcery-points",
+                                "type": "number",
+                                "scale": {
+                                    "2": {
+                                        "value": 2
+                                    },
+                                    "3": {
+                                        "value": 3
+                                    },
+                                    "4": {
+                                        "value": 4
+                                    },
+                                    "5": {
+                                        "value": 5
+                                    },
+                                    "6": {
+                                        "value": 6
+                                    },
+                                    "7": {
+                                        "value": 7
+                                    },
+                                    "8": {
+                                        "value": 8
+                                    },
+                                    "9": {
+                                        "value": 9
+                                    },
+                                    "10": {
+                                        "value": 10
+                                    },
+                                    "11": {
+                                        "value": 11
+                                    },
+                                    "12": {
+                                        "value": 12
+                                    },
+                                    "13": {
+                                        "value": 13
+                                    },
+                                    "14": {
+                                        "value": 14
+                                    },
+                                    "15": {
+                                        "value": 15
+                                    },
+                                    "16": {
+                                        "value": 16
+                                    },
+                                    "17": {
+                                        "value": 17
+                                    },
+                                    "18": {
+                                        "value": 18
+                                    },
+                                    "19": {
+                                        "value": 19
+                                    },
+                                    "20": {
+                                        "value": 20
+                                    }
+                                }
+                            },
+                            "title": "Sorcery Points"
+                        }
+                    ]
+                }
+            ],
+            "subclass": [
+                {
+                    "name": "Nature Domain",
+                    "source": "PHB",
+                    "className": "Cleric",
+                    "classSource": "PHB",
+                    "advancement": [
+                        {
+                            "type": "ScaleValue",
+                            "configuration": {
+                                "identifier": "divine-strike",
+                                "type": "dice",
+                                "scale": {
+                                    "8": {
+                                        "n": 1,
+                                        "die": 8
+                                    },
+                                    "14": {
+                                        "n": 2,
+                                        "die": 8
+                                    }
+                                }
+                            },
+                            "title": "Divine Strike"
+                        }
+                    ]
+                },
+                {
+                    "name": "Trickery Domain",
+                    "source": "PHB",
+                    "className": "Cleric",
+                    "classSource": "PHB",
+                    "advancement": [
+                        {
+                            "type": "ScaleValue",
+                            "configuration": {
+                                "identifier": "divine-strike",
+                                "type": "dice",
+                                "scale": {
+                                    "8": {
+                                        "n": 1,
+                                        "die": 8
+                                    },
+                                    "14": {
+                                        "n": 2,
+                                        "die": 8
+                                    }
+                                }
+                            },
+                            "title": "Divine Strike"
+                        }
+                    ]
+                },
+                {
+                    "name": "Death Domain",
+                    "source": "DMG",
+                    "className": "Cleric",
+                    "classSource": "PHB",
+                    "advancement": [
+                        {
+                            "type": "ScaleValue",
+                            "configuration": {
+                                "identifier": "divine-strike",
+                                "type": "dice",
+                                "scale": {
+                                    "8": {
+                                        "n": 1,
+                                        "die": 8
+                                    },
+                                    "14": {
+                                        "n": 2,
+                                        "die": 8
+                                    }
+                                }
+                            },
+                            "title": "Divine Strike"
+                        }
+                    ]
+                },
+                {
+                    "name": "College of Whispers",
+                    "source": "XGE",
+                    "className": "Bard",
+                    "classSource": "PHB",
+                    "advancement": [
+                        {
+                            "type": "ScaleValue",
+                            "configuration": {
+                                "identifier": "psychic-blades",
+                                "type": "dice",
+                                "scale": {
+                                    "3": {
+                                        "n": 2,
+                                        "die": 6
+                                    },
+                                    "5": {
+                                        "n": 3,
+                                        "die": 6
+                                    },
+                                    "10": {
+                                        "n": 5,
+                                        "die": 6
+                                    },
+                                    "15": {
+                                        "n": 8,
+                                        "die": 6
+                                    }
+                                }
+                            },
+                            "title": "Psychic Blades"
+                        }
+                    ]
+                },
+                {
+                    "name": "Forge Domain",
+                    "source": "XGE",
+                    "className": "Cleric",
+                    "classSource": "PHB",
+                    "advancement": [
+                        {
+                            "type": "ScaleValue",
+                            "configuration": {
+                                "identifier": "divine-strike",
+                                "type": "dice",
+                                "scale": {
+                                    "8": {
+                                        "n": 1,
+                                        "die": 8
+                                    },
+                                    "14": {
+                                        "n": 2,
+                                        "die": 8
+                                    }
+                                }
+                            },
+                            "title": "Divine Strike"
+                        }
+                    ]
+                },
+                {
+                    "name": "Order Domain",
+                    "source": "TCE",
+                    "className": "Cleric",
+                    "classSource": "PHB",
+                    "advancement": [
+                        {
+                            "type": "ScaleValue",
+                            "configuration": {
+                                "identifier": "divine-strike",
+                                "type": "dice",
+                                "scale": {
+                                    "8": {
+                                        "n": 1,
+                                        "die": 8
+                                    },
+                                    "14": {
+                                        "n": 2,
+                                        "die": 8
+                                    }
+                                }
+                            },
+                            "title": "Divine Strike"
+                        }
+                    ]
+                }
+            ],
+            "classFeature": [
+                {
+                    "name": "Unarmored Defense",
+                    "source": "PHB",
+                    "className": "Barbarian",
+                    "classSource": "PHB",
+                    "level": 1,
+                    "ignoreSrdEffects": true
+                },
+                {
+                    "name": "Primal Knowledge",
+                    "source": "TCE",
+                    "className": "Barbarian",
+                    "classSource": "PHB",
+                    "level": 3,
+                    "entryData": {
+                        "skillProficiencies": [
+                            {
+                                "choose": {
+                                    "from": [
+                                        "animal handling",
+                                        "athletics",
+                                        "intimidation",
+                                        "nature",
+                                        "perception",
+                                        "survival"
+                                    ]
+                                }
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Fast Movement",
+                    "source": "PHB",
+                    "className": "Barbarian",
+                    "classSource": "PHB",
+                    "level": 5,
+                    "effects": [
+                        {
+                            "transfer": true,
+                            "changes": [
+                                {
+                                    "key": "data.attributes.movement.walk",
+                                    "mode": "ADD",
+                                    "value": "+ 10"
+                                }
+                            ]
+                        }
+                    ],
+                    "ignoreSrdEffects": true
+                },
+                {
+                    "name": "Brutal Critical (1 die)",
+                    "source": "PHB",
+                    "className": "Barbarian",
+                    "classSource": "PHB",
+                    "level": 9,
+                    "effects": [
+                        {
+                            "transfer": true,
+                            "changes": [
+                                {
+                                    "key": "flags.dnd5e.meleeCriticalDamageDice",
+                                    "mode": "UPGRADE",
+                                    "value": 1
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "name": "Brutal Critical (2 dice)",
+                    "source": "PHB",
+                    "className": "Barbarian",
+                    "classSource": "PHB",
+                    "level": 13,
+                    "effects": [
+                        {
+                            "transfer": true,
+                            "changes": [
+                                {
+                                    "key": "flags.dnd5e.meleeCriticalDamageDice",
+                                    "mode": "UPGRADE",
+                                    "value": 2
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "name": "Brutal Critical (3 dice)",
+                    "source": "PHB",
+                    "className": "Barbarian",
+                    "classSource": "PHB",
+                    "level": 17,
+                    "effects": [
+                        {
+                            "transfer": true,
+                            "changes": [
+                                {
+                                    "key": "flags.dnd5e.meleeCriticalDamageDice",
+                                    "mode": "UPGRADE",
+                                    "value": 3
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "name": "Primal Champion",
+                    "source": "PHB",
+                    "className": "Barbarian",
+                    "classSource": "PHB",
+                    "level": 20,
+                    "effects": [
+                        {
+                            "transfer": true,
+                            "changes": [
+                                {
+                                    "key": "data.abilities.str.value",
+                                    "mode": "ADD",
+                                    "value": "+ 4"
+                                },
+                                {
+                                    "key": "data.abilities.con.value",
+                                    "mode": "ADD",
+                                    "value": "+ 4"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "name": "Jack of All Trades",
+                    "source": "PHB",
+                    "className": "Bard",
+                    "classSource": "PHB",
+                    "level": 2,
+                    "effects": [
+                        {
+                            "transfer": true,
+                            "changes": [
+                                {
+                                    "key": "flags.dnd5e.jackOfAllTrades",
+                                    "mode": "OVERRIDE",
+                                    "value": true
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "name": "Expertise",
+                    "source": "PHB",
+                    "className": "Bard",
+                    "classSource": "PHB",
+                    "level": 3,
+                    "entryData": {
+                        "expertise": [
+                            {
+                                "anyProficientSkill": 2
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Expertise",
+                    "source": "PHB",
+                    "className": "Bard",
+                    "classSource": "PHB",
+                    "level": 10,
+                    "entryData": {
+                        "expertise": [
+                            {
+                                "anyProficientSkill": 2
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Channel Divinity: Harness Divine Power",
+                    "source": "TCE",
+                    "className": "Cleric",
+                    "classSource": "PHB",
+                    "level": 2,
+                    "system": {
+                        "uses.per": "day",
+                        "uses.value": 1,
+                        "uses.max": "1 + min(floor(@classes.cleric.levels / 6), 1) + min(floor(@classes.cleric.levels / 18), 1)"
+                    }
+                },
+                {
+                    "name": "Channel Divinity",
+                    "source": "PHB",
+                    "className": "Cleric",
+                    "classSource": "PHB",
+                    "level": 6,
+                    "isIgnored": true
+                },
+                {
+                    "name": "Channel Divinity",
+                    "source": "PHB",
+                    "className": "Cleric",
+                    "classSource": "PHB",
+                    "level": 18,
+                    "isIgnored": true
+                },
+                {
+                    "name": "Druidic",
+                    "source": "PHB",
+                    "className": "Druid",
+                    "classSource": "PHB",
+                    "level": 1,
+                    "entryData": {
+                        "languageProficiencies": [
+                            {
+                                "druidic": true
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Fighting Style",
+                    "source": "PHB",
+                    "className": "Fighter",
+                    "classSource": "PHB",
+                    "level": 1,
+                    "isIgnored": true
+                },
+                {
+                    "name": "Martial Arts",
+                    "source": "PHB",
+                    "className": "Monk",
+                    "classSource": "PHB",
+                    "level": 1,
+                    "subEntities": {
+                        "item": [
+                            {
+                                "name": "Unarmed Strike (Monk)",
+                                "source": "PHB",
+                                "page": 76,
+                                "srd": true,
+                                "type": "M",
+                                "rarity": "none",
+                                "weaponCategory": "simple",
+                                "entries": [
+                                    {
+                                        "type": "quote",
+                                        "entries": [
+                                            "Tether even a roasted chicken."
+                                        ],
+                                        "by": "Yamamoto Tsunetomo",
+                                        "from": "Hagakure Kikigaki"
+                                    }
+                                ],
+                                "foundrySystem": {
+                                    "equipped": true,
+                                    "damage.parts": [
+                                        [
+                                            "@scale.monk.die + @mod",
+                                            "bludgeoning"
+                                        ]
+                                    ],
+                                    "ability": "dex"
+                                }
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Unarmored Defense",
+                    "source": "PHB",
+                    "className": "Monk",
+                    "classSource": "PHB",
+                    "level": 1,
+                    "ignoreSrdEffects": true
+                },
+                {
+                    "name": "Unarmored Movement",
+                    "source": "PHB",
+                    "className": "Monk",
+                    "classSource": "PHB",
+                    "level": 2,
+                    "effects": [
+                        {
+                            "name": "Unarmored Movement",
+                            "transfer": true,
+                            "changes": [
+                                {
+                                    "key": "data.attributes.movement.walk",
+                                    "mode": "ADD",
+                                    "value": "+ (sign(@attributes.movement.walk) * @scale.monk.unarmored-movement)"
+                                },
+                                {
+                                    "key": "data.attributes.movement.burrow",
+                                    "mode": "ADD",
+                                    "value": "+ (sign(@attributes.movement.burrow) * @scale.monk.unarmored-movement)"
+                                },
+                                {
+                                    "key": "data.attributes.movement.climb",
+                                    "mode": "ADD",
+                                    "value": "+ (sign(@attributes.movement.climb) * @scale.monk.unarmored-movement)"
+                                },
+                                {
+                                    "key": "data.attributes.movement.fly",
+                                    "mode": "ADD",
+                                    "value": "+ (sign(@attributes.movement.fly) * @scale.monk.unarmored-movement)"
+                                },
+                                {
+                                    "key": "data.attributes.movement.swim",
+                                    "mode": "ADD",
+                                    "value": "+ (sign(@attributes.movement.swim) * @scale.monk.unarmored-movement)"
+                                }
+                            ]
+                        }
+                    ],
+                    "ignoreSrdEffects": true
+                },
+                {
+                    "name": "Diamond Soul",
+                    "source": "PHB",
+                    "className": "Monk",
+                    "classSource": "PHB",
+                    "level": 14,
+                    "effects": [
+                        {
+                            "changes": [
+                                {
+                                    "key": "flags.dnd5e.diamondSoul",
+                                    "mode": "OVERRIDE",
+                                    "value": true
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "name": "Fighting Style",
+                    "source": "PHB",
+                    "className": "Paladin",
+                    "classSource": "PHB",
+                    "level": 2,
+                    "isIgnored": true
+                },
+                {
+                    "name": "Divine Health",
+                    "source": "PHB",
+                    "className": "Paladin",
+                    "classSource": "PHB",
+                    "level": 3,
+                    "effects": [
+                        {
+                            "name": "Disease Immunity",
+                            "transfer": true,
+                            "changes": [
+                                {
+                                    "key": "data.traits.ci.value",
+                                    "mode": "ADD",
+                                    "value": "diseased"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "name": "Deft Explorer",
+                    "source": "TCE",
+                    "className": "Ranger",
+                    "classSource": "PHB",
+                    "level": 1,
+                    "entryData": {
+                        "languageProficiencies": [
+                            {
+                                "any": 2
+                            }
+                        ],
+                        "expertise": [
+                            {
+                                "anyProficientSkill": 1
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Fighting Style",
+                    "source": "PHB",
+                    "className": "Ranger",
+                    "classSource": "PHB",
+                    "level": 2,
+                    "isIgnored": true
+                },
+                {
+                    "name": "Expertise",
+                    "source": "PHB",
+                    "className": "Rogue",
+                    "classSource": "PHB",
+                    "level": 1,
+                    "entryData": {
+                        "expertise": [
+                            {
+                                "anyProficientSkill": 2
+                            },
+                            {
+                                "anyProficientSkill": 1,
+                                "thieves' tools": true
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Thieves' Cant",
+                    "source": "PHB",
+                    "className": "Rogue",
+                    "classSource": "PHB",
+                    "level": 1,
+                    "entryData": {
+                        "languageProficiencies": [
+                            {
+                                "thieves' cant": true
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Expertise",
+                    "source": "PHB",
+                    "className": "Rogue",
+                    "classSource": "PHB",
+                    "level": 6,
+                    "entryData": {
+                        "expertise": [
+                            {
+                                "anyProficientSkill": 2
+                            },
+                            {
+                                "anyProficientSkill": 1,
+                                "thieves' tools": true
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Reliable Talent",
+                    "source": "PHB",
+                    "className": "Rogue",
+                    "classSource": "PHB",
+                    "level": 11,
+                    "effects": [
+                        {
+                            "transfer": true,
+                            "changes": [
+                                {
+                                    "key": "flags.dnd5e.reliableTalent",
+                                    "mode": "OVERRIDE",
+                                    "value": true
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "name": "Blindsense",
+                    "source": "PHB",
+                    "className": "Rogue",
+                    "classSource": "PHB",
+                    "level": 14,
+                    "entryData": {
+                        "senses": [
+                            {
+                                "blindsight": 10
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Slippery Mind",
+                    "source": "PHB",
+                    "className": "Rogue",
+                    "classSource": "PHB",
+                    "level": 15,
+                    "entryData": {
+                        "savingThrowProficiencies": [
+                            {
+                                "wis": true
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Font of Magic",
+                    "source": "PHB",
+                    "className": "Sorcerer",
+                    "classSource": "PHB",
+                    "level": 2,
+                    "system": {
+                        "activation.type": null,
+                        "uses.per": null,
+                        "uses.value": null,
+                        "uses.max": null
+                    }
+                },
+                {
+                    "name": "Sorcery Points",
+                    "source": "PHB",
+                    "className": "Sorcerer",
+                    "classSource": "PHB",
+                    "level": 2,
+                    "system": {
+                        "uses.per": "lr",
+                        "uses.max": "@scale.sorcerer.sorcery-points"
+                    },
+                    "img": "icons/magic/control/silhouette-hold-change-blue.webp"
+                },
+                {
+                    "name": "Metamagic",
+                    "source": "PHB",
+                    "className": "Sorcerer",
+                    "classSource": "PHB",
+                    "level": 3,
+                    "entries": [
+                        "At 3rd level, you gain the ability to twist your spells to suit your needs. You gain two Metamagic options of your choice. You gain another one at 10th and 17th level.",
+                        "You can use only one Metamagic option on a spell when you cast it, unless otherwise noted."
+                    ]
+                },
+                {
+                    "name": "Metamagic Options",
+                    "source": "TCE",
+                    "className": "Sorcerer",
+                    "classSource": "PHB",
+                    "level": 3,
+                    "isIgnored": true
+                },
+                {
+                    "name": "Metamagic",
+                    "source": "PHB",
+                    "className": "Sorcerer",
+                    "classSource": "PHB",
+                    "level": 10,
+                    "isIgnored": true
+                },
+                {
+                    "name": "Metamagic",
+                    "source": "PHB",
+                    "className": "Sorcerer",
+                    "classSource": "PHB",
+                    "level": 17,
+                    "isIgnored": true
+                },
+                {
+                    "name": "Eldritch Invocations",
+                    "source": "PHB",
+                    "className": "Warlock",
+                    "classSource": "PHB",
+                    "level": 2,
+                    "entries": [
+                        "In your study of occult lore, you have unearthed eldritch invocations, fragments of forbidden knowledge that imbue you with an abiding magical ability.",
+                        "At 2nd level, you gain two eldritch invocations of your choice. Your invocation options are detailed at the end of the class description. When you gain certain warlock levels, you gain additional invocations of your choice, as shown in the Invocations Known column of the Warlock table.",
+                        "Additionally, when you gain a level in this class, you can choose one of the invocations you know and replace it with another invocation that you could learn at that level.",
+                        "If an eldritch invocation has prerequisites, you must meet them to learn it. You can learn the invocation at the same time that you meet its prerequisites. A level prerequisite refers to your level in this class."
+                    ]
+                },
+                {
+                    "name": "Pact Boon",
+                    "source": "PHB",
+                    "className": "Warlock",
+                    "classSource": "PHB",
+                    "level": 3,
+                    "isIgnored": true
+                },
+                {
+                    "name": "Infusions Known",
+                    "source": "TCE",
+                    "className": "Artificer",
+                    "classSource": "TCE",
+                    "level": 2,
+                    "isIgnored": true
+                },
+                {
+                    "name": "Bonus Proficiencies",
+                    "source": "TCE",
+                    "className": "Expert Sidekick",
+                    "classSource": "TCE",
+                    "level": 1,
+                    "entryData": {
+                        "armorProficiencies": [
+                            {
+                                "light": true
+                            }
+                        ],
+                        "savingThrowProficiencies": [
+                            {
+                                "choose": {
+                                    "from": [
+                                        "dex",
+                                        "int",
+                                        "cha"
+                                    ],
+                                    "count": 1
+                                }
+                            }
+                        ],
+                        "skillProficiencies": [
+                            {
+                                "any": 5
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Expertise",
+                    "source": "TCE",
+                    "className": "Expert Sidekick",
+                    "classSource": "TCE",
+                    "level": 3,
+                    "entryData": {
+                        "expertise": [
+                            {
+                                "anyProficientSkill": 2
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Expertise",
+                    "source": "TCE",
+                    "className": "Expert Sidekick",
+                    "classSource": "TCE",
+                    "level": 15,
+                    "entryData": {
+                        "expertise": [
+                            {
+                                "anyProficientSkill": 2
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Bonus Proficiencies",
+                    "source": "TCE",
+                    "className": "Spellcaster Sidekick",
+                    "classSource": "TCE",
+                    "level": 1,
+                    "entryData": {
+                        "armorProficiencies": [
+                            {
+                                "light": true
+                            }
+                        ],
+                        "savingThrowProficiencies": [
+                            {
+                                "choose": {
+                                    "from": [
+                                        "wis",
+                                        "int",
+                                        "cha"
+                                    ],
+                                    "count": 1
+                                }
+                            }
+                        ],
+                        "skillProficiencies": [
+                            {
+                                "choose": {
+                                    "from": [
+                                        "arcana",
+                                        "history",
+                                        "insight",
+                                        "investigation",
+                                        "medicine",
+                                        "performance",
+                                        "persuasion",
+                                        "religion"
+                                    ],
+                                    "count": 2
+                                }
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Bonus Proficiencies",
+                    "source": "TCE",
+                    "className": "Warrior Sidekick",
+                    "classSource": "TCE",
+                    "level": 1,
+                    "entryData": {
+                        "armorProficiencies": [
+                            {
+                                "light": true,
+                                "medium": true,
+                                "heavy": true
+                            }
+                        ],
+                        "savingThrowProficiencies": [
+                            {
+                                "choose": {
+                                    "from": [
+                                        "str",
+                                        "dex",
+                                        "con"
+                                    ],
+                                    "count": 1
+                                }
+                            }
+                        ],
+                        "skillProficiencies": [
+                            {
+                                "choose": {
+                                    "from": [
+                                        "acrobatics",
+                                        "animal handling",
+                                        "athletics",
+                                        "intimidation",
+                                        "nature",
+                                        "perception",
+                                        "survival"
+                                    ],
+                                    "count": 2
+                                }
+                            }
+                        ]
+                    }
+                }
+            ],
+            "subclassFeature": [
+                {
+                    "name": "Eagle",
+                    "source": "PHB",
+                    "className": "Barbarian",
+                    "classSource": "PHB",
+                    "subclassShortName": "Totem Warrior",
+                    "subclassSource": "PHB",
+                    "level": 3,
+                    "system": {
+                        "activation.type": "bonus",
+                        "activation.cost": 1
+                    }
+                },
+                {
+                    "name": "Call the Hunt",
+                    "source": "TCE",
+                    "className": "Barbarian",
+                    "classSource": "PHB",
+                    "subclassShortName": "Beast",
+                    "subclassSource": "TCE",
+                    "level": 14,
+                    "system": {
+                        "target.value": 30,
+                        "target.units": "ft"
+                    }
+                },
+                {
+                    "name": "Magic Awareness",
+                    "source": "TCE",
+                    "className": "Barbarian",
+                    "classSource": "PHB",
+                    "subclassShortName": "Wild Magic",
+                    "subclassSource": "TCE",
+                    "level": 3,
+                    "system": {
+                        "target.value": 60,
+                        "target.units": "ft"
+                    }
+                },
+                {
+                    "name": "Divine Fury",
+                    "source": "XGE",
+                    "className": "Barbarian",
+                    "classSource": "PHB",
+                    "subclassShortName": "Zealot",
+                    "subclassSource": "XGE",
+                    "level": 3,
+                    "isChooseSystemRenderEntries": true,
+                    "system": {
+                        "activation.type": "special",
+                        "activation.condition": "While you're raging, the first creature you hit on each of your turns with a weapon attack"
+                    },
+                    "chooseSystem": [
+                        {
+                            "name": "Necrotic Damage",
+                            "system": {
+                                "damage.parts": [
+                                    [
+                                        "1d6 + floor(@classes.barbarian.levels / 2)",
+                                        "necrotic"
+                                    ]
+                                ]
+                            }
+                        },
+                        {
+                            "name": "Radiant Damage",
+                            "system": {
+                                "damage.parts": [
+                                    [
+                                        "1d6 + floor(@classes.barbarian.levels / 2)",
+                                        "radiant"
+                                    ]
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Bonus Proficiencies",
+                    "source": "PHB",
+                    "className": "Bard",
+                    "classSource": "PHB",
+                    "subclassShortName": "Lore",
+                    "subclassSource": "PHB",
+                    "level": 3,
+                    "entryData": {
+                        "skillProficiencies": [
+                            {
+                                "any": 3
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Bonus Proficiencies",
+                    "source": "PHB",
+                    "className": "Bard",
+                    "classSource": "PHB",
+                    "subclassShortName": "Valor",
+                    "subclassSource": "PHB",
+                    "level": 3,
+                    "entryData": {
+                        "armorProficiencies": [
+                            {
+                                "medium": true,
+                                "shield|phb": true
+                            }
+                        ],
+                        "weaponProficiencies": [
+                            {
+                                "martial": true
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Performance of Creation",
+                    "source": "TCE",
+                    "className": "Bard",
+                    "classSource": "PHB",
+                    "subclassShortName": "Creation",
+                    "subclassSource": "TCE",
+                    "level": 3,
+                    "system": {
+                        "target.value": 1,
+                        "target.type": "object",
+                        "range.value": 10,
+                        "range.units": "ft"
+                    }
+                },
+                {
+                    "name": "Animating Performance",
+                    "source": "TCE",
+                    "className": "Bard",
+                    "classSource": "PHB",
+                    "subclassShortName": "Creation",
+                    "subclassSource": "TCE",
+                    "level": 6,
+                    "system": {
+                        "target.value": 1,
+                        "target.type": "object",
+                        "range.value": 30,
+                        "range.units": "ft"
+                    }
+                },
+                {
+                    "name": "Unsettling Words",
+                    "source": "TCE",
+                    "className": "Bard",
+                    "classSource": "PHB",
+                    "subclassShortName": "Eloquence",
+                    "subclassSource": "TCE",
+                    "level": 3,
+                    "system": {
+                        "target.value": 1,
+                        "target.type": "creature",
+                        "range.value": 60,
+                        "range.units": "ft"
+                    }
+                },
+                {
+                    "name": "Universal Speech",
+                    "source": "TCE",
+                    "className": "Bard",
+                    "classSource": "PHB",
+                    "subclassShortName": "Eloquence",
+                    "subclassSource": "TCE",
+                    "level": 6,
+                    "system": {
+                        "target.type": "creature",
+                        "range.value": 60,
+                        "range.units": "ft"
+                    }
+                },
+                {
+                    "name": "Infectious Inspiration",
+                    "source": "TCE",
+                    "className": "Bard",
+                    "classSource": "PHB",
+                    "subclassShortName": "Eloquence",
+                    "subclassSource": "TCE",
+                    "level": 14,
+                    "system": {
+                        "target.value": 1,
+                        "target.type": "creature",
+                        "range.value": 60,
+                        "range.units": "ft"
+                    }
+                },
+                {
+                    "name": "Tales from Beyond",
+                    "source": "VRGR",
+                    "className": "Bard",
+                    "classSource": "PHB",
+                    "subclassShortName": "Spirits",
+                    "subclassSource": "VRGR",
+                    "level": 3,
+                    "system": {
+                        "target.value": 1,
+                        "target.type": "creature",
+                        "range.value": 30,
+                        "range.units": "ft"
+                    }
+                },
+                {
+                    "name": "Enthralling Performance",
+                    "source": "XGE",
+                    "className": "Bard",
+                    "classSource": "PHB",
+                    "subclassShortName": "Glamour",
+                    "subclassSource": "XGE",
+                    "level": 3,
+                    "system": {
+                        "activation.type": "minute",
+                        "activation.cost": 1,
+                        "target.value": 60,
+                        "target.units": "ft",
+                        "target.type": "sphere"
+                    }
+                },
+                {
+                    "name": "Bonus Proficiencies",
+                    "source": "XGE",
+                    "className": "Bard",
+                    "classSource": "PHB",
+                    "subclassShortName": "Swords",
+                    "subclassSource": "XGE",
+                    "level": 3,
+                    "entryData": {
+                        "armorProficiencies": [
+                            {
+                                "medium": true
+                            }
+                        ],
+                        "weaponProficiencies": [
+                            {
+                                "scimitar|phb": true
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Fighting Style",
+                    "source": "XGE",
+                    "className": "Bard",
+                    "classSource": "PHB",
+                    "subclassShortName": "Swords",
+                    "subclassSource": "XGE",
+                    "level": 3,
+                    "isIgnored": true
+                },
+                {
+                    "name": "Psychic Blades",
+                    "source": "XGE",
+                    "className": "Bard",
+                    "classSource": "PHB",
+                    "subclassShortName": "Whispers",
+                    "subclassSource": "XGE",
+                    "level": 3,
+                    "system": {
+                        "activation.type": "special",
+                        "activation.condition": "When you hit a creature with a weapon attack",
+                        "damage.parts": [
+                            [
+                                "@scale.college-of-whispers.psychic-blades",
+                                "psychic"
+                            ]
+                        ]
+                    }
+                },
+                {
+                    "name": "Words of Terror",
+                    "source": "XGE",
+                    "className": "Bard",
+                    "classSource": "PHB",
+                    "subclassShortName": "Whispers",
+                    "subclassSource": "XGE",
+                    "level": 3,
+                    "system": {
+                        "activation.type": "minute",
+                        "activation.cost": 1,
+                        "target.value": 1,
+                        "target.type": "creature"
+                    }
+                },
+                {
+                    "name": "Mantle of Whispers",
+                    "source": "XGE",
+                    "className": "Bard",
+                    "classSource": "PHB",
+                    "subclassShortName": "Whispers",
+                    "subclassSource": "XGE",
+                    "level": 6,
+                    "system": {
+                        "target.value": 30,
+                        "target.units": "ft",
+                        "target.type": "creature"
+                    }
+                },
+                {
+                    "name": "Shadow Lore",
+                    "source": "XGE",
+                    "className": "Bard",
+                    "classSource": "PHB",
+                    "subclassShortName": "Whispers",
+                    "subclassSource": "XGE",
+                    "level": 14,
+                    "system": {
+                        "target.value": 30,
+                        "target.units": "ft",
+                        "target.type": "creature"
+                    }
+                },
+                {
+                    "name": "Channel Divinity: Touch of Death",
+                    "source": "DMG",
+                    "className": "Cleric",
+                    "classSource": "PHB",
+                    "subclassShortName": "Death",
+                    "subclassSource": "DMG",
+                    "level": 2,
+                    "system": {
+                        "activation.type": "special",
+                        "activation.condition": "When the cleric hits a creature with a melee attack",
+                        "damage.parts": [
+                            [
+                                "5 + (2 * @classes.cleric.levels)",
+                                "necrotic"
+                            ]
+                        ]
+                    }
+                },
+                {
+                    "name": "Divine Strike",
+                    "source": "DMG",
+                    "className": "Cleric",
+                    "classSource": "PHB",
+                    "subclassShortName": "Death",
+                    "subclassSource": "DMG",
+                    "level": 8,
+                    "system": {
+                        "damage.parts": [
+                            [
+                                "@scale.death-domain.divine-strike",
+                                "necrotic"
+                            ]
+                        ]
+                    }
+                },
+                {
+                    "name": "Blessings of Knowledge",
+                    "source": "PHB",
+                    "className": "Cleric",
+                    "classSource": "PHB",
+                    "subclassShortName": "Knowledge",
+                    "subclassSource": "PHB",
+                    "level": 1,
+                    "entryData": {
+                        "skillProficiencies": [
+                            {
+                                "choose": {
+                                    "from": [
+                                        "arcana",
+                                        "history",
+                                        "nature",
+                                        "religion"
+                                    ],
+                                    "count": 2
+                                }
+                            }
+                        ],
+                        "languageProficiencies": [
+                            {
+                                "any": 2
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Channel Divinity: Knowledge of the Ages",
+                    "source": "PHB",
+                    "className": "Cleric",
+                    "classSource": "PHB",
+                    "subclassShortName": "Knowledge",
+                    "subclassSource": "PHB",
+                    "level": 2,
+                    "system": {
+                        "duration.value": 10,
+                        "duration.units": "minute"
+                    }
+                },
+                {
+                    "name": "Channel Divinity: Read Thoughts",
+                    "source": "PHB",
+                    "className": "Cleric",
+                    "classSource": "PHB",
+                    "subclassShortName": "Knowledge",
+                    "subclassSource": "PHB",
+                    "level": 6,
+                    "system": {
+                        "target.value": 1,
+                        "target.type": "creature",
+                        "range.value": 60,
+                        "range.units": "ft"
+                    }
+                },
+                {
+                    "name": "Visions of the Past",
+                    "source": "PHB",
+                    "className": "Cleric",
+                    "classSource": "PHB",
+                    "subclassShortName": "Knowledge",
+                    "subclassSource": "PHB",
+                    "level": 17,
+                    "system": {
+                        "activation.type": "minute",
+                        "activation.cost": 1
+                    }
+                },
+                {
+                    "name": "Bonus Proficiency",
+                    "source": "PHB",
+                    "className": "Cleric",
+                    "classSource": "PHB",
+                    "subclassShortName": "Life",
+                    "subclassSource": "PHB",
+                    "level": 1,
+                    "entryData": {
+                        "armorProficiencies": [
+                            {
+                                "heavy": true
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Disciple of Life",
+                    "source": "PHB",
+                    "className": "Cleric",
+                    "classSource": "PHB",
+                    "subclassShortName": "Life",
+                    "subclassSource": "PHB",
+                    "level": 1,
+                    "effects": [
+                        {
+                            "name": "Bonus Healing",
+                            "transfer": true,
+                            "changes": [
+                                {
+                                    "key": "data.bonuses.heal.damage",
+                                    "mode": "ADD",
+                                    "value": "+ @item.level + 2"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "name": "Channel Divinity: Radiance of the Dawn",
+                    "source": "PHB",
+                    "className": "Cleric",
+                    "classSource": "PHB",
+                    "subclassShortName": "Light",
+                    "subclassSource": "PHB",
+                    "level": 2,
+                    "system": {
+                        "target.value": 30,
+                        "target.units": "ft",
+                        "target.type": "sphere",
+                        "damage.parts": [
+                            [
+                                "2d10 + @classes.cleric.levels",
+                                "radiant"
+                            ]
+                        ],
+                        "formula": ""
+                    }
+                },
+                {
+                    "name": "Corona of Light",
+                    "source": "PHB",
+                    "className": "Cleric",
+                    "classSource": "PHB",
+                    "subclassShortName": "Light",
+                    "subclassSource": "PHB",
+                    "level": 17,
+                    "system": {
+                        "target.value": 60,
+                        "target.units": "ft",
+                        "target.type": "sphere"
+                    }
+                },
+                {
+                    "name": "Acolyte of Nature",
+                    "source": "PHB",
+                    "className": "Cleric",
+                    "classSource": "PHB",
+                    "subclassShortName": "Nature",
+                    "subclassSource": "PHB",
+                    "level": 1,
+                    "entryData": {
+                        "skillProficiencies": [
+                            {
+                                "choose": {
+                                    "from": [
+                                        "animal handling",
+                                        "nature",
+                                        "survival"
+                                    ]
+                                }
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Bonus Proficiency",
+                    "source": "PHB",
+                    "className": "Cleric",
+                    "classSource": "PHB",
+                    "subclassShortName": "Nature",
+                    "subclassSource": "PHB",
+                    "level": 1,
+                    "entryData": {
+                        "armorProficiencies": [
+                            {
+                                "heavy": true
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Channel Divinity: Charm Animals and Plants",
+                    "source": "PHB",
+                    "className": "Cleric",
+                    "classSource": "PHB",
+                    "subclassShortName": "Nature",
+                    "subclassSource": "PHB",
+                    "level": 2,
+                    "system": {
+                        "target.value": 30,
+                        "target.units": "ft",
+                        "target.type": "sphere",
+                        "damage.parts": [
+                            [
+                                "2d10 + @classes.cleric.levels",
+                                "radiant"
+                            ]
+                        ]
+                    }
+                },
+                {
+                    "name": "Divine Strike",
+                    "source": "PHB",
+                    "className": "Cleric",
+                    "classSource": "PHB",
+                    "subclassShortName": "Nature",
+                    "subclassSource": "PHB",
+                    "level": 8,
+                    "system": {
+                        "damage.parts": [
+                            [
+                                "@scale.nature-domain.divine-strike",
+                                "cold"
+                            ],
+                            [
+                                "@scale.nature-domain.divine-strike",
+                                "fire"
+                            ],
+                            [
+                                "@scale.nature-domain.divine-strike",
+                                "lightning"
+                            ]
+                        ]
+                    }
+                },
+                {
+                    "name": "Bonus Proficiencies",
+                    "source": "PHB",
+                    "className": "Cleric",
+                    "classSource": "PHB",
+                    "subclassShortName": "Tempest",
+                    "subclassSource": "PHB",
+                    "level": 1,
+                    "entryData": {
+                        "armorProficiencies": [
+                            {
+                                "heavy": true
+                            }
+                        ],
+                        "weaponProficiencies": [
+                            {
+                                "martial": true
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Channel Divinity: Invoke Duplicity",
+                    "source": "PHB",
+                    "className": "Cleric",
+                    "classSource": "PHB",
+                    "subclassShortName": "Trickery",
+                    "subclassSource": "PHB",
+                    "level": 2,
+                    "system": {
+                        "target.value": 1,
+                        "target.type": "space",
+                        "range.value": 30,
+                        "range.units": "ft"
+                    }
+                },
+                {
+                    "name": "Divine Strike",
+                    "source": "PHB",
+                    "className": "Cleric",
+                    "classSource": "PHB",
+                    "subclassShortName": "Trickery",
+                    "subclassSource": "PHB",
+                    "level": 8,
+                    "system": {
+                        "damage.parts": [
+                            [
+                                "@scale.order-domain.divine-strike",
+                                "poison"
+                            ]
+                        ]
+                    }
+                },
+                {
+                    "name": "Bonus Proficiencies",
+                    "source": "PHB",
+                    "className": "Cleric",
+                    "classSource": "PHB",
+                    "subclassShortName": "War",
+                    "subclassSource": "PHB",
+                    "level": 1,
+                    "entryData": {
+                        "armorProficiencies": [
+                            {
+                                "heavy": true
+                            }
+                        ],
+                        "weaponProficiencies": [
+                            {
+                                "martial": true
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Acolyte of Strength",
+                    "source": "PSA",
+                    "className": "Cleric",
+                    "classSource": "PHB",
+                    "subclassShortName": "Strength (PSA)",
+                    "subclassSource": "PSA",
+                    "level": 1,
+                    "entryData": {
+                        "skillProficiencies": [
+                            {
+                                "choose": {
+                                    "from": [
+                                        "animal handling",
+                                        "athletics",
+                                        "nature",
+                                        "survival"
+                                    ]
+                                }
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Arcane Initiate",
+                    "source": "SCAG",
+                    "className": "Cleric",
+                    "classSource": "PHB",
+                    "subclassShortName": "Arcana",
+                    "subclassSource": "SCAG",
+                    "level": 1,
+                    "entryData": {
+                        "skillProficiencies": [
+                            {
+                                "arcana": true
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Channel Divinity: Arcane Abjuration",
+                    "source": "SCAG",
+                    "className": "Cleric",
+                    "classSource": "PHB",
+                    "subclassShortName": "Arcana",
+                    "subclassSource": "SCAG",
+                    "level": 2,
+                    "system": {
+                        "target.value": 1,
+                        "target.type": "creature",
+                        "range.value": 30,
+                        "range.units": "ft"
+                    }
+                },
+                {
+                    "name": "Bonus Proficiencies",
+                    "source": "TCE",
+                    "className": "Cleric",
+                    "classSource": "PHB",
+                    "subclassShortName": "Order",
+                    "subclassSource": "TCE",
+                    "level": 1,
+                    "entryData": {
+                        "skillProficiencies": [
+                            {
+                                "choose": {
+                                    "from": [
+                                        "intimidation",
+                                        "persuasion"
+                                    ]
+                                }
+                            }
+                        ],
+                        "armorProficiencies": [
+                            {
+                                "heavy": true
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Channel Divinity: Order's Demand",
+                    "source": "TCE",
+                    "className": "Cleric",
+                    "classSource": "PHB",
+                    "subclassShortName": "Order",
+                    "subclassSource": "TCE",
+                    "level": 2,
+                    "system": {
+                        "target.value": 30,
+                        "target.units": "ft",
+                        "target.type": "sphere"
+                    }
+                },
+                {
+                    "name": "Divine Strike",
+                    "source": "TCE",
+                    "className": "Cleric",
+                    "classSource": "PHB",
+                    "subclassShortName": "Order",
+                    "subclassSource": "TCE",
+                    "level": 8,
+                    "system": {
+                        "damage.parts": [
+                            [
+                                "@scale.order-domain.divine-strike",
+                                "psychic"
+                            ]
+                        ]
+                    }
+                },
+                {
+                    "name": "Emboldening Bond",
+                    "source": "TCE",
+                    "className": "Cleric",
+                    "classSource": "PHB",
+                    "subclassShortName": "Peace",
+                    "subclassSource": "TCE",
+                    "level": 1,
+                    "system": {
+                        "target.type": "creature",
+                        "range.value": 30,
+                        "range.units": "ft"
+                    }
+                },
+                {
+                    "name": "Implement of Peace",
+                    "source": "TCE",
+                    "className": "Cleric",
+                    "classSource": "PHB",
+                    "subclassShortName": "Peace",
+                    "subclassSource": "TCE",
+                    "level": 1,
+                    "entryData": {
+                        "skillProficiencies": [
+                            {
+                                "choose": {
+                                    "from": [
+                                        "insight",
+                                        "performance",
+                                        "persuasion"
+                                    ]
+                                }
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Bonus Proficiencies",
+                    "source": "TCE",
+                    "className": "Cleric",
+                    "classSource": "PHB",
+                    "subclassShortName": "Twilight",
+                    "subclassSource": "TCE",
+                    "level": 1,
+                    "entryData": {
+                        "armorProficiencies": [
+                            {
+                                "heavy": true
+                            }
+                        ],
+                        "weaponProficiencies": [
+                            {
+                                "martial": true
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Eyes of Night",
+                    "source": "TCE",
+                    "className": "Cleric",
+                    "classSource": "PHB",
+                    "subclassShortName": "Twilight",
+                    "subclassSource": "TCE",
+                    "level": 1,
+                    "actorTokenMod": {
+                        "dimSight": [
+                            {
+                                "mode": "setMax",
+                                "value": 300
+                            }
+                        ]
+                    },
+                    "system": {
+                        "target.type": "creature",
+                        "range.value": 10,
+                        "range.units": "ft"
+                    }
+                },
+                {
+                    "name": "Bonus Proficiencies",
+                    "source": "TDCSR",
+                    "className": "Cleric",
+                    "classSource": "PHB",
+                    "subclassShortName": "Blood",
+                    "subclassSource": "TDCSR",
+                    "level": 1,
+                    "entryData": {
+                        "weaponProficiencies": [
+                            {
+                                "martial": true
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Bonus Proficiency",
+                    "source": "XGE",
+                    "className": "Cleric",
+                    "classSource": "PHB",
+                    "subclassShortName": "Forge",
+                    "subclassSource": "XGE",
+                    "level": 1,
+                    "entryData": {
+                        "armorProficiencies": [
+                            {
+                                "heavy": true
+                            }
+                        ],
+                        "toolProficiencies": [
+                            {
+                                "smith's tools": true
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Divine Strike",
+                    "source": "XGE",
+                    "className": "Cleric",
+                    "classSource": "PHB",
+                    "subclassShortName": "Forge",
+                    "subclassSource": "XGE",
+                    "level": 8,
+                    "system": {
+                        "damage.parts": [
+                            [
+                                "@scale.forge-domain.divine-strike",
+                                "fire"
+                            ]
+                        ]
+                    }
+                },
+                {
+                    "name": "Saint of Forge and Fire",
+                    "source": "XGE",
+                    "className": "Cleric",
+                    "classSource": "PHB",
+                    "subclassShortName": "Forge",
+                    "subclassSource": "XGE",
+                    "level": 17,
+                    "entryData": {
+                        "immune": [
+                            "fire"
+                        ]
+                    }
+                },
+                {
+                    "name": "Channel Divinity: Path to the Grave",
+                    "source": "XGE",
+                    "className": "Cleric",
+                    "classSource": "PHB",
+                    "subclassShortName": "Grave",
+                    "subclassSource": "XGE",
+                    "level": 2,
+                    "system": {
+                        "target.value": 1,
+                        "target.type": "creature",
+                        "range.value": 30,
+                        "range.units": "ft"
+                    }
+                },
+                {
+                    "name": "Sentinel at Death's Door",
+                    "source": "XGE",
+                    "className": "Cleric",
+                    "classSource": "PHB",
+                    "subclassShortName": "Grave",
+                    "subclassSource": "XGE",
+                    "level": 6,
+                    "system": {
+                        "target.value": 1,
+                        "target.type": "creature",
+                        "range.value": 30,
+                        "range.units": "ft"
+                    }
+                },
+                {
+                    "name": "Keeper of Souls",
+                    "source": "XGE",
+                    "className": "Cleric",
+                    "classSource": "PHB",
+                    "subclassShortName": "Grave",
+                    "subclassSource": "XGE",
+                    "level": 17,
+                    "system": {
+                        "target.value": 1,
+                        "target.type": "creature",
+                        "range.value": 60,
+                        "range.units": "ft"
+                    }
+                },
+                {
+                    "name": "Nature's Ward",
+                    "source": "PHB",
+                    "className": "Druid",
+                    "classSource": "PHB",
+                    "subclassShortName": "Land",
+                    "subclassSource": "PHB",
+                    "level": 10,
+                    "entryData": {
+                        "immune": [
+                            "poison"
+                        ],
+                        "conditionImmune": [
+                            "disease",
+                            "poisoned"
+                        ]
+                    }
+                },
+                {
+                    "name": "Halo of Spores",
+                    "source": "TCE",
+                    "className": "Druid",
+                    "classSource": "PHB",
+                    "subclassShortName": "Spores",
+                    "subclassSource": "TCE",
+                    "level": 2,
+                    "system": {
+                        "target.value": 10,
+                        "target.units": "ft",
+                        "target.type": "sphere",
+                        "range.units": "self"
+                    }
+                },
+                {
+                    "name": "Spreading Spores",
+                    "source": "TCE",
+                    "className": "Druid",
+                    "classSource": "PHB",
+                    "subclassShortName": "Spores",
+                    "subclassSource": "TCE",
+                    "level": 10,
+                    "system": {
+                        "target.value": 10,
+                        "target.units": "ft",
+                        "target.type": "cube",
+                        "range.value": 30,
+                        "range.units": "ft",
+                        "duration.value": 1,
+                        "duration.units": "minute"
+                    }
+                },
+                {
+                    "name": "Fungal Body",
+                    "source": "TCE",
+                    "className": "Druid",
+                    "classSource": "PHB",
+                    "subclassShortName": "Spores",
+                    "subclassSource": "TCE",
+                    "level": 14,
+                    "entryData": {
+                        "conditionImmune": [
+                            "blinded",
+                            "deafened",
+                            "frightened",
+                            "poisoned"
+                        ]
+                    }
+                },
+                {
+                    "name": "Summon Wildfire Spirit",
+                    "source": "TCE",
+                    "className": "Druid",
+                    "classSource": "PHB",
+                    "subclassShortName": "Wildfire",
+                    "subclassSource": "TCE",
+                    "level": 2,
+                    "system": {
+                        "target.type": "space",
+                        "range.value": 30,
+                        "range.units": "ft"
+                    }
+                },
+                {
+                    "name": "Incarnation of Corruption",
+                    "source": "TDCSR",
+                    "className": "Druid",
+                    "classSource": "PHB",
+                    "subclassShortName": "Blighted",
+                    "subclassSource": "TDCSR",
+                    "level": 14,
+                    "entryData": {
+                        "resist": [
+                            "necrotic"
+                        ]
+                    }
+                },
+                {
+                    "name": "Balm of the Summer Court",
+                    "source": "XGE",
+                    "className": "Druid",
+                    "classSource": "PHB",
+                    "subclassShortName": "Dreams",
+                    "subclassSource": "XGE",
+                    "level": 2,
+                    "system": {
+                        "target.value": 1,
+                        "target.type": "creature",
+                        "range.value": 120,
+                        "range.units": "ft",
+                        "uses.per": "charges",
+                        "uses.value": 2,
+                        "uses.max": "@classes.druid.levels",
+                        "uses.recovery": "@classes.druid.levels",
+                        "formula": "1d6",
+                        "actionType": "healing"
+                    }
+                },
+                {
+                    "name": "Hearth of Moonlight and Shadow",
+                    "source": "XGE",
+                    "className": "Druid",
+                    "classSource": "PHB",
+                    "subclassShortName": "Dreams",
+                    "subclassSource": "XGE",
+                    "level": 6,
+                    "system": {
+                        "target.value": 30,
+                        "target.units": "ft",
+                        "target.type": "sphere"
+                    }
+                },
+                {
+                    "name": "Hidden Paths",
+                    "source": "XGE",
+                    "className": "Druid",
+                    "classSource": "PHB",
+                    "subclassShortName": "Dreams",
+                    "subclassSource": "XGE",
+                    "level": 10,
+                    "system": {
+                        "target.value": 1,
+                        "target.type": "space",
+                        "range.value": 60,
+                        "range.units": "ft"
+                    }
+                },
+                {
+                    "name": "Speech of the Woods",
+                    "source": "XGE",
+                    "className": "Druid",
+                    "classSource": "PHB",
+                    "subclassShortName": "Shepherd",
+                    "subclassSource": "XGE",
+                    "level": 2,
+                    "entryData": {
+                        "languageProficiencies": [
+                            {
+                                "sylvan": true
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Spirit Totem",
+                    "source": "XGE",
+                    "className": "Druid",
+                    "classSource": "PHB",
+                    "subclassShortName": "Shepherd",
+                    "subclassSource": "XGE",
+                    "level": 2,
+                    "system": {
+                        "target.value": 1,
+                        "target.type": "space",
+                        "range.value": 60,
+                        "range.units": "ft"
+                    }
+                },
+                {
+                    "name": "Unleash Incarnation",
+                    "source": "EGW",
+                    "className": "Fighter",
+                    "classSource": "PHB",
+                    "subclassShortName": "Echo Knight",
+                    "subclassSource": "EGW",
+                    "level": 3,
+                    "system": {
+                        "activation.type": "special",
+                        "activation.condition": "Whenever you take the Attack action",
+                        "activation.cost": 1
+                    }
+                },
+                {
+                    "name": "Combat Superiority",
+                    "source": "PHB",
+                    "className": "Fighter",
+                    "classSource": "PHB",
+                    "subclassShortName": "Battle Master",
+                    "subclassSource": "PHB",
+                    "level": 3,
+                    "entryData": {
+                        "resources": [
+                            {
+                                "name": "Superiority Die",
+                                "type": "dicePool",
+                                "recharge": "restShort",
+                                "count": "floor((<$level$> + 1) / 8) + 4",
+                                "number": 1,
+                                "faces": "8 + (sign(ceil((<$level$> - 2) / 8) - 1) * 2)"
+                            }
+                        ]
+                    },
+                    "system": {
+                        "activation.type": null,
+                        "uses.value": null,
+                        "uses.max": null
+                    }
+                },
+                {
+                    "name": "Maneuver Options",
+                    "source": "TCE",
+                    "className": "Fighter",
+                    "classSource": "PHB",
+                    "subclassShortName": "Battle Master",
+                    "subclassSource": "PHB",
+                    "level": 3,
+                    "isIgnored": true
+                },
+                {
+                    "name": "Maneuvers",
+                    "source": "PHB",
+                    "className": "Fighter",
+                    "classSource": "PHB",
+                    "subclassShortName": "Battle Master",
+                    "subclassSource": "PHB",
+                    "level": 3,
+                    "isIgnored": true
+                },
+                {
+                    "name": "Student of War",
+                    "source": "PHB",
+                    "className": "Fighter",
+                    "classSource": "PHB",
+                    "subclassShortName": "Battle Master",
+                    "subclassSource": "PHB",
+                    "level": 3,
+                    "entryData": {
+                        "toolProficiencies": [
+                            {
+                                "anyArtisansTool": 1
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Additional Maneuvers",
+                    "source": "PHB",
+                    "className": "Fighter",
+                    "classSource": "PHB",
+                    "subclassShortName": "Battle Master",
+                    "subclassSource": "PHB",
+                    "level": 7,
+                    "isIgnored": true
+                },
+                {
+                    "name": "Additional Superiority Die",
+                    "source": "PHB",
+                    "className": "Fighter",
+                    "classSource": "PHB",
+                    "subclassShortName": "Battle Master",
+                    "subclassSource": "PHB",
+                    "level": 7,
+                    "isIgnored": true
+                },
+                {
+                    "name": "Additional Maneuvers",
+                    "source": "PHB",
+                    "className": "Fighter",
+                    "classSource": "PHB",
+                    "subclassShortName": "Battle Master",
+                    "subclassSource": "PHB",
+                    "level": 10,
+                    "isIgnored": true
+                },
+                {
+                    "name": "Improved Combat Superiority (d10)",
+                    "source": "PHB",
+                    "className": "Fighter",
+                    "classSource": "PHB",
+                    "subclassShortName": "Battle Master",
+                    "subclassSource": "PHB",
+                    "level": 10,
+                    "isIgnored": true
+                },
+                {
+                    "name": "Additional Maneuvers",
+                    "source": "PHB",
+                    "className": "Fighter",
+                    "classSource": "PHB",
+                    "subclassShortName": "Battle Master",
+                    "subclassSource": "PHB",
+                    "level": 15,
+                    "isIgnored": true
+                },
+                {
+                    "name": "Additional Superiority Die",
+                    "source": "PHB",
+                    "className": "Fighter",
+                    "classSource": "PHB",
+                    "subclassShortName": "Battle Master",
+                    "subclassSource": "PHB",
+                    "level": 15,
+                    "isIgnored": true
+                },
+                {
+                    "name": "Improved Combat Superiority (d12)",
+                    "source": "PHB",
+                    "className": "Fighter",
+                    "classSource": "PHB",
+                    "subclassShortName": "Battle Master",
+                    "subclassSource": "PHB",
+                    "level": 18,
+                    "isIgnored": true
+                },
+                {
+                    "name": "Improved Critical",
+                    "source": "PHB",
+                    "className": "Fighter",
+                    "classSource": "PHB",
+                    "subclassShortName": "Champion",
+                    "subclassSource": "PHB",
+                    "level": 3,
+                    "effects": [
+                        {
+                            "transfer": true,
+                            "changes": [
+                                {
+                                    "key": "flags.dnd5e.weaponCriticalThreshold",
+                                    "mode": "OVERRIDE",
+                                    "value": 19
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "name": "Remarkable Athlete",
+                    "source": "PHB",
+                    "className": "Fighter",
+                    "classSource": "PHB",
+                    "subclassShortName": "Champion",
+                    "subclassSource": "PHB",
+                    "level": 7,
+                    "effects": [
+                        {
+                            "transfer": true,
+                            "changes": [
+                                {
+                                    "key": "flags.dnd5e.remarkableAthlete",
+                                    "mode": "OVERRIDE",
+                                    "value": true
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "name": "Additional Fighting Style",
+                    "source": "PHB",
+                    "className": "Fighter",
+                    "classSource": "PHB",
+                    "subclassShortName": "Champion",
+                    "subclassSource": "PHB",
+                    "level": 10,
+                    "isIgnored": true
+                },
+                {
+                    "name": "Arcane Charge",
+                    "source": "PHB",
+                    "className": "Fighter",
+                    "classSource": "PHB",
+                    "subclassShortName": "Eldritch Knight",
+                    "subclassSource": "PHB",
+                    "level": 15,
+                    "system": {
+                        "target.value": 1,
+                        "target.type": "space",
+                        "range.value": 30,
+                        "range.units": "ft"
+                    }
+                },
+                {
+                    "name": "Rallying Cry",
+                    "source": "SCAG",
+                    "className": "Fighter",
+                    "classSource": "PHB",
+                    "subclassShortName": "Purple Dragon Knight (Banneret)",
+                    "subclassSource": "SCAG",
+                    "level": 3,
+                    "system": {
+                        "target.value": 3,
+                        "target.type": "creature",
+                        "range.value": 60,
+                        "range.units": "ft"
+                    }
+                },
+                {
+                    "name": "Royal Envoy",
+                    "source": "SCAG",
+                    "className": "Fighter",
+                    "classSource": "PHB",
+                    "subclassShortName": "Purple Dragon Knight (Banneret)",
+                    "subclassSource": "SCAG",
+                    "level": 7,
+                    "entryData": {
+                        "skillProficiencies": [
+                            {
+                                "choose": {
+                                    "from": [
+                                        "animal handling",
+                                        "insight",
+                                        "intimidation",
+                                        "performance",
+                                        "persuasion"
+                                    ]
+                                }
+                            }
+                        ],
+                        "expertise": [
+                            {
+                                "persuasion": true
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Inspiring Surge",
+                    "source": "SCAG",
+                    "className": "Fighter",
+                    "classSource": "PHB",
+                    "subclassShortName": "Purple Dragon Knight (Banneret)",
+                    "subclassSource": "SCAG",
+                    "level": 10,
+                    "system": {
+                        "target.value": 1,
+                        "target.type": "ally",
+                        "range.value": 60,
+                        "range.units": "ft"
+                    }
+                },
+                {
+                    "name": "Psionic Power",
+                    "source": "TCE",
+                    "className": "Fighter",
+                    "classSource": "PHB",
+                    "subclassShortName": "Psi Warrior",
+                    "subclassSource": "TCE",
+                    "level": 3,
+                    "entryData": {
+                        "resources": [
+                            {
+                                "name": "Psionic Energy Die",
+                                "type": "dicePool",
+                                "recharge": "restLong",
+                                "count": "2 * PB",
+                                "number": 1,
+                                "faces": "(6 + ((ceil((<$level$> + 2) / 6) - 1) * 2))"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Guarded Mind",
+                    "source": "TCE",
+                    "className": "Fighter",
+                    "classSource": "PHB",
+                    "subclassShortName": "Psi Warrior",
+                    "subclassSource": "TCE",
+                    "level": 10,
+                    "entryData": {
+                        "resist": [
+                            "psychic"
+                        ]
+                    }
+                },
+                {
+                    "name": "Bulwark of Force",
+                    "source": "TCE",
+                    "className": "Fighter",
+                    "classSource": "PHB",
+                    "subclassShortName": "Psi Warrior",
+                    "subclassSource": "TCE",
+                    "level": 15,
+                    "system": {
+                        "target.type": "creature",
+                        "range.value": 30,
+                        "range.units": "ft"
+                    }
+                },
+                {
+                    "name": "Bonus Proficiencies",
+                    "source": "TCE",
+                    "className": "Fighter",
+                    "classSource": "PHB",
+                    "subclassShortName": "Rune Knight",
+                    "subclassSource": "TCE",
+                    "level": 3,
+                    "entryData": {
+                        "toolProficiencies": [
+                            {
+                                "smith's tools": true
+                            }
+                        ],
+                        "languageProficiencies": [
+                            {
+                                "giant": true
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Rune Carver",
+                    "source": "TCE",
+                    "className": "Fighter",
+                    "classSource": "PHB",
+                    "subclassShortName": "Rune Knight",
+                    "subclassSource": "TCE",
+                    "level": 3,
+                    "entries": [
+                        "{@i 3rd-level Rune Knight feature}",
+                        "You can use magic runes to enhance your gear. You learn two runes of your choice, from among the runes described below, and each time you gain a level in this class, you can replace one rune you know with a different one from this feature. When you reach certain levels in this class, you learn additional runes, as shown in the Runes Known table.",
+                        "Whenever you finish a long rest, you can touch a number of objects equal to the number of runes you know, and you inscribe a different rune onto each of the objects. To be eligible, an object must be a weapon, a suit of armor, a shield, a piece of jewelry, or something else you can wear or hold in a hand. Your rune remains on an object until you finish a long rest, and an object can bear only one of your runes at a time.",
+                        {
+                            "type": "table",
+                            "caption": "Runes Known",
+                            "colLabels": [
+                                "Fighter Level",
+                                "Number of Runes"
+                            ],
+                            "colStyles": [
+                                "col-6 text-center",
+                                "col-6 text-center"
+                            ],
+                            "rows": [
+                                [
+                                    "3rd",
+                                    "2"
+                                ],
+                                [
+                                    "7th",
+                                    "3"
+                                ],
+                                [
+                                    "10th",
+                                    "4"
+                                ],
+                                [
+                                    "15th",
+                                    "5"
+                                ]
+                            ]
+                        },
+                        "If a rune has a level requirement, you must be at least that level in this class to learn the rune. If a rune requires a saving throw, your Rune Magic save DC equals 8 + your proficiency bonus + your Constitution modifier."
+                    ]
+                },
+                {
+                    "name": "Additional Rune Known",
+                    "source": "TCE",
+                    "className": "Fighter",
+                    "classSource": "PHB",
+                    "subclassShortName": "Rune Knight",
+                    "subclassSource": "TCE",
+                    "level": 7,
+                    "entries": [
+                        {
+                            "type": "options",
+                            "count": 1,
+                            "entries": [
+                                {
+                                    "type": "refOptionalfeature",
+                                    "optionalfeature": "Cloud Rune|TCE"
+                                },
+                                {
+                                    "type": "refOptionalfeature",
+                                    "optionalfeature": "Fire Rune|TCE"
+                                },
+                                {
+                                    "type": "refOptionalfeature",
+                                    "optionalfeature": "Frost Rune|TCE"
+                                },
+                                {
+                                    "type": "refOptionalfeature",
+                                    "optionalfeature": "Stone Rune|TCE"
+                                },
+                                {
+                                    "type": "refOptionalfeature",
+                                    "optionalfeature": "Hill Rune|TCE"
+                                },
+                                {
+                                    "type": "refOptionalfeature",
+                                    "optionalfeature": "Storm Rune|TCE"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "name": "Runic Shield",
+                    "source": "TCE",
+                    "className": "Fighter",
+                    "classSource": "PHB",
+                    "subclassShortName": "Rune Knight",
+                    "subclassSource": "TCE",
+                    "level": 7,
+                    "system": {
+                        "target.value": 1,
+                        "target.type": "creature",
+                        "range.value": 60,
+                        "range.units": "ft"
+                    }
+                },
+                {
+                    "name": "Additional Rune Known",
+                    "source": "TCE",
+                    "className": "Fighter",
+                    "classSource": "PHB",
+                    "subclassShortName": "Rune Knight",
+                    "subclassSource": "TCE",
+                    "level": 10,
+                    "entries": [
+                        {
+                            "type": "options",
+                            "count": 1,
+                            "entries": [
+                                {
+                                    "type": "refOptionalfeature",
+                                    "optionalfeature": "Cloud Rune|TCE"
+                                },
+                                {
+                                    "type": "refOptionalfeature",
+                                    "optionalfeature": "Fire Rune|TCE"
+                                },
+                                {
+                                    "type": "refOptionalfeature",
+                                    "optionalfeature": "Frost Rune|TCE"
+                                },
+                                {
+                                    "type": "refOptionalfeature",
+                                    "optionalfeature": "Stone Rune|TCE"
+                                },
+                                {
+                                    "type": "refOptionalfeature",
+                                    "optionalfeature": "Hill Rune|TCE"
+                                },
+                                {
+                                    "type": "refOptionalfeature",
+                                    "optionalfeature": "Storm Rune|TCE"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "name": "Additional Rune Known",
+                    "source": "TCE",
+                    "className": "Fighter",
+                    "classSource": "PHB",
+                    "subclassShortName": "Rune Knight",
+                    "subclassSource": "TCE",
+                    "level": 15,
+                    "entries": [
+                        {
+                            "type": "options",
+                            "count": 1,
+                            "entries": [
+                                {
+                                    "type": "refOptionalfeature",
+                                    "optionalfeature": "Cloud Rune|TCE"
+                                },
+                                {
+                                    "type": "refOptionalfeature",
+                                    "optionalfeature": "Fire Rune|TCE"
+                                },
+                                {
+                                    "type": "refOptionalfeature",
+                                    "optionalfeature": "Frost Rune|TCE"
+                                },
+                                {
+                                    "type": "refOptionalfeature",
+                                    "optionalfeature": "Stone Rune|TCE"
+                                },
+                                {
+                                    "type": "refOptionalfeature",
+                                    "optionalfeature": "Hill Rune|TCE"
+                                },
+                                {
+                                    "type": "refOptionalfeature",
+                                    "optionalfeature": "Storm Rune|TCE"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "name": "Arcane Archer Lore",
+                    "source": "XGE",
+                    "className": "Fighter",
+                    "classSource": "PHB",
+                    "subclassShortName": "Arcane Archer",
+                    "subclassSource": "XGE",
+                    "level": 3,
+                    "entryData": {
+                        "skillProficiencies": [
+                            {
+                                "choose": {
+                                    "from": [
+                                        "arcana",
+                                        "nature"
+                                    ]
+                                }
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Arcane Shot",
+                    "source": "XGE",
+                    "className": "Fighter",
+                    "classSource": "PHB",
+                    "subclassShortName": "Arcane Archer",
+                    "subclassSource": "XGE",
+                    "level": 3,
+                    "system": {
+                        "uses.per": "sr",
+                        "uses.value": 2,
+                        "uses.max": 2
+                    }
+                },
+                {
+                    "name": "Arcane Shot Options",
+                    "source": "XGE",
+                    "className": "Fighter",
+                    "classSource": "PHB",
+                    "subclassShortName": "Arcane Archer",
+                    "subclassSource": "XGE",
+                    "level": 3,
+                    "entries": [
+                        "Arcane shots are all magical effects, and each one is associated with one of the schools of magic.",
+                        "If an option requires a saving throw, your Arcane Shot save DC is calculated as follows:",
+                        {
+                            "type": "abilityDc",
+                            "name": "Arcane Shot",
+                            "attributes": [
+                                "int"
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "name": "Additional Arcane Shot Option",
+                    "source": "XGE",
+                    "className": "Fighter",
+                    "classSource": "PHB",
+                    "subclassShortName": "Arcane Archer",
+                    "subclassSource": "XGE",
+                    "level": 7,
+                    "isIgnored": true
+                },
+                {
+                    "name": "Additional Arcane Shot Option",
+                    "source": "XGE",
+                    "className": "Fighter",
+                    "classSource": "PHB",
+                    "subclassShortName": "Arcane Archer",
+                    "subclassSource": "XGE",
+                    "level": 10,
+                    "isIgnored": true
+                },
+                {
+                    "name": "Additional Arcane Shot Option",
+                    "source": "XGE",
+                    "className": "Fighter",
+                    "classSource": "PHB",
+                    "subclassShortName": "Arcane Archer",
+                    "subclassSource": "XGE",
+                    "level": 15,
+                    "isIgnored": true
+                },
+                {
+                    "name": "Additional Arcane Shot Option",
+                    "source": "XGE",
+                    "className": "Fighter",
+                    "classSource": "PHB",
+                    "subclassShortName": "Arcane Archer",
+                    "subclassSource": "XGE",
+                    "level": 18,
+                    "isIgnored": true
+                },
+                {
+                    "name": "Bonus Proficiency",
+                    "source": "XGE",
+                    "className": "Fighter",
+                    "classSource": "PHB",
+                    "subclassShortName": "Cavalier",
+                    "subclassSource": "XGE",
+                    "level": 3,
+                    "entryData": {
+                        "skillProficiencies": [
+                            {
+                                "choose": {
+                                    "from": [
+                                        "animal handling",
+                                        "history",
+                                        "insight",
+                                        "performance",
+                                        "persuasion"
+                                    ]
+                                }
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Bonus Proficiency",
+                    "source": "XGE",
+                    "className": "Fighter",
+                    "classSource": "PHB",
+                    "subclassShortName": "Samurai",
+                    "subclassSource": "XGE",
+                    "level": 3,
+                    "entryData": {
+                        "skillProficiencies": [
+                            {
+                                "choose": {
+                                    "from": [
+                                        "history",
+                                        "insight",
+                                        "performance",
+                                        "persuasion"
+                                    ]
+                                }
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Elegant Courtier",
+                    "source": "XGE",
+                    "className": "Fighter",
+                    "classSource": "PHB",
+                    "subclassShortName": "Samurai",
+                    "subclassSource": "XGE",
+                    "level": 7,
+                    "entryData": {
+                        "savingThrowProficiencies": [
+                            {
+                                "wis": true
+                            },
+                            {
+                                "choose": {
+                                    "from": [
+                                        "int",
+                                        "cha"
+                                    ]
+                                }
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Draconic Disciple",
+                    "source": "FTD",
+                    "className": "Monk",
+                    "classSource": "PHB",
+                    "subclassShortName": "Ascendant Dragon",
+                    "subclassSource": "FTD",
+                    "level": 3,
+                    "entryData": {
+                        "languageProficiencies": [
+                            {
+                                "any": 1
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Elemental Disciplines",
+                    "source": "PHB",
+                    "className": "Monk",
+                    "classSource": "PHB",
+                    "subclassShortName": "Four Elements",
+                    "subclassSource": "PHB",
+                    "level": 3,
+                    "isIgnored": true
+                },
+                {
+                    "name": "Extra Elemental Discipline",
+                    "source": "PHB",
+                    "className": "Monk",
+                    "classSource": "PHB",
+                    "subclassShortName": "Four Elements",
+                    "subclassSource": "PHB",
+                    "level": 6,
+                    "isIgnored": true
+                },
+                {
+                    "name": "Extra Elemental Discipline",
+                    "source": "PHB",
+                    "className": "Monk",
+                    "classSource": "PHB",
+                    "subclassShortName": "Four Elements",
+                    "subclassSource": "PHB",
+                    "level": 11,
+                    "isIgnored": true
+                },
+                {
+                    "name": "Extra Elemental Discipline",
+                    "source": "PHB",
+                    "className": "Monk",
+                    "classSource": "PHB",
+                    "subclassShortName": "Four Elements",
+                    "subclassSource": "PHB",
+                    "level": 17,
+                    "isIgnored": true
+                },
+                {
+                    "name": "Shadow Step",
+                    "source": "PHB",
+                    "className": "Monk",
+                    "classSource": "PHB",
+                    "subclassShortName": "Shadow",
+                    "subclassSource": "PHB",
+                    "level": 6,
+                    "system": {
+                        "target.value": 60,
+                        "target.units": "ft",
+                        "target.type": "space"
+                    }
+                },
+                {
+                    "name": "Hour of Reaping",
+                    "source": "SCAG",
+                    "className": "Monk",
+                    "classSource": "PHB",
+                    "subclassShortName": "Long Death",
+                    "subclassSource": "SCAG",
+                    "level": 6,
+                    "system": {
+                        "target.value": 30,
+                        "target.units": "ft",
+                        "target.type": "sphere"
+                    }
+                },
+                {
+                    "name": "Implements of Mercy",
+                    "source": "TCE",
+                    "className": "Monk",
+                    "classSource": "PHB",
+                    "subclassShortName": "Mercy",
+                    "subclassSource": "TCE",
+                    "level": 3,
+                    "entryData": {
+                        "skillProficiencies": [
+                            {
+                                "insight": true,
+                                "medicine": true
+                            }
+                        ],
+                        "toolProficiencies": [
+                            {
+                                "herbalism kit": true
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Mystical Erudition",
+                    "source": "TDCSR",
+                    "className": "Monk",
+                    "classSource": "PHB",
+                    "subclassShortName": "Cobalt Soul",
+                    "subclassSource": "TDCSR",
+                    "level": 6,
+                    "entryData": {
+                        "skillProficiencies": [
+                            {
+                                "choose": {
+                                    "from": [
+                                        "arcana",
+                                        "history",
+                                        "investigation",
+                                        "nature",
+                                        "religion"
+                                    ],
+                                    "count": 1
+                                }
+                            }
+                        ],
+                        "languageProficiencies": [
+                            {
+                                "any": 1
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Mystical Erudition (11th Level)",
+                    "source": "TDCSR",
+                    "className": "Monk",
+                    "classSource": "PHB",
+                    "subclassShortName": "Cobalt Soul",
+                    "subclassSource": "TDCSR",
+                    "level": 11,
+                    "entryData": {
+                        "skillProficiencies": [
+                            {
+                                "choose": {
+                                    "from": [
+                                        "arcana",
+                                        "history",
+                                        "investigation",
+                                        "nature",
+                                        "religion"
+                                    ],
+                                    "count": 1
+                                }
+                            }
+                        ],
+                        "languageProficiencies": [
+                            {
+                                "any": 1
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Mystical Erudition (17th Level)",
+                    "source": "TDCSR",
+                    "className": "Monk",
+                    "classSource": "PHB",
+                    "subclassShortName": "Cobalt Soul",
+                    "subclassSource": "TDCSR",
+                    "level": 17,
+                    "entryData": {
+                        "skillProficiencies": [
+                            {
+                                "choose": {
+                                    "from": [
+                                        "arcana",
+                                        "history",
+                                        "investigation",
+                                        "nature",
+                                        "religion"
+                                    ],
+                                    "count": 1
+                                }
+                            }
+                        ],
+                        "languageProficiencies": [
+                            {
+                                "any": 1
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Bonus Proficiencies",
+                    "source": "XGE",
+                    "className": "Monk",
+                    "classSource": "PHB",
+                    "subclassShortName": "Drunken Master",
+                    "subclassSource": "XGE",
+                    "level": 3,
+                    "entryData": {
+                        "skillProficiencies": [
+                            {
+                                "performance": true
+                            }
+                        ],
+                        "toolProficiencies": [
+                            {
+                                "brewer's supplies": true
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Path of the Kensei",
+                    "source": "XGE",
+                    "className": "Monk",
+                    "classSource": "PHB",
+                    "subclassShortName": "Kensei",
+                    "subclassSource": "XGE",
+                    "level": 3,
+                    "entryData": {
+                        "toolProficiencies": [
+                            {
+                                "choose": {
+                                    "from": [
+                                        "calligrapher's supplies",
+                                        "painter's supplies"
+                                    ]
+                                }
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Radiant Sun Bolt",
+                    "source": "XGE",
+                    "className": "Monk",
+                    "classSource": "PHB",
+                    "subclassShortName": "Sun Soul",
+                    "subclassSource": "XGE",
+                    "level": 3,
+                    "subEntities": {
+                        "item": [
+                            {
+                                "name": "Radiant Sun Bolt",
+                                "source": "XGE",
+                                "page": 35,
+                                "type": "R",
+                                "range": "30",
+                                "rarity": "none",
+                                "weaponCategory": "simple",
+                                "entries": [
+                                    "This special attack is a ranged spell attack with a range of 30 feet. You are proficient with it, and you add your Dexterity modifier to its attack and damage rolls.",
+                                    "When you take the {@action Attack} action on your turn and use this special attack as part of it, you can spend 1 ki point to make this special attack twice as a bonus action. When you gain the Extra Attack feature, this special attack can be used for any of the attacks you make as part of the {@action Attack} action."
+                                ],
+                                "foundrySystem": {
+                                    "equipped": true,
+                                    "damage.parts": [
+                                        [
+                                            "@scale.monk.die + @mod",
+                                            "radiant"
+                                        ]
+                                    ],
+                                    "ability": "dex"
+                                }
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Searing Sunburst",
+                    "source": "XGE",
+                    "className": "Monk",
+                    "classSource": "PHB",
+                    "subclassShortName": "Sun Soul",
+                    "subclassSource": "XGE",
+                    "level": 11,
+                    "system": {
+                        "target.value": 20,
+                        "target.units": "ft",
+                        "target.type": "sphere",
+                        "range.value": 150,
+                        "range.units": "ft"
+                    }
+                },
+                {
+                    "name": "Sun Shield",
+                    "source": "XGE",
+                    "className": "Monk",
+                    "classSource": "PHB",
+                    "subclassShortName": "Sun Soul",
+                    "subclassSource": "XGE",
+                    "level": 17,
+                    "system": {
+                        "target.value": 60,
+                        "target.units": "ft",
+                        "target.type": "radius"
+                    }
+                },
+                {
+                    "name": "Control Undead",
+                    "source": "DMG",
+                    "className": "Paladin",
+                    "classSource": "PHB",
+                    "subclassShortName": "Oathbreaker",
+                    "subclassSource": "DMG",
+                    "level": 3,
+                    "system": {
+                        "target.value": 30,
+                        "target.units": "ft",
+                        "target.type": "creature"
+                    }
+                },
+                {
+                    "name": "Dreadful Aspect",
+                    "source": "DMG",
+                    "className": "Paladin",
+                    "classSource": "PHB",
+                    "subclassShortName": "Oathbreaker",
+                    "subclassSource": "DMG",
+                    "level": 3,
+                    "system": {
+                        "target.value": 30,
+                        "target.units": "ft",
+                        "target.type": "creature"
+                    }
+                },
+                {
+                    "name": "Nature's Wrath",
+                    "source": "PHB",
+                    "className": "Paladin",
+                    "classSource": "PHB",
+                    "subclassShortName": "Ancients",
+                    "subclassSource": "PHB",
+                    "level": 3,
+                    "system": {
+                        "target.value": 1,
+                        "target.type": "creature",
+                        "range.value": 10,
+                        "range.units": "ft"
+                    }
+                },
+                {
+                    "name": "Turn the Faithless",
+                    "source": "PHB",
+                    "className": "Paladin",
+                    "classSource": "PHB",
+                    "subclassShortName": "Ancients",
+                    "subclassSource": "PHB",
+                    "level": 3,
+                    "system": {
+                        "target.value": 30,
+                        "target.units": "ft",
+                        "target.type": "creature"
+                    }
+                },
+                {
+                    "name": "Sacred Weapon",
+                    "source": "PHB",
+                    "className": "Paladin",
+                    "classSource": "PHB",
+                    "subclassShortName": "Devotion",
+                    "subclassSource": "PHB",
+                    "level": 3,
+                    "system": {
+                        "target.value": 40,
+                        "target.units": "ft",
+                        "target.type": "radius"
+                    }
+                },
+                {
+                    "name": "Turn the Unholy",
+                    "source": "PHB",
+                    "className": "Paladin",
+                    "classSource": "PHB",
+                    "subclassShortName": "Devotion",
+                    "subclassSource": "PHB",
+                    "level": 3,
+                    "system": {
+                        "target.value": 30,
+                        "target.units": "ft",
+                        "target.type": "creature"
+                    }
+                },
+                {
+                    "name": "Holy Nimbus",
+                    "source": "PHB",
+                    "className": "Paladin",
+                    "classSource": "PHB",
+                    "subclassShortName": "Devotion",
+                    "subclassSource": "PHB",
+                    "level": 20,
+                    "system": {
+                        "target.value": 60,
+                        "target.units": "ft",
+                        "target.type": "radius"
+                    }
+                },
+                {
+                    "name": "Abjure Enemy",
+                    "source": "PHB",
+                    "className": "Paladin",
+                    "classSource": "PHB",
+                    "subclassShortName": "Vengeance",
+                    "subclassSource": "PHB",
+                    "level": 3,
+                    "system": {
+                        "range.value": 60,
+                        "range.units": "ft"
+                    }
+                },
+                {
+                    "name": "Vow of Enmity",
+                    "source": "PHB",
+                    "className": "Paladin",
+                    "classSource": "PHB",
+                    "subclassShortName": "Vengeance",
+                    "subclassSource": "PHB",
+                    "level": 3,
+                    "system": {
+                        "range.value": 10,
+                        "range.units": "ft"
+                    }
+                },
+                {
+                    "name": "Champion Challenge",
+                    "source": "SCAG",
+                    "className": "Paladin",
+                    "classSource": "PHB",
+                    "subclassShortName": "Crown",
+                    "subclassSource": "SCAG",
+                    "level": 3,
+                    "system": {
+                        "target.value": 30,
+                        "target.units": "ft",
+                        "target.type": "creature"
+                    }
+                },
+                {
+                    "name": "Turn the Tide",
+                    "source": "SCAG",
+                    "className": "Paladin",
+                    "classSource": "PHB",
+                    "subclassShortName": "Crown",
+                    "subclassSource": "SCAG",
+                    "level": 3,
+                    "system": {
+                        "target.value": 30,
+                        "target.units": "ft",
+                        "target.type": "creature"
+                    }
+                },
+                {
+                    "name": "Inspiring Smite",
+                    "source": "TCE",
+                    "className": "Paladin",
+                    "classSource": "PHB",
+                    "subclassShortName": "Glory",
+                    "subclassSource": "TCE",
+                    "level": 3,
+                    "system": {
+                        "target.value": 30,
+                        "target.units": "ft",
+                        "target.type": "creature"
+                    }
+                },
+                {
+                    "name": "Glorious Defense",
+                    "source": "TCE",
+                    "className": "Paladin",
+                    "classSource": "PHB",
+                    "subclassShortName": "Glory",
+                    "subclassSource": "TCE",
+                    "level": 15,
+                    "system": {
+                        "range.value": 10,
+                        "range.units": "ft"
+                    }
+                },
+                {
+                    "name": "Vigilant Rebuke",
+                    "source": "TCE",
+                    "className": "Paladin",
+                    "classSource": "PHB",
+                    "subclassShortName": "Watchers",
+                    "subclassSource": "TCE",
+                    "level": 15,
+                    "system": {
+                        "target.value": 1,
+                        "target.type": "creature",
+                        "range.value": 30,
+                        "range.units": "ft"
+                    }
+                },
+                {
+                    "name": "Conquering Presence",
+                    "source": "XGE",
+                    "className": "Paladin",
+                    "classSource": "PHB",
+                    "subclassShortName": "Conquest",
+                    "subclassSource": "XGE",
+                    "level": 3,
+                    "system": {
+                        "target.value": 30,
+                        "target.units": "ft",
+                        "target.type": "creature"
+                    }
+                },
+                {
+                    "name": "Rebuke the Violent",
+                    "source": "XGE",
+                    "className": "Paladin",
+                    "classSource": "PHB",
+                    "subclassShortName": "Redemption",
+                    "subclassSource": "XGE",
+                    "level": 3,
+                    "system": {
+                        "range.value": 30,
+                        "range.units": "ft"
+                    }
+                },
+                {
+                    "name": "Draconic Gift",
+                    "source": "FTD",
+                    "className": "Ranger",
+                    "classSource": "PHB",
+                    "subclassShortName": "Drakewarden",
+                    "subclassSource": "FTD",
+                    "level": 3,
+                    "entryData": {
+                        "languageProficiencies": [
+                            {
+                                "any": 1
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Otherworldly Glamour",
+                    "source": "TCE",
+                    "className": "Ranger",
+                    "classSource": "PHB",
+                    "subclassShortName": "Fey Wanderer",
+                    "subclassSource": "TCE",
+                    "level": 3,
+                    "entryData": {
+                        "skillProficiencies": [
+                            {
+                                "choose": {
+                                    "from": [
+                                        "deception",
+                                        "performance",
+                                        "persuasion"
+                                    ]
+                                }
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Beguiling Twist",
+                    "source": "TCE",
+                    "className": "Ranger",
+                    "classSource": "PHB",
+                    "subclassShortName": "Fey Wanderer",
+                    "subclassSource": "TCE",
+                    "level": 7,
+                    "system": {
+                        "target.value": 1,
+                        "target.type": "creature",
+                        "range.value": 120,
+                        "range.units": "ft"
+                    }
+                },
+                {
+                    "name": "Umbral Sight",
+                    "source": "XGE",
+                    "className": "Ranger",
+                    "classSource": "PHB",
+                    "subclassShortName": "Gloom Stalker",
+                    "subclassSource": "XGE",
+                    "level": 3,
+                    "actorTokenMod": {
+                        "_": [
+                            {
+                                "mode": "conditionals",
+                                "conditionals": [
+                                    {
+                                        "condition": "!PLUT_CONTEXT?.actor?.data?.token?.dimSight",
+                                        "mod": {
+                                            "dimSight": [
+                                                {
+                                                    "mode": "set",
+                                                    "value": 60
+                                                }
+                                            ]
+                                        }
+                                    },
+                                    {
+                                        "mod": {
+                                            "dimSight": [
+                                                {
+                                                    "mode": "scalarAdd",
+                                                    "scalar": 30
+                                                }
+                                            ]
+                                        }
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Iron Mind",
+                    "source": "XGE",
+                    "className": "Ranger",
+                    "classSource": "PHB",
+                    "subclassShortName": "Gloom Stalker",
+                    "subclassSource": "XGE",
+                    "level": 7,
+                    "entryData": {
+                        "savingThrowProficiencies": [
+                            {
+                                "wis": true
+                            },
+                            {
+                                "choose": {
+                                    "from": [
+                                        "int",
+                                        "cha"
+                                    ]
+                                }
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Hunter's Sense",
+                    "source": "XGE",
+                    "className": "Ranger",
+                    "classSource": "PHB",
+                    "subclassShortName": "Monster Slayer",
+                    "subclassSource": "XGE",
+                    "level": 3,
+                    "system": {
+                        "range.value": 60,
+                        "range.units": "ft"
+                    }
+                },
+                {
+                    "name": "Slayer's Prey",
+                    "source": "XGE",
+                    "className": "Ranger",
+                    "classSource": "PHB",
+                    "subclassShortName": "Monster Slayer",
+                    "subclassSource": "XGE",
+                    "level": 3,
+                    "system": {
+                        "range.value": 60,
+                        "range.units": "ft"
+                    }
+                },
+                {
+                    "name": "Magic-User's Nemesis",
+                    "source": "XGE",
+                    "className": "Ranger",
+                    "classSource": "PHB",
+                    "subclassShortName": "Monster Slayer",
+                    "subclassSource": "XGE",
+                    "level": 11,
+                    "system": {
+                        "range.value": 60,
+                        "range.units": "ft"
+                    }
+                },
+                {
+                    "name": "Bonus Proficiencies",
+                    "source": "PHB",
+                    "className": "Rogue",
+                    "classSource": "PHB",
+                    "subclassShortName": "Assassin",
+                    "subclassSource": "PHB",
+                    "level": 3,
+                    "entryData": {
+                        "toolProficiencies": [
+                            {
+                                "disguise kit": true,
+                                "poisoner's kit": true
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Wails from the Grave",
+                    "source": "TCE",
+                    "className": "Rogue",
+                    "classSource": "PHB",
+                    "subclassShortName": "Phantom",
+                    "subclassSource": "TCE",
+                    "level": 3,
+                    "system": {
+                        "target.value": 1,
+                        "target.type": "creature",
+                        "range.value": 30,
+                        "range.units": "ft"
+                    }
+                },
+                {
+                    "name": "Psionic Power",
+                    "source": "TCE",
+                    "className": "Rogue",
+                    "classSource": "PHB",
+                    "subclassShortName": "Soulknife",
+                    "subclassSource": "TCE",
+                    "level": 3,
+                    "entryData": {
+                        "resources": [
+                            {
+                                "name": "Psionic Energy Die",
+                                "type": "dicePool",
+                                "recharge": "restLong",
+                                "count": "2 * PB",
+                                "number": 1,
+                                "faces": "(6 + (ceil((<$level$> + 2) / 6) - 1) * 2)"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Master of Intrigue",
+                    "source": "XGE",
+                    "className": "Rogue",
+                    "classSource": "PHB",
+                    "subclassShortName": "Mastermind",
+                    "subclassSource": "XGE",
+                    "level": 3,
+                    "entryData": {
+                        "toolProficiencies": [
+                            {
+                                "disguise kit": true,
+                                "forgery kit": true,
+                                "gaming set": true
+                            }
+                        ],
+                        "languageProficiencies": [
+                            {
+                                "any": 2
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Master of Tactics",
+                    "source": "XGE",
+                    "className": "Rogue",
+                    "classSource": "PHB",
+                    "subclassShortName": "Mastermind",
+                    "subclassSource": "XGE",
+                    "level": 3,
+                    "system": {
+                        "range.value": 30,
+                        "range.units": "ft"
+                    }
+                },
+                {
+                    "name": "Survivalist",
+                    "source": "XGE",
+                    "className": "Rogue",
+                    "classSource": "PHB",
+                    "subclassShortName": "Scout",
+                    "subclassSource": "XGE",
+                    "level": 3,
+                    "entryData": {
+                        "expertise": [
+                            {
+                                "nature": true,
+                                "survival": true
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Superior Mobility",
+                    "source": "XGE",
+                    "className": "Rogue",
+                    "classSource": "PHB",
+                    "subclassShortName": "Scout",
+                    "subclassSource": "XGE",
+                    "level": 9,
+                    "effects": [
+                        {
+                            "name": "Superior Mobility",
+                            "transfer": true,
+                            "changes": [
+                                {
+                                    "key": "data.attributes.movement.walk",
+                                    "mode": "ADD",
+                                    "value": "+ 10"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "name": "Draconic Resilience",
+                    "source": "PHB",
+                    "className": "Sorcerer",
+                    "classSource": "PHB",
+                    "subclassShortName": "Draconic",
+                    "subclassSource": "PHB",
+                    "level": 1,
+                    "effects": [
+                        {
+                            "name": "Natural Armor",
+                            "transfer": true,
+                            "changes": [
+                                {
+                                    "key": "data.attributes.ac.calc",
+                                    "mode": "OVERRIDE",
+                                    "value": "draconic"
+                                }
+                            ]
+                        },
+                        {
+                            "name": "HP Increase",
+                            "transfer": true,
+                            "changes": [
+                                {
+                                    "key": "data.attributes.hp.max",
+                                    "mode": "ADD",
+                                    "value": "+ @classes.sorcerer.levels"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "name": "Dragon Ancestor",
+                    "source": "PHB",
+                    "className": "Sorcerer",
+                    "classSource": "PHB",
+                    "subclassShortName": "Draconic",
+                    "subclassSource": "PHB",
+                    "level": 1,
+                    "entryData": {
+                        "languageProficiencies": [
+                            {
+                                "draconic": true
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Dragon Wings",
+                    "source": "PHB",
+                    "className": "Sorcerer",
+                    "classSource": "PHB",
+                    "subclassShortName": "Draconic",
+                    "subclassSource": "PHB",
+                    "level": 14,
+                    "effects": [
+                        {
+                            "name": "Flying Speed",
+                            "transfer": true,
+                            "changes": [
+                                {
+                                    "key": "data.attributes.movement.fly",
+                                    "mode": "UPGRADE",
+                                    "value": "@attributes.movement.walk"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "name": "Draconic Presence",
+                    "source": "PHB",
+                    "className": "Sorcerer",
+                    "classSource": "PHB",
+                    "subclassShortName": "Draconic",
+                    "subclassSource": "PHB",
+                    "level": 18,
+                    "system": {
+                        "target.value": 60,
+                        "target.units": "ft",
+                        "target.type": "sphere"
+                    }
+                },
+                {
+                    "name": "Telepathic Speech",
+                    "source": "TCE",
+                    "className": "Sorcerer",
+                    "classSource": "PHB",
+                    "subclassShortName": "Aberrant Mind",
+                    "subclassSource": "TCE",
+                    "level": 1,
+                    "system": {
+                        "target.value": 1,
+                        "target.type": "creature",
+                        "range.value": 30,
+                        "range.units": "ft"
+                    }
+                },
+                {
+                    "name": "Warping Implosion",
+                    "source": "TCE",
+                    "className": "Sorcerer",
+                    "classSource": "PHB",
+                    "subclassShortName": "Aberrant Mind",
+                    "subclassSource": "TCE",
+                    "level": 18,
+                    "system": {
+                        "target.value": 1,
+                        "target.type": "space",
+                        "range.value": 120,
+                        "range.units": "ft"
+                    }
+                },
+                {
+                    "name": "Restore Balance",
+                    "source": "TCE",
+                    "className": "Sorcerer",
+                    "classSource": "PHB",
+                    "subclassShortName": "Clockwork Soul",
+                    "subclassSource": "TCE",
+                    "level": 1,
+                    "system": {
+                        "target.value": 1,
+                        "target.type": "creature",
+                        "range.value": 60,
+                        "range.units": "ft"
+                    }
+                },
+                {
+                    "name": "Bastion of Law",
+                    "source": "TCE",
+                    "className": "Sorcerer",
+                    "classSource": "PHB",
+                    "subclassShortName": "Clockwork Soul",
+                    "subclassSource": "TCE",
+                    "level": 6,
+                    "system": {
+                        "target.value": 1,
+                        "target.type": "creature",
+                        "range.value": 30,
+                        "range.units": "ft"
+                    }
+                },
+                {
+                    "name": "Clockwork Cavalcade",
+                    "source": "TCE",
+                    "className": "Sorcerer",
+                    "classSource": "PHB",
+                    "subclassShortName": "Clockwork Soul",
+                    "subclassSource": "TCE",
+                    "level": 18,
+                    "system": {
+                        "target.value": 30,
+                        "target.units": "ft",
+                        "target.type": "cube"
+                    }
+                },
+                {
+                    "name": "Hound of Ill Omen",
+                    "source": "XGE",
+                    "className": "Sorcerer",
+                    "classSource": "PHB",
+                    "subclassShortName": "Shadow",
+                    "subclassSource": "XGE",
+                    "level": 6,
+                    "system": {
+                        "target.value": 1,
+                        "target.type": "creature",
+                        "range.value": 120,
+                        "range.units": "ft"
+                    }
+                },
+                {
+                    "name": "Shadow Walk",
+                    "source": "XGE",
+                    "className": "Sorcerer",
+                    "classSource": "PHB",
+                    "subclassShortName": "Shadow",
+                    "subclassSource": "XGE",
+                    "level": 14,
+                    "system": {
+                        "target.value": 1,
+                        "target.type": "space",
+                        "range.value": 120,
+                        "range.units": "ft"
+                    }
+                },
+                {
+                    "name": "Wind Speaker",
+                    "source": "XGE",
+                    "className": "Sorcerer",
+                    "classSource": "PHB",
+                    "subclassShortName": "Storm",
+                    "subclassSource": "XGE",
+                    "level": 1,
+                    "entryData": {
+                        "languageProficiencies": [
+                            {
+                                "primordial": true
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Heart of the Storm",
+                    "source": "XGE",
+                    "className": "Sorcerer",
+                    "classSource": "PHB",
+                    "subclassShortName": "Storm",
+                    "subclassSource": "XGE",
+                    "level": 6,
+                    "entryData": {
+                        "resist": [
+                            "lightning",
+                            "thunder"
+                        ]
+                    },
+                    "system": {
+                        "target.value": 10,
+                        "target.units": "ft",
+                        "target.type": "sphere"
+                    }
+                },
+                {
+                    "name": "Wind Soul",
+                    "source": "XGE",
+                    "className": "Sorcerer",
+                    "classSource": "PHB",
+                    "subclassShortName": "Storm",
+                    "subclassSource": "XGE",
+                    "level": 18,
+                    "entryData": {
+                        "immune": [
+                            "lightning",
+                            "thunder"
+                        ]
+                    }
+                },
+                {
+                    "name": "Fey Presence",
+                    "source": "PHB",
+                    "className": "Warlock",
+                    "classSource": "PHB",
+                    "subclassShortName": "Archfey",
+                    "subclassSource": "PHB",
+                    "level": 1,
+                    "system": {
+                        "target.value": 10,
+                        "target.units": "ft",
+                        "target.type": "cube"
+                    }
+                },
+                {
+                    "name": "Misty Escape",
+                    "source": "PHB",
+                    "className": "Warlock",
+                    "classSource": "PHB",
+                    "subclassShortName": "Archfey",
+                    "subclassSource": "PHB",
+                    "level": 6,
+                    "system": {
+                        "target.value": 1,
+                        "target.type": "space",
+                        "range.value": 60,
+                        "range.units": "ft"
+                    }
+                },
+                {
+                    "name": "Beguiling Defenses",
+                    "source": "PHB",
+                    "className": "Warlock",
+                    "classSource": "PHB",
+                    "subclassShortName": "Archfey",
+                    "subclassSource": "PHB",
+                    "level": 10,
+                    "entryData": {
+                        "conditionImmune": [
+                            "charmed"
+                        ]
+                    }
+                },
+                {
+                    "name": "Dark Delirium",
+                    "source": "PHB",
+                    "className": "Warlock",
+                    "classSource": "PHB",
+                    "subclassShortName": "Archfey",
+                    "subclassSource": "PHB",
+                    "level": 14,
+                    "system": {
+                        "target.value": 1,
+                        "target.type": "creature",
+                        "range.value": 60,
+                        "range.units": "ft"
+                    }
+                },
+                {
+                    "name": "Awakened Mind",
+                    "source": "PHB",
+                    "className": "Warlock",
+                    "classSource": "PHB",
+                    "subclassShortName": "Great Old One",
+                    "subclassSource": "PHB",
+                    "level": 1,
+                    "system": {
+                        "target.value": 30,
+                        "target.units": "ft",
+                        "target.type": "sphere"
+                    }
+                },
+                {
+                    "name": "Thought Shield",
+                    "source": "PHB",
+                    "className": "Warlock",
+                    "classSource": "PHB",
+                    "subclassShortName": "Great Old One",
+                    "subclassSource": "PHB",
+                    "level": 10,
+                    "entryData": {
+                        "resist": [
+                            "psychic"
+                        ]
+                    }
+                },
+                {
+                    "name": "Gift of the Sea",
+                    "source": "TCE",
+                    "className": "Warlock",
+                    "classSource": "PHB",
+                    "subclassShortName": "Fathomless",
+                    "subclassSource": "TCE",
+                    "level": 1,
+                    "effects": [
+                        {
+                            "name": "Gift of the Sea",
+                            "transfer": true,
+                            "changes": [
+                                {
+                                    "key": "data.attributes.movement.swim",
+                                    "mode": "UPGRADE",
+                                    "value": "40"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "name": "Tentacle of the Deeps",
+                    "source": "TCE",
+                    "className": "Warlock",
+                    "classSource": "PHB",
+                    "subclassShortName": "Fathomless",
+                    "subclassSource": "TCE",
+                    "level": 1,
+                    "system": {
+                        "target.value": 1,
+                        "target.type": "space",
+                        "range.value": 60,
+                        "range.units": "ft"
+                    }
+                },
+                {
+                    "name": "Oceanic Soul",
+                    "source": "TCE",
+                    "className": "Warlock",
+                    "classSource": "PHB",
+                    "subclassShortName": "Fathomless",
+                    "subclassSource": "TCE",
+                    "level": 6,
+                    "entryData": {
+                        "resist": [
+                            "cold"
+                        ]
+                    }
+                },
+                {
+                    "name": "Fathomless Plunge",
+                    "source": "TCE",
+                    "className": "Warlock",
+                    "classSource": "PHB",
+                    "subclassShortName": "Fathomless",
+                    "subclassSource": "TCE",
+                    "level": 14,
+                    "system": {
+                        "target.value": 30,
+                        "target.units": "ft",
+                        "target.type": "radius",
+                        "range.value": 1,
+                        "range.units": "mi"
+                    }
+                },
+                {
+                    "name": "Sanctuary Vessel",
+                    "source": "TCE",
+                    "className": "Warlock",
+                    "classSource": "PHB",
+                    "subclassShortName": "Genie",
+                    "subclassSource": "TCE",
+                    "level": 10,
+                    "system": {
+                        "target.value": 5,
+                        "target.type": "creature",
+                        "range.value": 30,
+                        "range.units": "ft"
+                    }
+                },
+                {
+                    "name": "Necrotic Husk",
+                    "source": "VRGR",
+                    "className": "Warlock",
+                    "classSource": "PHB",
+                    "subclassShortName": "Undead",
+                    "subclassSource": "VRGR",
+                    "level": 10,
+                    "entryData": {
+                        "resist": [
+                            "necrotic"
+                        ]
+                    },
+                    "system": {
+                        "target.value": 30,
+                        "target.units": "ft",
+                        "target.type": "radius"
+                    }
+                },
+                {
+                    "name": "Radiant Soul",
+                    "source": "XGE",
+                    "className": "Warlock",
+                    "classSource": "PHB",
+                    "subclassShortName": "Celestial",
+                    "subclassSource": "XGE",
+                    "level": 6,
+                    "entryData": {
+                        "resist": [
+                            "radiant"
+                        ]
+                    }
+                },
+                {
+                    "name": "Searing Vengeance",
+                    "source": "XGE",
+                    "className": "Warlock",
+                    "classSource": "PHB",
+                    "subclassShortName": "Celestial",
+                    "subclassSource": "XGE",
+                    "level": 14,
+                    "system": {
+                        "target.value": 30,
+                        "target.units": "ft",
+                        "target.type": "sphere"
+                    }
+                },
+                {
+                    "name": "Hex Warrior",
+                    "source": "XGE",
+                    "className": "Warlock",
+                    "classSource": "PHB",
+                    "subclassShortName": "Hexblade",
+                    "subclassSource": "XGE",
+                    "level": 1,
+                    "entryData": {
+                        "weaponProficiencies": [
+                            {
+                                "martial": true
+                            }
+                        ],
+                        "armorProficiencies": [
+                            {
+                                "shield|phb": true,
+                                "medium": true
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Chronal Shift",
+                    "source": "EGW",
+                    "className": "Wizard",
+                    "classSource": "PHB",
+                    "subclassShortName": "Chronurgy",
+                    "subclassSource": "EGW",
+                    "level": 2,
+                    "system": {
+                        "range.value": 30,
+                        "range.units": "ft"
+                    }
+                },
+                {
+                    "name": "Temporal Awareness",
+                    "source": "EGW",
+                    "className": "Wizard",
+                    "classSource": "PHB",
+                    "subclassShortName": "Chronurgy",
+                    "subclassSource": "EGW",
+                    "level": 2,
+                    "effects": [
+                        {
+                            "transfer": true,
+                            "changes": [
+                                {
+                                    "key": "data.attributes.init.total",
+                                    "mode": "ADD",
+                                    "value": "+ @abilities.int.mod"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "name": "Momentary Stasis",
+                    "source": "EGW",
+                    "className": "Wizard",
+                    "classSource": "PHB",
+                    "subclassShortName": "Chronurgy",
+                    "subclassSource": "EGW",
+                    "level": 6,
+                    "system": {
+                        "range.value": 60,
+                        "range.units": "ft"
+                    }
+                },
+                {
+                    "name": "Convergent Future",
+                    "source": "EGW",
+                    "className": "Wizard",
+                    "classSource": "PHB",
+                    "subclassShortName": "Chronurgy",
+                    "subclassSource": "EGW",
+                    "level": 14,
+                    "system": {
+                        "range.value": 60,
+                        "range.units": "ft"
+                    }
+                },
+                {
+                    "name": "Adjust Density",
+                    "source": "EGW",
+                    "className": "Wizard",
+                    "classSource": "PHB",
+                    "subclassShortName": "Graviturgy",
+                    "subclassSource": "EGW",
+                    "level": 2,
+                    "system": {
+                        "target.value": 1,
+                        "target.type": "creature",
+                        "range.value": 30,
+                        "range.units": "ft"
+                    }
+                },
+                {
+                    "name": "Violent Attraction",
+                    "source": "EGW",
+                    "className": "Wizard",
+                    "classSource": "PHB",
+                    "subclassShortName": "Graviturgy",
+                    "subclassSource": "EGW",
+                    "level": 10,
+                    "system": {
+                        "target.value": 1,
+                        "target.type": "creature",
+                        "range.value": 60,
+                        "range.units": "ft"
+                    }
+                },
+                {
+                    "name": "Event Horizon",
+                    "source": "EGW",
+                    "className": "Wizard",
+                    "classSource": "PHB",
+                    "subclassShortName": "Graviturgy",
+                    "subclassSource": "EGW",
+                    "level": 14,
+                    "system": {
+                        "target.value": 30,
+                        "target.units": "ft",
+                        "target.type": "sphere"
+                    }
+                },
+                {
+                    "name": "Arcane Ward",
+                    "source": "PHB",
+                    "className": "Wizard",
+                    "classSource": "PHB",
+                    "subclassShortName": "Abjuration",
+                    "subclassSource": "PHB",
+                    "level": 2,
+                    "system": {
+                        "activation.type": "special",
+                        "activation.cost": null,
+                        "uses.per": null,
+                        "uses.max": "2 * @classes.wizard.levels + floor((@abilities.int.value - 10) / 2)"
+                    }
+                },
+                {
+                    "name": "Projected Ward",
+                    "source": "PHB",
+                    "className": "Wizard",
+                    "classSource": "PHB",
+                    "subclassShortName": "Abjuration",
+                    "subclassSource": "PHB",
+                    "level": 6,
+                    "system": {
+                        "target.value": 30,
+                        "target.units": "ft",
+                        "target.type": "sphere"
+                    }
+                },
+                {
+                    "name": "Benign Transposition",
+                    "source": "PHB",
+                    "className": "Wizard",
+                    "classSource": "PHB",
+                    "subclassShortName": "Conjuration",
+                    "subclassSource": "PHB",
+                    "level": 6,
+                    "system": {
+                        "target.value": 1,
+                        "target.type": "space",
+                        "range.value": 30,
+                        "range.units": "ft"
+                    }
+                },
+                {
+                    "name": "Hypnotic Gaze",
+                    "source": "PHB",
+                    "className": "Wizard",
+                    "classSource": "PHB",
+                    "subclassShortName": "Enchantment",
+                    "subclassSource": "PHB",
+                    "level": 2,
+                    "system": {
+                        "target.value": 1,
+                        "target.type": "creature",
+                        "range.value": 5,
+                        "range.units": "ft"
+                    }
+                },
+                {
+                    "name": "Instinctive Charm",
+                    "source": "PHB",
+                    "className": "Wizard",
+                    "classSource": "PHB",
+                    "subclassShortName": "Enchantment",
+                    "subclassSource": "PHB",
+                    "level": 6,
+                    "system": {
+                        "target.value": 1,
+                        "target.type": "creature",
+                        "range.value": 30,
+                        "range.units": "ft"
+                    }
+                },
+                {
+                    "name": "Inured to Undeath",
+                    "source": "PHB",
+                    "className": "Wizard",
+                    "classSource": "PHB",
+                    "subclassShortName": "Necromancy",
+                    "subclassSource": "PHB",
+                    "level": 10,
+                    "entryData": {
+                        "resist": [
+                            "necrotic"
+                        ]
+                    }
+                },
+                {
+                    "name": "Command Undead",
+                    "source": "PHB",
+                    "className": "Wizard",
+                    "classSource": "PHB",
+                    "subclassShortName": "Necromancy",
+                    "subclassSource": "PHB",
+                    "level": 14,
+                    "system": {
+                        "target.value": 1,
+                        "target.type": "creature",
+                        "range.value": 60,
+                        "range.units": "ft"
+                    }
+                },
+                {
+                    "name": "Training in War and Song (Bladesinging)",
+                    "source": "TCE",
+                    "className": "Wizard",
+                    "classSource": "PHB",
+                    "subclassShortName": "Bladesinging",
+                    "subclassSource": "TCE",
+                    "level": 2,
+                    "entryData": {
+                        "skillProficiencies": [
+                            {
+                                "performance": true
+                            }
+                        ],
+                        "armorProficiencies": [
+                            {
+                                "light": true
+                            }
+                        ],
+                        "weaponProficiencies": [
+                            {
+                                "choose": {
+                                    "fromFilter": "type=melee weapon|property=!two-handed|rarity=none"
+                                }
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Deflecting Shroud",
+                    "source": "XGE",
+                    "className": "Wizard",
+                    "classSource": "PHB",
+                    "subclassShortName": "War",
+                    "subclassSource": "XGE",
+                    "level": 14,
+                    "system": {
+                        "target.value": 3,
+                        "target.type": "creature",
+                        "range.value": 60,
+                        "range.units": "ft"
+                    }
+                },
+                {
+                    "name": "Tiger",
+                    "source": "SCAG",
+                    "className": "Barbarian",
+                    "classSource": "SCAG",
+                    "subclassShortName": "Totem Warrior",
+                    "subclassSource": "PHB",
+                    "level": 6,
+                    "entryData": {
+                        "skillProficiencies": [
+                            {
+                                "choose": {
+                                    "from": [
+                                        "athletics",
+                                        "acrobatics",
+                                        "stealth",
+                                        "survival"
+                                    ],
+                                    "count": 2
+                                }
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Tool Proficiency",
+                    "source": "TCE",
+                    "className": "Artificer",
+                    "classSource": "TCE",
+                    "subclassShortName": "Alchemist",
+                    "subclassSource": "TCE",
+                    "level": 3,
+                    "entryData": {
+                        "toolProficiencies": [
+                            {
+                                "alchemist's supplies": true
+                            },
+                            {
+                                "anyArtisansTool": 1
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Chemical Mastery",
+                    "source": "TCE",
+                    "className": "Artificer",
+                    "classSource": "TCE",
+                    "subclassShortName": "Alchemist",
+                    "subclassSource": "TCE",
+                    "level": 15,
+                    "entryData": {
+                        "resist": [
+                            "acid",
+                            "poison"
+                        ],
+                        "conditionImmune": [
+                            "poisoned"
+                        ]
+                    }
+                },
+                {
+                    "name": "Armor Model",
+                    "source": "TCE",
+                    "className": "Artificer",
+                    "classSource": "TCE",
+                    "subclassShortName": "Armorer",
+                    "subclassSource": "TCE",
+                    "level": 3,
+                    "system": {
+                        "uses.value": null,
+                        "uses.max": null,
+                        "uses.per": null
+                    }
+                },
+                {
+                    "name": "Defensive Field",
+                    "source": "TCE",
+                    "className": "Artificer",
+                    "classSource": "TCE",
+                    "subclassShortName": "Armorer",
+                    "subclassSource": "TCE",
+                    "level": 3,
+                    "system": {
+                        "actionType": "heal",
+                        "damage.parts": [
+                            [
+                                "@classes.artificer.levels",
+                                "temphp"
+                            ]
+                        ]
+                    }
+                },
+                {
+                    "name": "Lightning Launcher",
+                    "source": "TCE",
+                    "className": "Artificer",
+                    "classSource": "TCE",
+                    "subclassShortName": "Armorer",
+                    "subclassSource": "TCE",
+                    "level": 3,
+                    "subEntities": {
+                        "item": [
+                            {
+                                "name": "Lightning Launcher",
+                                "source": "TCE",
+                                "page": 15,
+                                "srd": true,
+                                "type": "R",
+                                "rarity": "none",
+                                "weaponCategory": "simple",
+                                "dmg1": "1d6",
+                                "dmgType": "L",
+                                "range": "90/300",
+                                "entries": [
+                                    "This weapon is part of the Infiltrator armor model. When you attack with that weapon, you can add your Intelligence modifier, instead of Strength or Dexterity, to the attack and damage rolls.",
+                                    "Once on each of your turns when you hit a creature with the launcher, you can deal an extra {@damage 1d6} lightning damage to that target."
+                                ],
+                                "foundrySystem": {
+                                    "ability": "int"
+                                }
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Powered Steps",
+                    "source": "TCE",
+                    "className": "Artificer",
+                    "classSource": "TCE",
+                    "subclassShortName": "Armorer",
+                    "subclassSource": "TCE",
+                    "level": 3,
+                    "effects": [
+                        {
+                            "name": "Powered Steps",
+                            "transfer": true,
+                            "changes": [
+                                {
+                                    "key": "data.attributes.movement.walk",
+                                    "mode": "ADD",
+                                    "value": "+ 5"
+                                }
+                            ],
+                            "disabled": true
+                        }
+                    ]
+                },
+                {
+                    "name": "Thunder Gauntlets",
+                    "source": "TCE",
+                    "className": "Artificer",
+                    "classSource": "TCE",
+                    "subclassShortName": "Armorer",
+                    "subclassSource": "TCE",
+                    "level": 3,
+                    "subEntities": {
+                        "item": [
+                            {
+                                "name": "Thunder Gauntlets",
+                                "source": "TCE",
+                                "page": 15,
+                                "srd": true,
+                                "type": "M",
+                                "rarity": "none",
+                                "weaponCategory": "simple",
+                                "dmg1": "1d8",
+                                "dmgType": "T",
+                                "entries": [
+                                    "This weapon is part of the Guardian armor model. When you attack with that weapon, you can add your Intelligence modifier, instead of Strength or Dexterity, to the attack and damage rolls.",
+                                    "A creature hit by the gauntlet has disadvantage on attack rolls against targets other than you until the start of your next turn, as the armor magically emits a distracting pulse when the creature attacks someone else."
+                                ],
+                                "foundrySystem": {
+                                    "ability": "int"
+                                }
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Tools of the Trade",
+                    "source": "TCE",
+                    "className": "Artificer",
+                    "classSource": "TCE",
+                    "subclassShortName": "Armorer",
+                    "subclassSource": "TCE",
+                    "level": 3,
+                    "entryData": {
+                        "armorProficiencies": [
+                            {
+                                "heavy": true
+                            }
+                        ],
+                        "toolProficiencies": [
+                            {
+                                "smith's tools": true
+                            },
+                            {
+                                "anyArtisansTool": 1
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Eldritch Cannon",
+                    "source": "TCE",
+                    "className": "Artificer",
+                    "classSource": "TCE",
+                    "subclassShortName": "Artillerist",
+                    "subclassSource": "TCE",
+                    "level": 3,
+                    "system": {
+                        "damage.parts": [
+                            [
+                                "2d8",
+                                "fire"
+                            ],
+                            [
+                                "2d8",
+                                "force"
+                            ]
+                        ],
+                        "formula": "1d8 + @abilities.int.mod"
+                    }
+                },
+                {
+                    "name": "Tool Proficiency",
+                    "source": "TCE",
+                    "className": "Artificer",
+                    "classSource": "TCE",
+                    "subclassShortName": "Artillerist",
+                    "subclassSource": "TCE",
+                    "level": 3,
+                    "entryData": {
+                        "toolProficiencies": [
+                            {
+                                "woodcarver's tools": true
+                            },
+                            {
+                                "anyArtisansTool": 1
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Arcane Firearm",
+                    "source": "TCE",
+                    "className": "Artificer",
+                    "classSource": "TCE",
+                    "subclassShortName": "Artillerist",
+                    "subclassSource": "TCE",
+                    "level": 5,
+                    "effects": [
+                        {
+                            "transfer": true,
+                            "changes": [
+                                {
+                                    "key": "data.bonuses.msak.damage",
+                                    "mode": "ADD",
+                                    "value": "+ 1d8"
+                                },
+                                {
+                                    "key": "data.bonuses.rsak.damage",
+                                    "mode": "ADD",
+                                    "value": "+ 1d8"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "name": "Battle Ready",
+                    "source": "TCE",
+                    "className": "Artificer",
+                    "classSource": "TCE",
+                    "subclassShortName": "Battle Smith",
+                    "subclassSource": "TCE",
+                    "level": 3,
+                    "entryData": {
+                        "weaponProficiencies": [
+                            {
+                                "martial": true
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Tool Proficiency",
+                    "source": "TCE",
+                    "className": "Artificer",
+                    "classSource": "TCE",
+                    "subclassShortName": "Battle Smith",
+                    "subclassSource": "TCE",
+                    "level": 3,
+                    "entryData": {
+                        "toolProficiencies": [
+                            {
+                                "smith's tools": true
+                            },
+                            {
+                                "anyArtisansTool": 1
+                            }
+                        ]
+                    }
+                }
+            ]
+        }
+        `;
+        let parsed = JSON.parse(_foundry);
+        return parsed;
+    }
     static getClasses(){
         return ContentGetter._getBase().class;
     }
@@ -7395,6 +12187,18 @@ class ContentGetter{
             f.classSource == sc.classSource &&
             f.subclassSource == sc.source &&
             f.subclassShortName == sc.shortName);
+    }
+    static getClassByNameAndSource(name, source){
+        return ContentGetter.getClasses().filter(cls => cls.name == name && cls.source == source);
+    }
+    static getClassFeatureByUID(featureUID){
+        const unpacked = MyDataUtil.unpackUidClassFeature(featureUID);
+        const foundClasses = this.getClassByNameAndSource(unpacked.className, unpacked.classSource);
+        if(foundClasses.length<1){console.error("Did not find any classes with name and source ", unpacked.className, unpacked.classSource);}
+        if(foundClasses.length>1){console.error("Found too many classes with name and source ", unpacked.className, unpacked.classSource);}
+        const cls = foundClasses[0];
+        const allFeatures = ContentGetter.getFeaturesFromClass(cls);
+        return allFeatures.filter(f => f.name == unpacked.name && f.level == unpacked.level)[0];
     }
     _cookData(){
         //Prep class feature info
@@ -7417,7 +12221,7 @@ class ContentGetter{
             }
     
             //Now we need to flesh out some more data about the class features, using just the UID we can get a lot of such info.
-            await (cls.classFeatures || []).pSerialAwaitMap(cf => CharacterImporter.api.util.apps.PageFilterClassesRaw.pInitClassFeatureLoadeds({...opts, classFeature: cf, className: cls.name}));
+            await (cls.classFeatures || []).pSerialAwaitMap(cf => MyDataUtil.pInitClassFeatureLoadeds({...opts, classFeature: cf, className: cls.name}));
     
             if (cls.classFeatures) {cls.classFeatures = cls.classFeatures.filter(it => !it.isIgnored);}
             this._data.class[j] = cls;
@@ -7428,6 +12232,30 @@ class ContentGetter{
             if (sc.subclassFeatures) sc.subclassFeatures = sc.subclassFeatures.filter(it => !it.isIgnored);
         } */
         }
+    }
+    /**Sligtly parses the class features a bit to prepare them with loadeds, a property needed to convert them to option sets later. */
+    static async cookClassFeatures(cls){
+        const isIgnoredLookup = {
+            "elemental disciplines|monk||four elements||3":true,
+            "fighting style|bard||swords|xge|3":true,
+            "infusions known|artificer|tce|2":true,
+            "maneuver options|fighter||battle master||3|tce":true,
+            "maneuvers|fighter||battle master||3":true
+        };
+        const opts = {isIgnoredLookup: isIgnoredLookup};
+
+        //We just need the UID of the classFeatures stored directly in the class
+        for(let i = 0; i < cls.classFeatures.length; ++i){
+            let f = cls.classFeatures[i];
+            if (typeof f !== "object") {cls.classFeatures[i] = {classFeature: f};}
+        }
+    
+        //Now we need to flesh out some more data about the class features, using just the UID we can get a lot of such info.
+        await (cls.classFeatures || []).pSerialAwaitMap(cf => MyDataUtil.pInitClassFeatureLoadeds({...opts, classFeature: cf, className: cls.name}));
+
+        if (cls.classFeatures) {cls.classFeatures = cls.classFeatures.filter(it => !it.isIgnored);}
+
+        return cls.classFeatures;
     }
 }
 //#endregion
@@ -22823,4 +27651,1222 @@ Renderer.splitByPropertyInjectors = Renderer._splitByTagsBase("=");
 Renderer.splitTagByPipe = Renderer._splitByPipeBase("@");
 //#endregion
 
+//#region Dataloader
+class DataLoader {
+    static async pCacheAndGet(page, source, ...others) {
+        const sourceLower = `${source}`.toLowerCase();
+        /* if (!Vetools._VET_SOURCE_LOOKUP[sourceLower]) {
+            Vetools._pCachingLocalPrerelease = Vetools._pCachingLocalPrerelease || Vetools._pDoCacheLocalPrerelease();
+            Vetools._pCachingLocalBrew = Vetools._pCachingLocalBrew || Vetools._pDoCacheLocalBrew();
 
+            await Promise.all([Vetools._pCachingLocalPrerelease, Vetools._pCachingLocalBrew, ]);
+        } */
+
+        //return Vetools._CACHED_RENDERER_HOVER_CACHE_AND_GET(page, source, ...others);
+        return DataLoader.pCacheAndGet(); //this is what _CACHED_RENDERER_HOVER_CACHE_AND_GET is supposed to point to anyway
+    }   
+}
+//#endregion
+
+//#region VeTools
+class Vetools {
+    static PRERELEASE_INDEX__SOURCE = {};
+    static PRERELEASE_INDEX__PROP = {};
+    static PRERELEASE_INDEX__META = {};
+
+    static BREW_INDEX__SOURCE = {};
+    static BREW_INDEX__PROP = {};
+    static BREW_INDEX__META = {};
+
+    static async pDoPreload() {
+        if (Config.get("dataSources", "isNoPrereleaseBrewIndexes"))
+            return;
+
+        Vetools._pGetPrereleaseBrewIndices().then(({propPrerelease, sourcePrerelease, metaPrerelease, sourceBrew, propBrew, metaBrew})=>{
+            Vetools.PRERELEASE_INDEX__PROP = propPrerelease;
+            Vetools.PRERELEASE_INDEX__SOURCE = sourcePrerelease;
+            Vetools.PRERELEASE_INDEX__META = metaPrerelease;
+
+            Vetools.BREW_INDEX__PROP = propBrew;
+            Vetools.BREW_INDEX__SOURCE = sourceBrew;
+            Vetools.BREW_INDEX__META = metaBrew;
+
+            console.log(...LGT, "Loaded prerelease/homebrew indexes.");
+        }
+        ).catch(e=>{
+            Vetools.PRERELEASE_INDEX__SOURCE = {};
+            Vetools.PRERELEASE_INDEX__PROP = {};
+            Vetools.PRERELEASE_INDEX__META = {};
+
+            Vetools.BREW_INDEX__PROP = {};
+            Vetools.BREW_INDEX__SOURCE = {};
+            Vetools.BREW_INDEX__META = {};
+
+            ui.notifications.error(`Failed to load prerelease/homebrew indexes! ${VeCt.STR_SEE_CONSOLE}`);
+            setTimeout(()=>{
+                throw e;
+            }
+            );
+        }
+        );
+    }
+
+    static withUnpatchedDiceRendering(fn) {
+        Renderer.getRollableEntryDice = Vetools._CACHED_GET_ROLLABLE_ENTRY_DICE;
+        const out = fn();
+        Renderer.getRollableEntryDice = Vetools._PATCHED_GET_ROLLABLE_ENTRY_DICE;
+        return out;
+    }
+
+    static withCustomDiceRenderingPatch(fn, fnRender) {
+        Renderer.getRollableEntryDice = fnRender;
+        const out = fn();
+        Renderer.getRollableEntryDice = Vetools._PATCHED_GET_ROLLABLE_ENTRY_DICE;
+        return out;
+    }
+
+    static getCleanDiceString(diceString) {
+        return diceString.replace(/×/g, "*").replace(/÷/g, "/").replace(/#\$.*?\$#/g, "0");
+    }
+
+    static doMonkeyPatchPreConfig() {
+        VeCt.STR_SEE_CONSOLE = "See the console (F12 or CTRL+SHIFT+J) for details.";
+
+        StorageUtil.pSet = GameStorage.pSetClient.bind(GameStorage);
+        StorageUtil.pGet = GameStorage.pGetClient.bind(GameStorage);
+        StorageUtil.pRemove = GameStorage.pRemoveClient.bind(GameStorage);
+
+        ["monster", "vehicle", "object", "trap", "race", "background"].forEach(prop=>{
+            const propFullName = `${prop}Name`;
+            const propFullSource = `${prop}Source`;
+            (Renderer[prop].CHILD_PROPS_EXTENDED || Renderer[prop].CHILD_PROPS || ["feature"]).forEach(propChild=>{
+                const propChildFull = `${prop}${propChild.uppercaseFirst()}`;
+                if (UrlUtil.URL_TO_HASH_BUILDER[propChildFull])
+                    return;
+                UrlUtil.URL_TO_HASH_BUILDER[propChildFull] = it=>UrlUtil.encodeForHash([it.name, it[propFullName], it[propFullSource], it.source]);
+            }
+            );
+        }
+        );
+    }
+
+    static _CACHED_DATA_UTIL_LOAD_JSON = null;
+    static _CACHED_DATA_UTIL_LOAD_RAW_JSON = null;
+
+    static doMonkeyPatchPostConfig() {
+        JqueryExtension.init();
+        this._initSourceLookup();
+
+        UtilsChangelog._RELEASE_URL = "https://github.com/TheGiddyLimit/plutonium-next/tags";
+
+        const hkSetRendererUrls = ()=>{
+            Renderer.get().setBaseUrl(Vetools.BASE_SITE_URL);
+
+            if (Config.get("import", "isUseLocalImages")) {
+                const localImageDirPath = `${Config.get("import", "localImageDirectoryPath")}/`.replace(/\/+$/, "/");
+                Renderer.get().setBaseMediaUrl("img", localImageDirPath);
+                return;
+            }
+
+            if (this._isCustomBaseSiteUrl()) {
+                Renderer.get().setBaseMediaUrl("img", Vetools.BASE_SITE_URL);
+                return;
+            }
+
+            Renderer.get().setBaseMediaUrl("img", null);
+        }
+        ;
+        hkSetRendererUrls();
+
+        UtilHooks.on(UtilHooks.HK_CONFIG_UPDATE, hkSetRendererUrls);
+
+        Renderer.hover.MIN_Z_INDEX = Consts.Z_INDEX_MAX_FOUNDRY + 1;
+        Renderer.hover._MAX_Z_INDEX = Renderer.hover.MIN_Z_INDEX + 10;
+
+        Vetools._CACHED_GET_ROLLABLE_ENTRY_DICE = Renderer.getRollableEntryDice;
+        Vetools._PATCHED_GET_ROLLABLE_ENTRY_DICE = (entry,name,toDisplay,{isAddHandlers=true, pluginResults=null, }={},)=>{
+            const cpy = MiscUtil.copy(entry);
+
+            if (typeof cpy.toRoll !== "string") {
+                cpy.toRoll = Renderer.legacyDiceToString(cpy.toRoll);
+            }
+
+            if (cpy.prompt) {
+                const minAdditionalDiceLevel = Math.min(...Object.keys(cpy.prompt.options).map(it=>Number(it)).filter(it=>cpy.prompt.options[it]));
+                cpy.toRoll = cpy.prompt.options[minAdditionalDiceLevel];
+            }
+
+            const toRollClean = this.getCleanDiceString(cpy.toRoll);
+
+            if (Config.get("import", "isRendererDiceDisabled"))
+                return toDisplay || toRollClean;
+
+            const ptDisplay = toRollClean.toLowerCase().trim() !== toDisplay.toLowerCase().trim() ? `{${toDisplay}}` : "";
+
+            if (cpy.autoRoll)
+                return `[[${toRollClean}]]${ptDisplay}`;
+
+            if (Config.get("import", "isRenderCustomDiceEnrichers") && entry.subtype === "damage") {
+                return `[[/damage ${toRollClean} ${cpy.damageType ? `type=${cpy.damageType}` : ""}]]${ptDisplay}`;
+            }
+
+            return `[[/r ${toRollClean}]]${ptDisplay}`;
+        }
+        ;
+
+        Renderer.getRollableEntryDice = Vetools._PATCHED_GET_ROLLABLE_ENTRY_DICE;
+
+        const cachedRenderHoverMethods = {};
+        const renderHoverMethods = ["$getHoverContent_stats", "$getHoverContent_fluff", "$getHoverContent_statsCode", "$getHoverContent_miscCode", "$getHoverContent_generic", ];
+        renderHoverMethods.forEach(methodName=>{
+            cachedRenderHoverMethods[methodName] = Renderer.hover[methodName];
+            Renderer.hover[methodName] = (...args)=>{
+                Renderer.getRollableEntryDice = Vetools._CACHED_GET_ROLLABLE_ENTRY_DICE;
+                const out = cachedRenderHoverMethods[methodName](...args);
+                Renderer.getRollableEntryDice = Vetools._PATCHED_GET_ROLLABLE_ENTRY_DICE;
+                return out;
+            }
+            ;
+        }
+        );
+
+        const cachedGetMakePredefinedHover = Renderer.hover.getMakePredefinedHover.bind(Renderer.hover);
+        Renderer.hover.getMakePredefinedHover = (entry,opts)=>{
+            const out = cachedGetMakePredefinedHover(entry, opts);
+            out.html = `data-plut-hover="${true}" data-plut-hover-preload="${true}" data-plut-hover-preload-id="${out.id}" ${opts ? `data-plut-hover-preload-options="${JSON.stringify(opts).qq()}"` : ""}`;
+            return out;
+        }
+        ;
+
+        const cachedGetInlineHover = Renderer.hover.getInlineHover.bind(Renderer.hover);
+        Renderer.hover.getInlineHover = (entry,opts)=>{
+            const out = cachedGetInlineHover(entry, opts);
+            out.html = `data-plut-hover="${true}" data-plut-hover-inline="${true}" data-plut-hover-inline-entry="${JSON.stringify(entry).qq()}" ${opts ? `data-plut-hover-inline-options="${JSON.stringify(opts).qq()}"` : ""}`;
+            return out;
+        }
+        ;
+
+        Renderer.dice.rollerClick = (evtMock,ele,packed,name)=>{
+            const entry = JSON.parse(packed);
+            if (entry.toRoll)
+                (new Roll(entry.toRoll)).toMessage();
+        }
+        ;
+
+        Renderer.dice.pRollEntry = (entry,rolledBy,opts)=>{
+            if (entry.toRoll)
+                (new Roll(entry.toRoll)).toMessage();
+        }
+        ;
+
+        Renderer.dice.pRoll2 = async(str,rolledBy,opts)=>{
+            const roll = new Roll(str);
+            await roll.evaluate({
+                async: true
+            });
+            await roll.toMessage();
+            return roll.total;
+        }
+        ;
+
+        Vetools._CACHED_MONSTER_DO_BIND_COMPACT_CONTENT_HANDLERS = Renderer.monster.doBindCompactContentHandlers;
+        Renderer.monster.doBindCompactContentHandlers = (opts)=>{
+            const nxtOpts = {
+                ...opts
+            };
+            nxtOpts.fnRender = (...args)=>Vetools.withUnpatchedDiceRendering(()=>opts.fnRender(...args));
+            return Vetools._CACHED_MONSTER_DO_BIND_COMPACT_CONTENT_HANDLERS(nxtOpts);
+        }
+        ;
+
+        JqueryUtil.doToast = (options)=>{
+            if (typeof options === "string") {
+                options = {
+                    content: options,
+                    type: "info",
+                };
+            }
+            options.type = options.type || "info";
+
+            switch (options.type) {
+            case "warning":
+                return ui.notifications.warn(options.content);
+            case "danger":
+                return ui.notifications.error(options.content);
+            default:
+                return ui.notifications.info(options.content);
+            }
+        }
+        ;
+
+        UiUtil.pGetShowModal = opts=>UtilApplications.pGetShowApplicationModal(opts);
+        InputUiUtil._pGetShowModal = opts=>UtilApplications.pGetShowApplicationModal(opts);
+
+        this._CACHED_DATA_UTIL_LOAD_JSON = DataUtil.loadJSON.bind(DataUtil);
+        this._CACHED_DATA_UTIL_LOAD_RAW_JSON = DataUtil.loadRawJSON.bind(DataUtil);
+
+        DataUtil.loadJSON = async(url,...rest)=>Vetools._CACHED_DATA_UTIL_LOAD_JSON(this._getMaybeLocalUrl(url), ...rest);
+        DataUtil.loadRawJSON = async(url,...rest)=>Vetools._CACHED_DATA_UTIL_LOAD_RAW_JSON(this._getMaybeLocalUrl(url), ...rest);
+
+        Vetools._CACHED_RENDERER_HOVER_CACHE_AND_GET = DataLoader.pCacheAndGet.bind(DataLoader);
+        DataLoader.pCacheAndGet = async function(page, source, ...others) {
+            const sourceLower = `${source}`.toLowerCase();
+            if (!Vetools._VET_SOURCE_LOOKUP[sourceLower]) {
+                Vetools._pCachingLocalPrerelease = Vetools._pCachingLocalPrerelease || Vetools._pDoCacheLocalPrerelease();
+                Vetools._pCachingLocalBrew = Vetools._pCachingLocalBrew || Vetools._pDoCacheLocalBrew();
+
+                await Promise.all([Vetools._pCachingLocalPrerelease, Vetools._pCachingLocalBrew, ]);
+            }
+
+            return Vetools._CACHED_RENDERER_HOVER_CACHE_AND_GET(page, source, ...others);
+        }
+        ;
+
+        PrereleaseUtil._storage = new StorageUtilMemory();
+        BrewUtil2._storage = new StorageUtilMemory();
+    }
+
+    static _initSourceLookup() {
+        Object.keys(Parser.SOURCE_JSON_TO_FULL).forEach(source=>Vetools._VET_SOURCE_LOOKUP[source.toLowerCase()] = true);
+    }
+
+    static _pCachingLocalPrerelease = null;
+    static _pCachingLocalBrew = null;
+
+    static async _pDoCacheLocalPrerelease() {
+        await this.pGetLocalPrereleaseSources();
+    }
+    static async _pDoCacheLocalBrew() {
+        await this.pGetLocalBrewSources();
+    }
+
+    static _getMaybeLocalUrl(url) {
+        if (!url.includes("?"))
+            url = `${url}?t=${Consts.RUN_TIME}`;
+
+        const parts = url.split(Vetools._RE_HTTP_URL).filter(Boolean);
+        parts[parts.length - 1] = parts.last().replace(/\/+/g, "/");
+        url = parts.join("");
+
+        if (!Config.get("dataSources", "isNoLocalData") && (url.startsWith(`${Vetools.BASE_SITE_URL}data/`) || url.startsWith(`${Vetools.BASE_SITE_URL}search/`)) && url !== this._getChangelogUrl()) {
+            const urlPart = url.split(Vetools.BASE_SITE_URL).slice(1).join(Vetools.BASE_SITE_URL);
+            return `modules/${SharedConsts.MODULE_ID}/${urlPart}`;
+        } else {
+            return url;
+        }
+    }
+
+    static _CACHE_IMPORTER_SOURCE_SPECIAL = {};
+
+    static async pLoadImporterSourceSpecial(source) {
+        if (!source.special.cacheKey)
+            return source.special.pGet();
+
+        this._CACHE_IMPORTER_SOURCE_SPECIAL[source.special.cacheKey] = this._CACHE_IMPORTER_SOURCE_SPECIAL[source.special.cacheKey] || source.special.pGet();
+
+        return this._CACHE_IMPORTER_SOURCE_SPECIAL[source.special.cacheKey];
+    }
+
+    static _getChangelogUrl() {
+        return `${Vetools.BASE_SITE_URL}data/changelog.json`;
+    }
+    static async pGetChangelog() {
+        return DataUtil.loadJSON(this._getChangelogUrl());
+    }
+
+    static async pGetPackageIndex() {
+        return DataUtil.loadJSON(Config.get("importAdventure", "indexUrl"));
+    }
+
+    static async pGetItems() {
+        return {
+            item: (await Renderer.item.pBuildList()).filter(it=>!it._isItemGroup)
+        };
+    }
+
+    static async pGetPrereleaseItems(data) {
+        return this._pGetPrereleaseBrewItems({
+            data,
+            pFnGetItems: Renderer.item.pGetItemsFromPrerelease.bind(Renderer.item)
+        });
+    }
+
+    static async pGetBrewItems(data) {
+        return this._pGetPrereleaseBrewItems({
+            data,
+            pFnGetItems: Renderer.item.pGetItemsFromBrew.bind(Renderer.item)
+        });
+    }
+
+    static async _pGetPrereleaseBrewItems({data, pFnGetItems}) {
+        const sources = new Set();
+        ["item", "magicvariant", "baseitem"].forEach(prop=>{
+            if (!data[prop])
+                return;
+            data[prop].forEach(ent=>sources.add(SourceUtil.getEntitySource(ent)));
+        }
+        );
+        return (await pFnGetItems()).filter(ent=>sources.has(SourceUtil.getEntitySource(ent)));
+    }
+
+    static async pGetRaces(opts) {
+        return DataUtil.race.loadJSON(opts);
+    }
+
+    static async pGetClasses() {
+        return DataUtil.class.loadRawJSON();
+    }
+
+    static async pGetClassSubclassFeatures() {
+        return DataUtil.class.loadRawJSON();
+    }
+
+    static async pGetRollableTables() {
+        return DataUtil.table.loadJSON();
+    }
+
+    static async pGetDecks() {
+        return DataUtil.deck.loadJSON();
+    }
+
+    static async _pGetAdventureBookIndex(filename, {prop, fnGetUrl}) {
+        const url = `${Vetools.BASE_SITE_URL}data/${filename}`;
+        const index = await DataUtil.loadJSON(url);
+        index[prop].forEach(it=>{
+            it._pubDate = new Date(it.published || "1970-01-01");
+            it._url = fnGetUrl(it.id);
+        }
+        );
+        return index;
+    }
+
+    static async pGetAdventureIndex() {
+        return this._pGetAdventureBookIndex("adventures.json", {
+            prop: "adventure",
+            fnGetUrl: Vetools.getAdventureUrl.bind(Vetools)
+        });
+    }
+
+    static async pGetBookIndex() {
+        return this._pGetAdventureBookIndex("books.json", {
+            prop: "book",
+            fnGetUrl: Vetools.getBookUrl.bind(Vetools)
+        });
+    }
+
+    static _getAdventureBookUrl(type, id) {
+        return `${Vetools.BASE_SITE_URL}data/${type}/${type}-${id.toLowerCase()}.json`;
+    }
+
+    static getAdventureUrl(id) {
+        return this._getAdventureBookUrl("adventure", id);
+    }
+
+    static getBookUrl(id) {
+        return this._getAdventureBookUrl("book", id);
+    }
+
+    static pGetImageUrlFromFluff(fluff) {
+        if (!fluff?.images?.length)
+            return;
+
+        const imgEntry = fluff.images[0];
+        if (!imgEntry?.href)
+            return;
+
+        const urlsWarn = [];
+        const out = fluff.images.first(imgEntry=>{
+            const url = this._pGetImageUrlFromFluff_getUrlFromEntry({
+                imgEntry
+            });
+            if (!this._isValidImageUrl({
+                url
+            })) {
+                urlsWarn.push(url);
+                return null;
+            }
+            return url;
+        }
+        );
+
+        if (urlsWarn.length)
+            ui.notifications.warn(`Image URL${urlsWarn.length === 1 ? "" : "s"} did not have valid extensions: ${urlsWarn.map(it=>`"${it}"`).join(", ")}`);
+
+        return out;
+    }
+
+    static _pGetImageUrlFromFluff_getUrlFromEntry({imgEntry}) {
+        if (imgEntry.href.type === "internal") {
+            return imgEntry.href.path ? `${Vetools.getInternalImageUrl(imgEntry.href.path)}` : null;
+        }
+
+        if (imgEntry.href.type === "external") {
+            return imgEntry.href.url ? imgEntry.href.url : null;
+        }
+    }
+
+    static _isValidImageUrl({url}) {
+        return foundry.data.validators.hasFileExtension(url, Object.keys(CONST.IMAGE_FILE_EXTENSIONS));
+    }
+
+    static async pHasTokenUrl(entityType, it, opts) {
+        return (await Vetools._pGetTokenUrl(entityType, it, opts))?.hasToken;
+    }
+
+    static async pGetTokenUrl(entityType, it, opts) {
+        return (await Vetools._pGetTokenUrl(entityType, it, opts))?.url;
+    }
+
+    static _isSaveableToServerUrl(originalUrl) {
+        return originalUrl && typeof originalUrl === "string" && Vetools._RE_HTTP_URL.test(originalUrl);
+    }
+    static _isSaveTypedImagesToServer({imageType="image"}={}) {
+        switch (imageType) {
+        case "image":
+            return Config.get("import", "isSaveImagesToServer");
+        case "token":
+            return Config.get("import", "isSaveTokensToServer");
+        default:
+            throw new Error(`Unhandled type "${imageType}"!`);
+        }
+    }
+
+    static async _pGetTokenUrl(entityType, it, {isSilent=false}={}) {
+        if (it.tokenUrl)
+            return {
+                url: it.tokenUrl,
+                hasToken: true
+            };
+
+        const fallbackMeta = {
+            url: this.getBlankTokenUrl(),
+            hasToken: false,
+        };
+
+        switch (entityType) {
+        case "monster":
+        case "vehicle":
+        case "object":
+            {
+                const fnGets = {
+                    "monster": Renderer.monster.getTokenUrl,
+                    "vehicle": Renderer.vehicle.getTokenUrl,
+                    "object": Renderer.object.getTokenUrl,
+                };
+                const fnGet = fnGets[entityType];
+                if (!fnGet)
+                    throw new Error(`Missing getter!`);
+
+                if (it.hasToken)
+                    return {
+                        url: fnGet(it),
+                        hasToken: true
+                    };
+                if (it._versionBase_hasToken)
+                    return {
+                        url: fnGet({
+                            name: it._versionBase_name,
+                            source: it._versionBase_source
+                        }),
+                        hasToken: true
+                    };
+
+                return fallbackMeta;
+            }
+        case "trap":
+            return fallbackMeta;
+        default:
+            {
+                if (isSilent)
+                    return null;
+                throw new Error(`Unhandled entity type "${entityType}"`);
+            }
+        }
+    }
+
+    static getBlankTokenUrl() {
+        return UrlUtil.link(`${Renderer.get().baseMediaUrls["img"] || Renderer.get().baseUrl}img/blank.png`);
+    }
+
+    static getImageUrl(entry) {
+        if (entry?.href.type === "internal")
+            return Vetools.getInternalImageUrl(entry.href.path, {
+                isSkipEncode: true
+            });
+        return entry.href?.url;
+    }
+
+    static getInternalImageUrl(path, {isSkipEncode=false}={}) {
+        if (!path)
+            return null;
+        const fnEncode = isSkipEncode ? it=>it : encodeURI;
+
+        const out = `${fnEncode(Renderer.get().baseMediaUrls["img"] || Renderer.get().baseUrl)}img/${fnEncode(path)}`;
+
+        if (isSkipEncode)
+            return out;
+        return out.replace(/'/g, "%27");
+    }
+
+    static async pOptionallySaveImageToServerAndGetUrl(originalUrl, {imageType="image"}={}) {
+        if (this._isLocalUrl({
+            originalUrl
+        }))
+            return originalUrl;
+        if (!this._isSaveTypedImagesToServer({
+            imageType
+        }))
+            return originalUrl;
+        return this.pSaveImageToServerAndGetUrl({
+            originalUrl
+        });
+    }
+
+    static _isLocalUrl({originalUrl}) {
+        return new URL(document.baseURI).origin === new URL(originalUrl,document.baseURI).origin;
+    }
+
+    static getImageSavedToServerUrl({originalUrl=null, path, isSaveToRoot=false}={}) {
+        if (!path && !this._isSaveableToServerUrl(originalUrl))
+            return originalUrl;
+
+        const pathPart = (new URL(path ? `https://example.com/${path}` : originalUrl)).pathname;
+        return `${isSaveToRoot ? "" : `${Config.get("import", "localImageDirectoryPath")}/`}${decodeURI(pathPart)}`.replace(/\/+/g, "/");
+    }
+
+    static _getImageSavedToServerUrlMeta({originalUrl=null, path, isSaveToRoot=false}) {
+        const cleanOutPath = this.getImageSavedToServerUrl({
+            originalUrl,
+            path,
+            isSaveToRoot
+        });
+        const serverUrlPathParts = cleanOutPath.split("/");
+        const serverUrlDirParts = serverUrlPathParts.slice(0, -1);
+        const serverUrlDir = serverUrlDirParts.join("/");
+
+        return {
+            serverUrl: cleanOutPath,
+            serverUrlPathParts,
+            serverUrlDir,
+            serverUrlDirParts,
+        };
+    }
+
+    static async pSaveImageToServerAndGetUrl({originalUrl=null, blob, force=false, path=null, isSaveToRoot=false}={}) {
+        if (blob && originalUrl)
+            throw new Error(`"blob" and "originalUrl" arguments are mutually exclusive!`);
+
+        if (!blob && !this._isSaveableToServerUrl(originalUrl))
+            return originalUrl;
+
+        let out;
+        try {
+            await Vetools._LOCK_DOWNLOAD_IMAGE.pLock();
+            out = await this._pSaveImageToServerAndGetUrl_({
+                originalUrl,
+                blob,
+                force,
+                path,
+                isSaveToRoot
+            });
+        } finally {
+            Vetools._LOCK_DOWNLOAD_IMAGE.unlock();
+        }
+        return out;
+    }
+
+    static async _pSaveImageToServerAndGetUrl_({originalUrl=null, blob, force=false, path=null, isSaveToRoot=false}={}) {
+        if (blob && originalUrl)
+            throw new Error(`"blob" and "originalUrl" arguments are mutually exclusive!`);
+
+        const {serverUrl, serverUrlPathParts, serverUrlDir, serverUrlDirParts, } = this._getImageSavedToServerUrlMeta({
+            originalUrl,
+            path,
+            isSaveToRoot
+        });
+
+        const {dirListing, isDirExists, isError: isErrorDirListing, } = await this.pGetDirectoryListing({
+            originalUrl,
+            path,
+            isSaveToRoot
+        });
+
+        if (isErrorDirListing) {
+            const msgStart = `Could not check for existing files when saving imported images to server!`;
+            if (!force && blob)
+                throw new Error(msgStart);
+
+            const msg = `${msgStart}${force ? "" : ` The original image URL will be used instead.`}`;
+            UtilNotifications.notifyOnce({
+                type: "warn",
+                message: msg
+            });
+            return force ? serverUrl : originalUrl;
+        }
+
+        if (dirListing?.files && dirListing?.files.map(it=>UtilFileBrowser.decodeUrl(it)).includes(serverUrl))
+            return serverUrl;
+
+        if (!this._canUploadFiles()) {
+            if (!force && blob)
+                throw new Error(`Your permission levels do not allow you to upload files!`);
+
+            const msg = `You have the "Save Imported Images to Server" config option enabled, but your permission levels do not allow you to upload files!${force ? "" : ` The original image URL will be used instead.`}`;
+            UtilNotifications.notifyOnce({
+                type: "warn",
+                message: msg
+            });
+            return force ? serverUrl : originalUrl;
+        }
+
+        if (!isDirExists) {
+            try {
+                await this._pSaveImageToServerAndGetUrl_pCreateDirectories(serverUrlDirParts);
+            } catch (e) {
+                const msgStart = `Could not create required directories when saving imported images to server!`;
+                if (!force && blob)
+                    throw new Error(msgStart);
+
+                const msg = `${msgStart}${force ? "" : ` The original image URL will be used instead.`}`;
+                UtilNotifications.notifyOnce({
+                    type: "warn",
+                    message: msg
+                });
+                return force ? serverUrl : originalUrl;
+            }
+        }
+
+        try {
+            blob = blob || await this._pSaveImageToServerAndGetUrl_pGetBlob(originalUrl);
+        } catch (e) {
+            const msg = `Failed to download image "${originalUrl}" when saving imported images to server!${force ? "" : ` The original image URL will be used instead.`} ${VeCt.STR_SEE_CONSOLE}`;
+            UtilNotifications.notifyOnce({
+                type: "warn",
+                message: msg
+            });
+            console.error(...LGT, e);
+            return force ? serverUrl : originalUrl;
+        }
+
+        const name = serverUrlPathParts.last();
+        let mimeType = `image/${(name.split(".").last() || "").trim().toLowerCase()}`;
+        if (mimeType === "image/jpg")
+            mimeType = "image/jpeg";
+
+        const resp = await FilePicker.upload("data", serverUrlDir, new File([blob],name,{
+            lastModified: Date.now(),
+            type: mimeType,
+        },), {}, {
+            notify: false,
+        }, );
+        if (resp?.path)
+            return UtilFileBrowser.decodeUrl(resp.path);
+
+        return force ? serverUrl : originalUrl;
+    }
+
+    static async _pSaveImageToServerAndGetUrl_pGetBlob(originalUrl) {
+        const isBackend = await UtilBackend.pGetBackendVersion();
+
+        try {
+            const blobResp = await fetch(originalUrl);
+            return blobResp.blob();
+        } catch (e) {
+            if (!isBackend)
+                throw e;
+            console.warn(...LGT, `Could not directly load image from ${originalUrl}\u2014falling back on alternate loader (backend mod).`);
+        }
+
+        const blobResp = await fetch(Config.backendEndpoint, {
+            method: "post",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                type: "getBinaryData",
+                url: originalUrl,
+            }),
+        }, );
+        return blobResp.blob();
+    }
+
+    static async _pSaveImageToServerAndGetUrl_pCreateDirectories(serverUrlDirParts) {
+        if (!serverUrlDirParts.length)
+            return;
+        for (let i = 0; i < serverUrlDirParts.length; ++i) {
+            const dirPartSlice = serverUrlDirParts.slice(0, i + 1);
+            try {
+                await FilePicker.createDirectory("data", dirPartSlice.join("/"));
+            } catch (e) {
+                if (/EEXIST/.test(`${e}`))
+                    continue;
+                throw new Error(e);
+            }
+        }
+    }
+
+    static _canUploadFiles() {
+        return game.isAdmin || (game.user && game.user.can("FILES_UPLOAD"));
+    }
+
+    static async pGetDirectoryListing({originalUrl=null, path=null, isSaveToRoot=false, isDirPath=false}) {
+        if (originalUrl && isDirPath)
+            throw new Error(`Arguments "originalUrl" and "isDirPath" are mutually exclusive`);
+        if (!path && isDirPath)
+            throw new Error(`Argument "isDirPath" requires the "path" argument to be passed!`);
+
+        const {serverUrlDir} = this._getImageSavedToServerUrlMeta({
+            originalUrl,
+            path: path && isDirPath ? `${path}/stub` : path,
+            isSaveToRoot,
+        });
+
+        let dirListing = null;
+        let isDirExists = false;
+        let isError = false;
+        try {
+            dirListing = await FilePicker.browse("data", serverUrlDir);
+            if (dirListing?.target)
+                isDirExists = true;
+        } catch (e) {
+            isError = !/Directory .*? does not exist/.test(`${e}`);
+        }
+
+        return {
+            dirListing,
+            isDirExists,
+            isError,
+        };
+    }
+
+    static async pGetAllSpells({isFilterNonStandard=false, additionalSourcesPrerelease=[], additionalSourcesBrew=[], isIncludeLoadedBrew=false, isIncludeLoadedPrerelease=false, isApplyBlocklist=false, }={}, ) {
+        let spells = MiscUtil.copyFast(await DataUtil.spell.pLoadAll());
+
+        if (isFilterNonStandard)
+            spells = spells.filter(sp=>!SourceUtil.isNonstandardSource(sp.source));
+
+        if (isIncludeLoadedPrerelease) {
+            const prerelease = await PrereleaseUtil.pGetBrewProcessed();
+            if (prerelease.spell?.length)
+                spells = spells.concat(prerelease.spell);
+        }
+
+        if (isIncludeLoadedBrew) {
+            const brew = await BrewUtil2.pGetBrewProcessed();
+            if (brew.spell?.length)
+                spells = spells.concat(brew.spell);
+        }
+
+        const pHandleAdditionalSources = async({additionalSources, pFnLoad})=>{
+            for (const src of additionalSources) {
+                const json = await pFnLoad(src);
+                if (!json)
+                    continue;
+                if (json.spell?.length)
+                    spells = spells.concat(json.spell);
+            }
+        }
+        ;
+
+        if (additionalSourcesPrerelease?.length)
+            await pHandleAdditionalSources({
+                additionalSources: additionalSourcesPrerelease,
+                pFnLoad: DataUtil.pLoadPrereleaseBySource.bind(DataUtil)
+            });
+        if (additionalSourcesBrew?.length)
+            await pHandleAdditionalSources({
+                additionalSources: additionalSourcesBrew,
+                pFnLoad: DataUtil.pLoadBrewBySource.bind(DataUtil)
+            });
+
+        if (isApplyBlocklist) {
+            spells = spells.filter(sp=>!ExcludeUtil.isExcluded(UrlUtil.URL_TO_HASH_BUILDER[UrlUtil.PG_SPELLS](sp), "spell", sp.source, {
+                isNoCount: true
+            }, ), );
+        }
+
+        spells.forEach(sp=>Renderer.spell.initBrewSources(sp));
+
+        return {
+            spell: spells
+        };
+    }
+
+    static async pGetAllCreatures(isFilterNonStandard=false) {
+        let creatures = await DataUtil.monster.pLoadAll();
+
+        if (isFilterNonStandard)
+            creatures = creatures.filter(mon=>!SourceUtil.isNonstandardSource(mon.source));
+
+        return {
+            monster: creatures
+        };
+    }
+
+    static async _pGetPrereleaseBrewIndices() {
+        const out = {
+            sourcePrerelease: {},
+            propPrerelease: {},
+            metaPrerelease: {},
+
+            sourceBrew: {},
+            propBrew: {},
+            metaBrew: {},
+        };
+
+        try {
+            const [sourceIndexPrerelease,propIndexPrerelease,metaIndexPrerelease,
+            sourceIndexBrew,propIndexBrew,metaIndexBrew,] = await Promise.all([DataUtil.prerelease.pLoadSourceIndex(Config.get("dataSources", "basePrereleaseUrl")), DataUtil.prerelease.pLoadPropIndex(Config.get("dataSources", "basePrereleaseUrl")), DataUtil.prerelease.pLoadMetaIndex(Config.get("dataSources", "basePrereleaseUrl")),
+            DataUtil.brew.pLoadSourceIndex(Config.get("dataSources", "baseBrewUrl")), DataUtil.brew.pLoadPropIndex(Config.get("dataSources", "baseBrewUrl")), DataUtil.brew.pLoadMetaIndex(Config.get("dataSources", "baseBrewUrl")), ]);
+
+            out.sourcePrerelease = sourceIndexPrerelease;
+            out.propPrerelease = propIndexPrerelease;
+            out.metaPrerelease = metaIndexPrerelease;
+
+            out.sourceBrew = sourceIndexBrew;
+            out.propBrew = propIndexBrew;
+            out.metaBrew = metaIndexBrew;
+        } catch (e) {
+            ui.notifications.error(`Failed to load prerelease/homebrew index! ${VeCt.STR_SEE_CONSOLE}`);
+            setTimeout(()=>{
+                throw e;
+            }
+            );
+        }
+
+        return out;
+    }
+
+    static async pGetPrereleaseSources(...dirs) {
+        return this._pGetPrereleaseBrewSources({
+            dirs,
+            brewUtil: PrereleaseUtil,
+            indexProp: Vetools.PRERELEASE_INDEX__PROP,
+            indexMeta: Vetools.PRERELEASE_INDEX__META,
+            configKey: "basePrereleaseUrl",
+        });
+    }
+
+    static async pGetBrewSources(...dirs) {
+        return this._pGetPrereleaseBrewSources({
+            dirs,
+            brewUtil: BrewUtil2,
+            indexProp: Vetools.BREW_INDEX__PROP,
+            indexMeta: Vetools.BREW_INDEX__META,
+            configKey: "baseBrewUrl",
+        });
+    }
+
+    static async _pGetPrereleaseBrewSources({dirs, brewUtil, indexProp, indexMeta, configKey}) {
+        const urlRoot = Config.get("dataSources", configKey);
+
+        let paths;
+        if (dirs.includes("*")) {
+            paths = Object.values(indexProp).map(obj=>Object.keys(obj)).flat().unique();
+        } else {
+            paths = dirs.map(dir=>Object.keys(indexProp[brewUtil.getDirProp(dir)] || {})).flat().unique();
+        }
+
+        return paths.map((path)=>{
+            const metaName = UrlUtil.getFilename(path);
+            return ({
+                url: brewUtil.getFileUrl(path, urlRoot),
+                name: this._getPrereleaseBrewName(path),
+                abbreviations: indexMeta[metaName]?.a || [],
+            });
+        }
+        ).sort((a,b)=>SortUtil.ascSortLower(a.name, b.name));
+    }
+
+    static _getPrereleaseBrewName(brewPath) {
+        return brewPath.split("/").slice(-1).join("").replace(/\.json$/i, "");
+    }
+
+    static _LOCAL_PRERELEASE_SOURCE_SEEN_URLS = new Set();
+    static async pGetLocalPrereleaseSources(...dirs) {
+        return this._pGetLocalPrereleaseBrewSources({
+            brewUtil: PrereleaseUtil,
+            dirs,
+            displayName: "prerelease",
+            configKeyLocal: "localPrerelease",
+            configKeyIsLoadIndex: "isLoadLocalPrereleaseIndex",
+            configKeyIsUseIndex: "isUseLocalPrereleaseIndexJson",
+            configKeyDirectoryPath: "localPrereleaseDirectoryPath",
+            setSeenUrls: this._LOCAL_PRERELEASE_SOURCE_SEEN_URLS,
+        });
+    }
+
+    static _LOCAL_BREW_SOURCE_SEEN_URLS = new Set();
+    static async pGetLocalBrewSources(...dirs) {
+        return this._pGetLocalPrereleaseBrewSources({
+            brewUtil: BrewUtil2,
+            dirs,
+            displayName: "homebrew",
+            configKeyLocal: "localHomebrew",
+            configKeyIsLoadIndex: "isLoadLocalHomebrewIndex",
+            configKeyIsUseIndex: "isUseLocalHomebrewIndexJson",
+            configKeyDirectoryPath: "localHomebrewDirectoryPath",
+            setSeenUrls: this._LOCAL_BREW_SOURCE_SEEN_URLS,
+        });
+    }
+
+    static async _pGetLocalPrereleaseBrewSources({brewUtil, dirs, displayName, configKeyLocal, configKeyIsLoadIndex, configKeyIsUseIndex, configKeyDirectoryPath, setSeenUrls}) {
+        try {
+            const listLocal = await this._pGetLocalPrereleaseBrewList({
+                displayName,
+                configKeyIsLoadIndex,
+                configKeyIsUseIndex,
+                configKeyDirectoryPath,
+            });
+
+            const allFilenames = [...(listLocal || []), ...(Config.get("dataSources", configKeyLocal) || []), ];
+
+            if (!allFilenames.length)
+                return [];
+
+            await allFilenames.pSerialAwaitMap(async name=>{
+                if (setSeenUrls.has(name))
+                    return;
+                setSeenUrls.add(name);
+                await brewUtil.pAddBrewFromUrl(name, {
+                    isLazy: true
+                });
+            }
+            );
+            await brewUtil.pAddBrewsLazyFinalize();
+
+            const brews = await allFilenames.pSerialAwaitMap(async name=>({
+                url: name,
+                data: await DataUtil.loadJSON(name),
+                name: this._getPrereleaseBrewName(name),
+            }));
+
+            const desiredProps = new Set(dirs.map(dir=>brewUtil.getDirProp(dir)));
+
+            return brews.filter(({data})=>{
+                if (desiredProps.has("*"))
+                    return true;
+
+                const propsInBrew = new Set([...Object.keys(data || {}).filter(it=>!it.startsWith("_")), ...Object.keys(data?._meta?.includes || {}), ]);
+
+                return [...desiredProps].some(it=>propsInBrew.has(it));
+            }
+            ).map(it=>{
+                it.abbreviations = (it.data?._meta?.sources || []).map(it=>it.abbreviation).filter(Boolean);
+                return it;
+            }
+            ).map(({name, url, abbreviations})=>({
+                name,
+                url,
+                abbreviations
+            }));
+        } catch (e) {
+            const msg = `Failed to load local homebrew index!`;
+            console.error(...LGT, msg, e);
+            ui.notifications.error(`${msg} ${VeCt.STR_SEE_CONSOLE}`);
+        }
+        return [];
+    }
+
+    static async _pGetLocalPrereleaseBrewList({displayName, configKeyIsLoadIndex, configKeyIsUseIndex, configKeyDirectoryPath}) {
+        if (!Config.get("dataSources", configKeyIsLoadIndex))
+            return null;
+
+        const isUseIndexJson = Config.get("dataSources", configKeyIsUseIndex);
+
+        if (isUseIndexJson) {
+            const indexUrl = `${Config.get("dataSources", configKeyDirectoryPath)}/index.json`.replace(/\/+/g, "/");
+            const index = await DataUtil.loadJSON(indexUrl);
+            if (!index?.toImport)
+                return [];
+            return index.toImport.map(it=>{
+                if (Vetools._RE_HTTP_URL.test(it))
+                    return it;
+
+                return [...indexUrl.split("/").slice(0, -1), it].join("/");
+            }
+            );
+        }
+
+        try {
+            const existingFiles = await FilePicker.browse("data", Config.get("dataSources", configKeyDirectoryPath));
+            if (!existingFiles?.files?.length)
+                return null;
+
+            return existingFiles.files.map(it=>decodeURIComponent(it));
+        } catch (e) {
+            const ptReason = /You do not have permission to browse the host file system/i.test(e.message) ? `You do not have "Use File Browser" permissions!` : `Does the ${isUseIndexJson ? "file" : "directory"} "<data_dir>/${Config.get("dataSources", configKeyDirectoryPath)}${isUseIndexJson ? "/index.json" : ""}" exist?`;
+            const msg = `Failed to load local ${displayName}${isUseIndexJson ? " index" : ""}! ${ptReason}`;
+            console.error(...LGT, msg, e);
+            ui.notifications.error(`${msg} ${VeCt.STR_SEE_CONSOLE}`);
+            return null;
+        }
+    }
+
+    static async pGetSpellSideData() {
+        return DataUtil.loadJSON(`${Vetools.BASE_SITE_URL}data/spells/foundry.json`);
+    }
+    static async pGetOptionalFeatureSideData() {
+        return DataUtil.loadJSON(`${Vetools.BASE_SITE_URL}data/foundry-optionalfeatures.json`);
+    }
+    static async pGetClassSubclassSideData() {
+        return DataUtil.loadJSON(`${Vetools.BASE_SITE_URL}data/class/foundry.json`);
+    }
+    static async pGetRaceSideData() {
+        return DataUtil.loadJSON(`${Vetools.BASE_SITE_URL}data/foundry-races.json`);
+    }
+    static async pGetItemSideData() {
+        return DataUtil.loadJSON(`${Vetools.BASE_SITE_URL}data/foundry-items.json`);
+    }
+    static async pGetFeatSideData() {
+        return DataUtil.loadJSON(`${Vetools.BASE_SITE_URL}data/foundry-feats.json`);
+    }
+    static async pGetRewardSideData() {
+        return DataUtil.loadJSON(`${Vetools.BASE_SITE_URL}data/foundry-rewards.json`);
+    }
+    static async pGetActionSideData() {
+        return DataUtil.loadJSON(`${Vetools.BASE_SITE_URL}data/foundry-actions.json`);
+    }
+    static async pGetVehicleUpgradeSideData() {
+        return DataUtil.loadJSON(`${Vetools.BASE_SITE_URL}data/foundry-vehicles.json`);
+    }
+    static async pGetCreatureSideData() {
+        return DataUtil.loadJSON(`${Vetools.BASE_SITE_URL}data/bestiary/foundry.json`);
+    }
+    static async pGeBackgroundSideData() {
+        return DataUtil.loadJSON(`${Vetools.BASE_SITE_URL}data/foundry-backgrounds.json`);
+    }
+    static async pGetPsionicsSideData() {
+        return DataUtil.loadJSON(`${Vetools.BASE_SITE_URL}data/foundry-psionics.json`);
+    }
+
+    static async pGetConditionDiseaseSideData() {
+        return {} || DataUtil.loadJSON(`${Vetools.BASE_SITE_URL}data/foundry-conditionsdiseases.json`);
+    }
+    static async pGetObjectSideData() {
+        return {} || DataUtil.loadJSON(`${Vetools.BASE_SITE_URL}data/foundry-objects.json`);
+    }
+    static async pGetVehicleSideData() {
+        return {} || DataUtil.loadJSON(`${Vetools.BASE_SITE_URL}data/foundry-vehicles.json`);
+    }
+    static async pGetCharCreationOptionSideData() {
+        return {} || DataUtil.loadJSON(`${Vetools.BASE_SITE_URL}data/foundry-charcreationoptions.json`);
+    }
+    static async pGetCultBoonSideData() {
+        return {} || DataUtil.loadJSON(`${Vetools.BASE_SITE_URL}data/foundry-cultsboons.json`);
+    }
+    static async pGetTrapHazardSideData() {
+        return {} || DataUtil.loadJSON(`${Vetools.BASE_SITE_URL}data/foundry-trapshazards.json`);
+    }
+    static async pGetDeckSideData() {
+        return {} || DataUtil.loadJSON(`${Vetools.BASE_SITE_URL}data/foundry-decks.json`);
+    }
+    static async pGetDeitySideData() {
+        return {} || DataUtil.loadJSON(`${Vetools.BASE_SITE_URL}data/foundry-deities.json`);
+    }
+    static async pGetTableSideData() {
+        return {} || DataUtil.loadJSON(`${Vetools.BASE_SITE_URL}data/foundry-tables.json`);
+    }
+    static async pGetLanguageSideData() {
+        return {} || DataUtil.loadJSON(`${Vetools.BASE_SITE_URL}data/foundry-languages.json`);
+    }
+    static async pGetRecipeSideData() {
+        return {} || DataUtil.loadJSON(`${Vetools.BASE_SITE_URL}data/foundry-recipes.json`);
+    }
+    static async pGetVariantruleSideData() {
+        return {} || DataUtil.loadJSON(`${Vetools.BASE_SITE_URL}data/foundry-variantrules.json`);
+    }
+
+    static async pGetCreatureFeatureSideData() {
+        return {} || DataUtil.loadJSON(`${Vetools.BASE_SITE_URL}data/foundry-todo.json`);
+    }
+    static async pGetObjectFeatureSideData() {
+        return {} || DataUtil.loadJSON(`${Vetools.BASE_SITE_URL}data/foundry-todo.json`);
+    }
+    static async pGetVehicleFeatureSideData() {
+        return {} || DataUtil.loadJSON(`${Vetools.BASE_SITE_URL}data/foundry-todo.json`);
+    }
+    static async pGetTrapFeatureSideData() {
+        return {} || DataUtil.loadJSON(`${Vetools.BASE_SITE_URL}data/foundry-todo.json`);
+    }
+
+    static getModuleDataUrl(filename) {
+        return `modules/${SharedConsts.MODULE_ID}/data/${filename}`;
+    }
+
+    static async pGetIconLookup(entityType) {
+        return DataUtil.loadJSON(this.getModuleDataUrl(`icon-${entityType}s.json`));
+    }
+
+    static get BASE_SITE_URL() {
+        if (this._isCustomBaseSiteUrl()) {
+            return Util.getCleanServerUrl(Config.get("dataSources", "baseSiteUrl"));
+        }
+        return Vetools._BASE_SITE_URL;
+    }
+
+    static _isCustomBaseSiteUrl() {
+        const val = Config.get("dataSources", "baseSiteUrl");
+        return !!(val && val.trim());
+    }
+
+    static get DATA_URL_FEATS() {
+        return `${Vetools.BASE_SITE_URL}data/feats.json`;
+    }
+    static get DATA_URL_BACKGROUNDS() {
+        return `${Vetools.BASE_SITE_URL}data/backgrounds.json`;
+    }
+    static get DATA_URL_VARIANTRULES() {
+        return `${Vetools.BASE_SITE_URL}data/variantrules.json`;
+    }
+    static get DATA_URL_PSIONICS() {
+        return `${Vetools.BASE_SITE_URL}data/psionics.json`;
+    }
+    static get DATA_URL_OPTIONALFEATURES() {
+        return `${Vetools.BASE_SITE_URL}data/optionalfeatures.json`;
+    }
+    static get DATA_URL_CONDITIONSDISEASES() {
+        return `${Vetools.BASE_SITE_URL}data/conditionsdiseases.json`;
+    }
+    static get DATA_URL_VEHICLES() {
+        return `${Vetools.BASE_SITE_URL}data/vehicles.json`;
+    }
+    static get DATA_URL_REWARDS() {
+        return `${Vetools.BASE_SITE_URL}data/rewards.json`;
+    }
+    static get DATA_URL_OBJECTS() {
+        return `${Vetools.BASE_SITE_URL}data/objects.json`;
+    }
+    static get DATA_URL_DEITIES() {
+        return `${Vetools.BASE_SITE_URL}data/deities.json`;
+    }
+    static get DATA_URL_RECIPES() {
+        return `${Vetools.BASE_SITE_URL}data/recipes.json`;
+    }
+    static get DATA_URL_CHAR_CREATION_OPTIONS() {
+        return `${Vetools.BASE_SITE_URL}data/charcreationoptions.json`;
+    }
+    static get DATA_URL_CULTSBOONS() {
+        return `${Vetools.BASE_SITE_URL}data/cultsboons.json`;
+    }
+    static get DATA_URL_ACTIONS() {
+        return `${Vetools.BASE_SITE_URL}data/actions.json`;
+    }
+    static get DATA_URL_LANGUAGES() {
+        return `${Vetools.BASE_SITE_URL}data/languages.json`;
+    }
+    static get DATA_URL_TRAPS_HAZARDS() {
+        return `${Vetools.BASE_SITE_URL}data/trapshazards.json`;
+    }
+}
+Vetools._RE_HTTP_URL = /(^https?:\/\/)/;
+Vetools._BASE_SITE_URL = "https://5etools-mirror-1.github.io/";
+Vetools.BESTIARY_FLUFF_INDEX = null;
+Vetools.BESTIARY_TOKEN_LOOKUP = null;
+Vetools._CACHED_GET_ROLLABLE_ENTRY_DICE = null;
+Vetools._PATCHED_GET_ROLLABLE_ENTRY_DICE = null;
+Vetools._CACHED_MONSTER_DO_BIND_COMPACT_CONTENT_HANDLERS = null;
+Vetools._CACHED_RENDERER_HOVER_CACHE_AND_GET = null;
+Vetools._LOCK_DOWNLOAD_IMAGE = new VeLock();
+Vetools._VET_SOURCE_LOOKUP = {};
+//#endregion

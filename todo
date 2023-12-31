@@ -4,3 +4,4 @@ CLASS
 - Make swapping between classes preserve level
 - Add choices that appear lower down once high enough level is chosen
 - Minimalize entire class choice page (useful when multiclassing)
+- Figure out how and from what pre-programmed database that Plutonium checks certain class features and sees that it's about making a choice
