@@ -14,6 +14,8 @@ window.addEventListener('load', function () {
         e_onPressExportButton();
     }); */
     test_AddClassPage();
+
+    
 });
 
 function test_AddClassPage(){
@@ -7354,6 +7356,7 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
       this._metaHksClassStgStartingProficiencies = [];
       this._$wrpsClassTable = [];
       this._existingClassMetas = [];
+
     }
     get modalFilterClasses() {
       return this._modalFilterClasses;
@@ -7534,6 +7537,8 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
     }
     //FINDME ActorCharactermancerClass.render
     render() {
+        
+
       let wrptab = this._tabClass?.$wrpTab;
       if (!wrptab) { return; }
       let classChoiceElement = $(`<div class="ve-flex-col w-100 h-100 px-1 pt-1 overflow-y-auto ve-grow veapp__bg-foundry"></div>`);
@@ -7544,20 +7549,21 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
       this._addHookBase("class_ixPrimaryClass", () => this._state.class_pulseChange = !this._state.class_pulseChange);
 
       //ADD CLASS BUTTON
-      /* const addClassBtn = $("<button class=\"btn btn-5et btn-sm\">Add Another Class</button>")
+      const addClassBtn = $(`<button class="btn btn-5et btn-sm">Add Another Class</button>`)
       .click(() => {
+        console.log("AddClassButton");
         this._class_renderClass(classChoiceElement, sidebarElement, ++this._state.class_ixMax);
-      }); */
-      let addClassBtn = "";
+      });
 
-      $(`<div class="ve-flex w-100 h-100">
+
+      let o = $$`<div class="ve-flex w-100 h-100">
               <div class="ve-flex-col w-100">
-                  ${classChoiceElement[0].outerHTML}
+                  ${classChoiceElement}
                   <div class="mt-2">${addClassBtn}</div>
               </div>
               <div class="vr-1"></div>
               ${sidebarElement}
-          </div>`).appendTo(wrptab);
+          </div>`.appendTo(wrptab);
     }
     static _class_getLocks(ix) {
       return {
@@ -7711,7 +7717,7 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
           'idFilterBoxChangeSubclass': filter_evnt_valchange_subclass,
           'doApplyFilterToSelSubclass': applySubclassFilter
         });
-        this._class_renderClass_stgHpMode({
+        /* this._class_renderClass_stgHpMode({
           '$stgHpMode': holder_hpMode,
           'ix': ix,
           'cls': cls
@@ -7738,7 +7744,7 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
           'propCntAsi': propCntAsi,
           'lockRenderFeatureOptionsSelects': _0x3217e0,
           'idFilterBoxChangeClassLevels': filter_evnt_valchange_class
-        });
+        }); */
         this._state.class_totalLevels = this.class_getTotalLevels();
         /* this._class_renderClass_stgSkills({
           '$stgSkills': holder_skills,
@@ -7872,18 +7878,18 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
               ${holder_levelSelect[0].outerHTML}
               ${holder_featureOptions[0].outerHTML}
           </div>`); */
-          const classChoicePanels = $(`<div class="ve-flex-col w-100 mt-2">
+          const classChoicePanels = $$`<div class="ve-flex-col w-100 mt-2">
               <div class="ve-flex btn-group w-100">
                   <div class="ve-flex no-shrink">
-                      ${filterBtn[0].outerHTML}
+                      ${filterBtn}
                   </div>
                   <div class="ve-flex-col w-100">
-                        ${wrapper[0].outerHTML}
-                        ${holder_selectSubclass[0].outerHTML}
+                        ${wrapper}
+                        ${holder_selectSubclass}
                   </div>
               </div>
-              ${holder_hpMode[0].outerHTML}
-          </div>`);
+              ${holder_hpMode}
+          </div>`;
 
       /* const classChoicePanelsWrapper = $(`<div class="ve-flex-col">
           ${ix>0? `<hr class=\"hr-3 hr--heavy\">`:''}
@@ -7898,20 +7904,18 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
 
           ${classChoicePanels}
       </div>`); */
-      const classChoicePanelsWrapper = $(`<div class="ve-flex-col">
-
+      const classChoicePanelsWrapper = $$`<div class="ve-flex-col">
         ${ix>0? `<hr class=\"hr-3 hr--heavy\">`:''}
-
         <div class="split-v-center">
-            ${header[0].outerHTML}
+            ${header}
             <div class="ve-flex-v-center">
-                ${primaryBtn[0].outerHTML}
-                ${minimizerToggle[0].outerHTML}
+                ${primaryBtn}
+                ${minimizerToggle}
             </div>
         </div>
 
-        ${classChoicePanels[0].outerHTML}
-      </div>`);
+        ${classChoicePanels}
+      </div>`;
       classChoicePanelsWrapper.appendTo(element1);
 
       //Sidebar display (class text info)
@@ -7925,63 +7929,51 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
       renderClass_safe().then(() => renderSubclass_safe());
     }
     _class_renderClass_stgSelectSubclass({
-      $stgSelectSubclass: _0x5c8971,
-      cls: _0x21801c,
-      ix: _0x259c8f,
-      propIxSubclass: _0x1278d0,
-      idFilterBoxChangeSubclass: _0x5f53f9,
-      doApplyFilterToSelSubclass: _0x40f46c
+      $stgSelectSubclass: stgSelectSubclass,
+      cls: cls,
+      ix: ix,
+      propIxSubclass: propIxSubclass,
+      idFilterBoxChangeSubclass: idFilterBoxChangeSubclass,
+      doApplyFilterToSelSubclass: doApplyFilterToSelSubclass
     }) {
-      _0x5c8971.empty();
-      if (this._metaHksClassStgSubclass[_0x259c8f]) {
-        this._metaHksClassStgSubclass[_0x259c8f].unhook();
-      }
-      if (_0x21801c && _0x21801c.subclasses && _0x21801c.subclasses.length) {
-        const _0x3b29a1 = ComponentUiUtil.$getSelSearchable(this, _0x1278d0, {
-          'values': _0x21801c.subclasses.map((_0x362bb0, _0x376059) => _0x376059),
+      stgSelectSubclass.empty();
+      if (this._metaHksClassStgSubclass[ix]) { this._metaHksClassStgSubclass[ix].unhook(); }
+      if(cls == null){console.error("Class is null");}
+      if (cls && cls.subclasses && cls.subclasses.length) {
+        const uiSearchElement = ComponentUiUtil.$getSelSearchable(this, propIxSubclass, {
+          'values': cls.subclasses.map((a, b) => b),
           'isAllowNull': true,
-          'fnDisplay': _0x2ae9b7 => {
-            const _0x7954ef = this.getSubclass_({
-              'cls': _0x21801c,
-              'ix': _0x2ae9b7
-            });
-            if (!_0x7954ef) {
-              console.warn(...LGT, "Could not find subclass with index " + _0x2ae9b7 + " (" + _0x21801c.subclasses.length + " subclasses were available for class " + _0x21801c.name + ')');
+          'fnDisplay': ix => {
+            const subcls = this.getSubclass_({'cls': cls, 'ix': ix });
+            if (!subcls) {
+              console.warn(...LGT, "Could not find subclass with index " + ix + " (" + cls.subclasses.length + " subclasses were available for class " + cls.name + ')');
               return '(Unknown)';
             }
-            return _0x7954ef.name + " " + (_0x7954ef.source !== Parser.SRC_PHB ? '[' + Parser.sourceJsonToAbv(_0x7954ef.source) + ']' : '');
+            return subcls.name + " " + (subcls.source !== Parser.SRC_PHB ? '[' + Parser.sourceJsonToAbv(subcls.source) + ']' : '');
           },
-          'fnGetAdditionalStyleClasses': _0x1d7fa3 => {
-            if (_0x1d7fa3 == null) {
-              return null;
-            }
-            const _0x3d2ce1 = this.getSubclass_({
-              'cls': _0x21801c,
-              'ix': _0x1d7fa3
-            });
-            if (!_0x3d2ce1) {
-              return;
-            }
-            return _0x3d2ce1._versionBase_isVersion ? ['italic'] : null;
+          'fnGetAdditionalStyleClasses': ix => {
+            if (ix == null) { return null; }
+            const subcls = this.getSubclass_({'cls': cls, 'ix': ix });
+            if (!subcls) { return; }
+            return subcls._versionBase_isVersion ? ['italic'] : null;
           },
           'asMeta': true,
-          'isDisabled': this._class_isSubclassSelectionDisabled({
-            'ix': _0x259c8f
-          }),
+          'isDisabled': this._class_isSubclassSelectionDisabled({'ix': ix}),
           'displayNullAs': "Select a Subclass"
         });
-        _0x3b29a1.$iptDisplay.addClass('bl-0');
-        _0x3b29a1.$iptSearch.addClass("bl-0");
-        this._metaHksClassStgSubclass[_0x259c8f] = _0x3b29a1;
-        this._modalFilterClasses.pageFilter.filterBox.on(_0x5f53f9, () => _0x40f46c());
-        _0x40f46c();
-        const _0x464d42 = $`<div class="ve-flex-col w-100 mt-1">
-                  ${_0x3b29a1.$wrp}
-              </div>`;
-        _0x5c8971.showVe().append(_0x464d42);
-      } else {
-        _0x5c8971.hideVe();
-        this._metaHksClassStgSubclass[_0x259c8f] = null;
+        uiSearchElement.$iptDisplay.addClass('bl-0');
+        uiSearchElement.$iptSearch.addClass("bl-0");
+        this._metaHksClassStgSubclass[ix] = uiSearchElement;
+        this._modalFilterClasses.pageFilter.filterBox.on(idFilterBoxChangeSubclass, () => doApplyFilterToSelSubclass());
+        doApplyFilterToSelSubclass();
+        const wrp = $$`<div class="ve-flex-col w-100 mt-1">${uiSearchElement.$wrp}</div>`;
+        stgSelectSubclass.showVe().append(wrp);
+      }
+      else {
+        console.error("No subclasses found");
+        console.log(cls);
+        stgSelectSubclass.hideVe();
+        this._metaHksClassStgSubclass[ix] = null;
       }
     }
     _class_renderClass_stgHpMode({
@@ -8813,6 +8805,190 @@ globalThis.ElementUtil = {
 if (typeof window !== "undefined"){window.e_ = ElementUtil.getOrModify;}
 //#endregion
 
+//#region CollectionUtil
+globalThis.CollectionUtil = {
+    ObjectSet: class ObjectSet {
+        constructor() {
+            this.map = new Map();
+            this[Symbol.iterator] = this.values;
+        }
+        add(item) {
+            this.map.set(item._toIdString(), item);
+        }
+
+        values() {
+            return this.map.values();
+        }
+    }
+    ,
+
+    setEq(a, b) {
+        if (a.size !== b.size)
+            return false;
+        for (const it of a)
+            if (!b.has(it))
+                return false;
+        return true;
+    },
+
+    setDiff(set1, set2) {
+        return new Set([...set1].filter(it=>!set2.has(it)));
+    },
+
+    objectDiff(obj1, obj2) {
+        const out = {};
+
+        [...new Set([...Object.keys(obj1), ...Object.keys(obj2)])].forEach(k=>{
+            const diff = CollectionUtil._objectDiff_recurse(obj1[k], obj2[k]);
+            if (diff !== undefined)
+                out[k] = diff;
+        }
+        );
+
+        return out;
+    },
+
+    _objectDiff_recurse(a, b) {
+        if (CollectionUtil.deepEquals(a, b))
+            return undefined;
+
+        if (a && b && typeof a === "object" && typeof b === "object") {
+            return CollectionUtil.objectDiff(a, b);
+        }
+
+        return b;
+    },
+
+    objectIntersect(obj1, obj2) {
+        const out = {};
+
+        [...new Set([...Object.keys(obj1), ...Object.keys(obj2)])].forEach(k=>{
+            const diff = CollectionUtil._objectIntersect_recurse(obj1[k], obj2[k]);
+            if (diff !== undefined)
+                out[k] = diff;
+        }
+        );
+
+        return out;
+    },
+
+    _objectIntersect_recurse(a, b) {
+        if (CollectionUtil.deepEquals(a, b))
+            return a;
+
+        if (a && b && typeof a === "object" && typeof b === "object") {
+            return CollectionUtil.objectIntersect(a, b);
+        }
+
+        return undefined;
+    },
+
+    deepEquals(a, b) {
+        if (Object.is(a, b))
+            return true;
+        if (a && b && typeof a === "object" && typeof b === "object") {
+            if (CollectionUtil._eq_isPlainObject(a) && CollectionUtil._eq_isPlainObject(b))
+                return CollectionUtil._eq_areObjectsEqual(a, b);
+            const isArrayA = Array.isArray(a);
+            const isArrayB = Array.isArray(b);
+            if (isArrayA || isArrayB)
+                return isArrayA === isArrayB && CollectionUtil._eq_areArraysEqual(a, b);
+            const isSetA = a instanceof Set;
+            const isSetB = b instanceof Set;
+            if (isSetA || isSetB)
+                return isSetA === isSetB && CollectionUtil.setEq(a, b);
+            return CollectionUtil._eq_areObjectsEqual(a, b);
+        }
+        return false;
+    },
+
+    _eq_isPlainObject: (value)=>value.constructor === Object || value.constructor == null,
+    _eq_areObjectsEqual(a, b) {
+        const keysA = Object.keys(a);
+        const {length} = keysA;
+        if (Object.keys(b).length !== length)
+            return false;
+        for (let i = 0; i < length; i++) {
+            if (!b.hasOwnProperty(keysA[i]))
+                return false;
+            if (!CollectionUtil.deepEquals(a[keysA[i]], b[keysA[i]]))
+                return false;
+        }
+        return true;
+    },
+    _eq_areArraysEqual(a, b) {
+        const {length} = a;
+        if (b.length !== length)
+            return false;
+        for (let i = 0; i < length; i++)
+            if (!CollectionUtil.deepEquals(a[i], b[i]))
+                return false;
+        return true;
+    },
+
+    dfs(obj, opts) {
+        const {prop=null, fnMatch=null} = opts;
+        if (!prop && !fnMatch)
+            throw new Error(`One of "prop" or "fnMatch" must be specified!`);
+
+        if (obj instanceof Array) {
+            for (const child of obj) {
+                const n = CollectionUtil.dfs(child, opts);
+                if (n)
+                    return n;
+            }
+            return;
+        }
+
+        if (obj instanceof Object) {
+            if (prop && obj[prop])
+                return obj[prop];
+            if (fnMatch && fnMatch(obj))
+                return obj;
+
+            for (const child of Object.values(obj)) {
+                const n = CollectionUtil.dfs(child, opts);
+                if (n)
+                    return n;
+            }
+        }
+    },
+
+    bfs(obj, opts) {
+        const {prop=null, fnMatch=null} = opts;
+        if (!prop && !fnMatch)
+            throw new Error(`One of "prop" or "fnMatch" must be specified!`);
+
+        if (obj instanceof Array) {
+            for (const child of obj) {
+                if (!(child instanceof Array) && child instanceof Object) {
+                    if (prop && child[prop])
+                        return child[prop];
+                    if (fnMatch && fnMatch(child))
+                        return child;
+                }
+            }
+
+            for (const child of obj) {
+                const n = CollectionUtil.bfs(child, opts);
+                if (n)
+                    return n;
+            }
+
+            return;
+        }
+
+        if (obj instanceof Object) {
+            if (prop && obj[prop])
+                return obj[prop];
+            if (fnMatch && fnMatch(obj))
+                return obj;
+
+            return CollectionUtil.bfs(Object.values(obj));
+        }
+    },
+};
+//#endregion
 
 //#region Charactermancer
 class Charactermancer_Class_Util {
@@ -11103,7 +11279,7 @@ class ComponentUiUtil {
             //Here we create an option in the dropdown menu
             const $ele = $(`<div class="ve-flex-v-center py-1 px-1 clickable ui-sel2__disp-option
                 ${v == null ? `italic` : ""} ${additionalStyleClasses ? additionalStyleClasses.join(" ") : ""}" tabindex="0">${display}</div>`)
-            /* .click(()=>{ //When an option is clicked
+            .click(()=>{ //When an option is clicked
                 console.log("BTN CLICKED");
                 if (opts.isDisabled){return;}
                 //here is where _state first gets set with the [propIxClass] thingy
@@ -11112,7 +11288,7 @@ class ComponentUiUtil {
                 $(document.activeElement).blur();
                 $wrp.addClass("no-events");
                 setTimeout(()=>$wrp.removeClass("no-events"), 50);
-            }) */
+            })
             .keydown(evt=>{
                 if (opts.isDisabled)
                     return;
@@ -11157,10 +11333,8 @@ class ComponentUiUtil {
                     }
                 }
             }
-            ).appendTo($wrpChoices)
-            .click(function(){console.log("hi")});
+            ).appendTo($wrpChoices);
 
-            console.log($ele);
 
             //TEMPFIX
             const isForceHidden = false; //opts.isHiddenPerValue && !!(opts.isAllowNull ? opts.isHiddenPerValue[i - 1] : opts.isHiddenPerValue[i]);
@@ -23033,7 +23207,6 @@ globalThis.JqueryUtil = {
                         return arg;
                 }
                 ;
-
                 const raw = parts.reduce((html,p)=>{
                     const myIxArg = ixArg++;
                     if (args[myIxArg] == null)
