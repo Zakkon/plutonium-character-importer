@@ -242,3 +242,9 @@ input.form-control, textarea.form-control {
 .non-interactive {
     pointer-events: none;
   }
+.window-app * {
+    overflow-x: hidden;
+}
+.overflow-x-vis{
+    overflow-x: visible;
+}

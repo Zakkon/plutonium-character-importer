@@ -5,3 +5,8 @@ for(const _0x1862c4_ftoptsel of this['_compClass']['compsClassFeatureOptionsSele
     const _0x195903_ftoform=await _0x1862c4_ftoptsel['pGetFormData']()
     ....
 }
+
+---STATE---
+this._state[propIxClass whatever] seems to not be set until we actually pick a class option in the dropdown
+this happens in an eventlistener set by ComponentUIUtil.$getSelSearchable
+that means its not set at all upon first load
