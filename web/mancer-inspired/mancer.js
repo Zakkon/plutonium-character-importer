@@ -8940,7 +8940,8 @@ Renderer.hover = {
     $getHoverContent_generic(toRender, opts) {
         opts = opts || {};
 
-        return $$`<table class="w-100 stats ${opts.isBookContent || opts.isLargeBookContent ? "stats--book" : ""} ${opts.isLargeBookContent ? "stats--book-large" : ""}">${Renderer.hover.getGenericCompactRenderedString(toRender, opts.depth || 0)}</table>`;
+        return $$`<table class="w-100 stats ${opts.isBookContent || opts.isLargeBookContent ? "stats--book" : ""} ${opts.isLargeBookContent?
+             "stats--book-large" : ""}">${Renderer.hover.getGenericCompactRenderedString(toRender, opts.depth || 0)}</table>`;
     },
 
     doPopoutCurPage(evt, entity) {
@@ -14460,350 +14461,339 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
     }
     _class_renderClass(parentDiv_left, parentDiv_right, ix) {
         //Main properties for asking our _state for information on this class
-      const {
-        propPrefixClass: propPrefixClass,
-        propIxClass: propIxClass,
-        propPrefixSubclass: propPrefixSubclass,
-        propIxSubclass: propIxSubclass,
-        propCntAsi: propCntAsi,
-        propCurLevel: propCurLevel,
-        propTargetLevel: propTargetLevel
-      } = ActorCharactermancerBaseComponent.class_getProps(ix);
-      const filter_evnt_valchange_class = FilterBox.EVNT_VALCHANGE + ".class_" + ix + "_classLevels";
-      const filter_evnt_valchange_subclass = FilterBox.EVNT_VALCHANGE + ".class_" + ix + "_subclass";
+        const {
+            propPrefixClass: propPrefixClass,
+            propIxClass: propIxClass,
+            propPrefixSubclass: propPrefixSubclass,
+            propIxSubclass: propIxSubclass,
+            propCntAsi: propCntAsi,
+            propCurLevel: propCurLevel,
+            propTargetLevel: propTargetLevel
+        } = ActorCharactermancerBaseComponent.class_getProps(ix);
+        const filter_evnt_valchange_class = FilterBox.EVNT_VALCHANGE + ".class_" + ix + "_classLevels";
+        const filter_evnt_valchange_subclass = FilterBox.EVNT_VALCHANGE + ".class_" + ix + "_subclass";
 
-      const {
-        lockChangeClass: lockChangeClass,
-        lockChangeSubclass: lockChangeSubclass,
-        lockRenderFeatureOptionsSelects: lockRenderFeatureOptionsSelects
-      } = this.constructor._class_getLocks(ix);
+        const {
+            lockChangeClass: lockChangeClass,
+            lockChangeSubclass: lockChangeSubclass,
+            lockRenderFeatureOptionsSelects: lockRenderFeatureOptionsSelects
+        } = this.constructor._class_getLocks(ix);
 
-      this._addHookBase(propIxClass, () => this._state.class_pulseChange = !this._state.class_pulseChange);
+        this._addHookBase(propIxClass, () => this._state.class_pulseChange = !this._state.class_pulseChange);
 
-      //Create a searchable select field for choosing a class
-      const {
-        $wrp: wrapper, //Wrapper DOM for the dropdown menu DOM object
-        $iptDisplay: inputDisplay, //a function that returns the visible name of a class that you provide the index for
-        $iptSearch: inputSearch,
-        fnUpdateHidden: fnUpdateHidden
-      } = ComponentUiUtil.$getSelSearchable(this, propIxClass, {
-        'values': this._data.class.map((_0x2b7aa2, _0x2f3ba4) => _0x2f3ba4), //Think this is just the ix's of the classes
-        'isAllowNull': true,
-        'fnDisplay': clsIx => {
-            //Using a simple index, ask _data for the class
-          const cls = this.getClass_({'ix': clsIx });
-          if (!cls) {
-            console.warn(...LGT, "Could not find class with index " + clsIx + " (" + this._data.class.length + " classes were available)");
-            return '(Unknown)';
-          }
-          //Then return what should be the displayed name
-          return cls.name + " " + (cls.source !== Parser.SRC_PHB ? '[' + Parser.sourceJsonToAbv(cls.source) + ']' : '');
-        },
-        'fnGetAdditionalStyleClasses': classIx => {
-          if (classIx == null) { return null; }
-          const cls = this.getClass_({'ix': classIx});
-          if (!cls) { return; }
-          return cls._versionBase_isVersion ? ['italic'] : null;
-        },
-        'asMeta': true,
-        'isDisabled': this._class_isClassSelectionDisabled({'ix': ix })
-      });
+        //Create a searchable select field for choosing a class
+        const {
+            $wrp: wrapper, //Wrapper DOM for the dropdown menu DOM object
+            $iptDisplay: inputDisplay, //a function that returns the visible name of a class that you provide the index for
+            $iptSearch: inputSearch,
+            fnUpdateHidden: fnUpdateHidden
+        } = ComponentUiUtil.$getSelSearchable(this, propIxClass, {
+            'values': this._data.class.map((_0x2b7aa2, _0x2f3ba4) => _0x2f3ba4), //Think this is just the ix's of the classes
+            'isAllowNull': true,
+            'fnDisplay': clsIx => {
+                //Using a simple index, ask _data for the class
+            const cls = this.getClass_({'ix': clsIx });
+            if (!cls) {
+                console.warn(...LGT, "Could not find class with index " + clsIx + " (" + this._data.class.length + " classes were available)");
+                return '(Unknown)';
+            }
+            //Then return what should be the displayed name
+            return cls.name + " " + (cls.source !== Parser.SRC_PHB ? '[' + Parser.sourceJsonToAbv(cls.source) + ']' : '');
+            },
+            'fnGetAdditionalStyleClasses': classIx => {
+            if (classIx == null) { return null; }
+            const cls = this.getClass_({'ix': classIx});
+            if (!cls) { return; }
+            return cls._versionBase_isVersion ? ['italic'] : null;
+            },
+            'asMeta': true,
+            'isDisabled': this._class_isClassSelectionDisabled({'ix': ix })
+        });
 
-      inputDisplay.addClass("bl-0");
-      inputSearch.addClass("bl-0");
+        inputDisplay.addClass("bl-0");
+        inputSearch.addClass("bl-0");
 
-      const updateHiddenClasses = () => {
-        const filterValues = this._modalFilterClasses.pageFilter.filterBox.getValues();
-        const classes = this._data.class.map(cls => !this._modalFilterClasses.pageFilter.toDisplay(filterValues, cls));
-        fnUpdateHidden(classes, false);
-      };
+        const updateHiddenClasses = () => {
+            const filterValues = this._modalFilterClasses.pageFilter.filterBox.getValues();
+            const classes = this._data.class.map(cls => !this._modalFilterClasses.pageFilter.toDisplay(filterValues, cls));
+            fnUpdateHidden(classes, false);
+        };
 
-      const applySubclassFilter = () => {
-        const cls = this.getClass_({'propIxClass': propIxClass});
-        if (!cls || !this._metaHksClassStgSubclass[ix]) { return; }
-        const filteredValues = this._modalFilterClasses.pageFilter.filterBox.getValues();
-        const displayableSubclasses = cls.subclasses.map(val => !this._modalFilterClasses.pageFilter.toDisplay(filteredValues, val));
-        this._metaHksClassStgSubclass[ix].fnUpdateHidden(displayableSubclasses, false);
-      };
+        const applySubclassFilter = () => {
+            const cls = this.getClass_({'propIxClass': propIxClass});
+            if (!cls || !this._metaHksClassStgSubclass[ix]) { return; }
+            const filteredValues = this._modalFilterClasses.pageFilter.filterBox.getValues();
+            const displayableSubclasses = cls.subclasses.map(val => !this._modalFilterClasses.pageFilter.toDisplay(filteredValues, val));
+            this._metaHksClassStgSubclass[ix].fnUpdateHidden(displayableSubclasses, false);
+        };
 
-      //TEMPFIX
-      if(SETTINGS.FILTERS){
+        //TEMPFIX
+        if(SETTINGS.FILTERS){
         //this._modalFilterClasses.pageFilter.filterBox.on(FilterBox.EVNT_VALCHANGE, () => _0x1133f2());
         //_0x1133f2();
         }
-      const filterBtn = $("<button class=\"btn btn-xs btn-5et h-100 btr-0 bbr-0 pr-2\" title=\"Filter for Class and Subclass\"><span class=\"glyphicon glyphicon-filter\"></span> Filter</button>")
-      .click(async () => {
-        const cls = this.getClass_({
-          'propIxClass': propIxClass
-        });
-        const subcls = this.getSubclass_({
-          'cls': cls,
-          'propIxSubclass': propIxSubclass
-        });
-        const classSelectDisabled = this._class_isClassSelectionDisabled({
-          'ix': ix
-        });
-        const subclassSelectDisabled = this._class_isSubclassSelectionDisabled({
-          'ix': ix
-        });
-        const userSelection = await this._modalFilterClasses.pGetUserSelection({
-          'selectedClass': cls,
-          'selectedSubclass': subcls,
-          'isClassDisabled': classSelectDisabled,
-          'isSubclassDisabled': subclassSelectDisabled
-        });
-        if (classSelectDisabled && subclassSelectDisabled) {
-          return;
-        }
-        if (userSelection == null || !userSelection.class) {
-          return;
-        }
-        const class_index = this._data.class.findIndex(_0x46996f => _0x46996f.name === userSelection.class.name && _0x46996f.source === userSelection['class'].source);
-        if (!~class_index) {
-          throw new Error("Could not find selected class: " + JSON.stringify(userSelection["class"]));
-        }
-        this._state[propIxClass] = class_index;
-        await this._pGate(lockChangeClass);
-        if (userSelection.subclass != null) {
-          const cls = this.getClass_({
+        const filterBtn = $("<button class=\"btn btn-xs btn-5et h-100 btr-0 bbr-0 pr-2\" title=\"Filter for Class and Subclass\"><span class=\"glyphicon glyphicon-filter\"></span> Filter</button>")
+        .click(async () => {
+            const cls = this.getClass_({
             'propIxClass': propIxClass
-          });
-          const subcls_index = cls.subclasses.findIndex(_0x482224 => _0x482224.name === userSelection.subclass.name && _0x482224.source === userSelection.subclass.source);
-          if (!~subcls_index) {
-            throw new Error("Could not find selected subclass: " + JSON.stringify(userSelection.subclass));
-          }
-          this._state[propIxSubclass] = subcls_index;
-        } else {
-          this._state[propIxSubclass] = null;
-        }
-      });
-
-      //#region Render Class
-      const renderClassComponents = async _0xd4d6f7 => {
-        if(SETTINGS.FILTERS){this._modalFilterClasses.pageFilter.filterBox.off(filter_evnt_valchange_subclass);}
-        //FIXME SET STATE!
-        if (_0xd4d6f7) {
-          const toObj = Object.keys(this.__state).filter(propName => propName.startsWith(propPrefixClass) && propName !== propIxClass).mergeMap(_0x77ce3e => ({
-            [_0x77ce3e]: null
-          }));
-          this._proxyAssignSimple("state", toObj);
-        }
-        //First time this function is called, we will probably not get anything out of getClass since we haven't set anything to _state yet
-        const cls = this.getClass_({'propIxClass': propIxClass});
-        const subcls = this.getSubclass_({
-          'cls': cls,
-          'propIxSubclass': propIxSubclass
-        });
-
-        this._class_renderClass_stgSelectSubclass({
-          '$stgSelectSubclass': holder_selectSubclass,
-          'cls': cls,
-          'ix': ix,
-          'propIxSubclass': propIxSubclass,
-          'idFilterBoxChangeSubclass': filter_evnt_valchange_subclass,
-          'doApplyFilterToSelSubclass': applySubclassFilter
-        });
-        this._class_renderClass_stgHpMode({
-          '$stgHpMode': holder_hpMode,
-          'ix': ix,
-          'cls': cls
-        });
-        this._class_renderClass_stgHpInfo({
-          '$stgHpInfo': holder_hpInfo,
-          'ix': ix,
-          'cls': cls
-        }); 
-        this._class_renderClass_stgStartingProficiencies({
-          '$stgStartingProficiencies': holder_startingProf,
-          'ix': ix,
-          'cls': cls
-        });
-
-        //Now create the level select UI
-        await this._class_renderClass_pStgLevelSelect({
-          '$stgLevelSelect': holder_levelSelect,
-          '$stgFeatureOptions': holder_featureOptions,
-          'ix': ix,
-          'cls': cls,
-          'sc': subcls,
-          'propIxSubclass': propIxSubclass,
-          'propCurLevel': propCurLevel,
-          'propTargetLevel': propTargetLevel,
-          'propCntAsi': propCntAsi,
-          'lockRenderFeatureOptionsSelects': lockRenderFeatureOptionsSelects,
-          'idFilterBoxChangeClassLevels': filter_evnt_valchange_class
-        });
-        this._state.class_totalLevels = this.class_getTotalLevels();
-        //Create the element that lets us choose skill proficiencies
-        this._class_renderClass_stgSkills({ '$stgSkills': holder_skills, 'ix': ix, 'propIxClass': propIxClass });
-        //Create the element that lets us choose tool proficiencies
-        this._class_renderClass_stgTools({ '$stgTools': holder_tools, 'ix': ix, 'propIxClass': propIxClass })
-        /* await this._class_renderClass_pDispClass({
-          'ix': ix,
-          '$dispClass': holder_dispClass,
-          'cls': cls,
-          'sc': subcls
-        }); */
-        disp_subclass.empty();
-      };
-      const renderClassComponents_safe = async _0x7a25e5 => {
-        try {
-          await this._pLock(lockChangeClass);
-          await renderClassComponents(_0x7a25e5);
-        } finally {
-          this._unlock(lockChangeClass);
-        }
-      };
-      //Add a hook so that when propIxClass changes, we try to render the class components again
-      this._addHookBase(propIxClass, renderClassComponents_safe);
-      //#endregion
-
-      //#region Render Subclass
-      const renderSubclass = async () => {
-        if(SETTINGS.FILTERS){this._modalFilterClasses.pageFilter.filterBox.off(filter_evnt_valchange_subclass);}
-        const toObj = Object.keys(this.__state).filter(prop => prop.startsWith(propPrefixSubclass) && prop !== propIxSubclass).mergeMap(_0x207fe4 => ({
-          [_0x207fe4]: null
-        }));
-        this._proxyAssignSimple("state", toObj);
-        const cls = this.getClass_({
-          'propIxClass': propIxClass
-        });
-        const subcls = this.getSubclass_({
-          'cls': cls,
-          'propIxSubclass': propIxSubclass
-        });
-        /* const filteredFeatures = this._class_getFilteredFeatures(cls, subcls);
-        if (this._compsClassLevelSelect[ix]) {
-          this._compsClassLevelSelect[ix].setFeatures(filteredFeatures);
-        }
-        await this._class_pRenderFeatureOptionsSelects({
-          'ix': ix,
-          'propCntAsi': propCntAsi,
-          'filteredFeatures': filteredFeatures,
-          '$stgFeatureOptions': holder_featureOptions,
-          'lockRenderFeatureOptionsSelects': _0x3217e0
-        }); */
-        if(SETTINGS.FILTERS){this._modalFilterClasses.pageFilter.filterBox.on(filter_evnt_valchange_subclass, () => applySubclassFilter());}
-        /* applySubclassFilter();
-        await this._class_renderClass_pDispSubclass({
-          'ix': ix,
-          '$dispSubclass': disp_subclass,
-          'cls': cls,
-          'sc': subcls
-        }); */
-      };
-      const renderSubclass_safe = async () => {
-        try {
-          await this._pLock(lockChangeSubclass);
-          await renderSubclass();
-        } finally {
-          this._unlock(lockChangeSubclass);
-        }
-      };
-      this._addHookBase(propIxSubclass, renderSubclass_safe);
-      //#endregion
-
-      //Create parent objects to hold subcomponents, hide the later ones
-      const header = $("<div class=\"bold\">Select a Class</div>");
-      const holder_selectSubclass = $(`<div class="ve-flex-col w-100"></div>`).hideVe();
-      const holder_hpMode = $(`<div class="ve-flex-col"></div>`).hideVe();
-      const holder_hpInfo = $(`<div class="ve-flex-col"></div>`).hideVe();
-      const holder_startingProf = $(`<div class="ve-flex-col"></div>`).hideVe();
-      const holder_levelSelect = $(`<div class="ve-flex-col"></div>`).hideVe();
-      const holder_featureOptions = $(`<div class="ve-flex-col"></div>`).hideVe();
-      const holder_skills = $(`<div class="ve-flex-col"></div>`).hideVe();
-      const holder_tools = $(`<div class="ve-flex-col"></div>`).hideVe();
-
-      let primaryBtn = null;
-      if (!this._existingClassMetas.length) {
-        primaryBtn = $("<button class=\"btn btn-5et btn-xs mr-2\"></button>").click(() => this._state.class_ixPrimaryClass = ix);
-        const primaryBtnHover = () => {
-          primaryBtn.text(this._state.class_ixPrimaryClass === ix ? "Primary Class" : "Make Primary").title(this._state.class_ixPrimaryClass === ix ? "This is your primary class, i.e. the one you chose at level 1 for the purposes of proficiencies/etc." : "Make this your primary class, i.e. the one you chose at level 1 for the purposes of proficiencies/etc.").prop("disabled", this._state.class_ixPrimaryClass === ix);
-        };
-        this._addHookBase("class_ixPrimaryClass", primaryBtnHover);
-        primaryBtnHover();
-      }
-
-      const minimizerToggle = $("<div class=\"py-1 clickable ve-muted\">[‒]</div>").click(() => {
-        const isMinimized = minimizerToggle.text() === '[+]';
-        minimizerToggle.text(isMinimized ? "[‒]" : "[+]");
-        if (isMinimized) {
-          header.text("Select a Class");
-        } else {
-          const cls = this.getClass_({'propIxClass': propIxClass});
-          const subcls = this.getSubclass_({
+            });
+            const subcls = this.getSubclass_({
             'cls': cls,
             'propIxSubclass': propIxSubclass
-          });
-          if (cls) { header.text('' + cls.name + (subcls ? " (" + subcls.name + ')' : ''));}
-          else { header.text("Select a Class"); }
+            });
+            const classSelectDisabled = this._class_isClassSelectionDisabled({
+            'ix': ix
+            });
+            const subclassSelectDisabled = this._class_isSubclassSelectionDisabled({
+            'ix': ix
+            });
+            const userSelection = await this._modalFilterClasses.pGetUserSelection({
+            'selectedClass': cls,
+            'selectedSubclass': subcls,
+            'isClassDisabled': classSelectDisabled,
+            'isSubclassDisabled': subclassSelectDisabled
+            });
+            if (classSelectDisabled && subclassSelectDisabled) {
+            return;
+            }
+            if (userSelection == null || !userSelection.class) {
+            return;
+            }
+            const class_index = this._data.class.findIndex(_0x46996f => _0x46996f.name === userSelection.class.name && _0x46996f.source === userSelection['class'].source);
+            if (!~class_index) {
+            throw new Error("Could not find selected class: " + JSON.stringify(userSelection["class"]));
+            }
+            this._state[propIxClass] = class_index;
+            await this._pGate(lockChangeClass);
+            if (userSelection.subclass != null) {
+            const cls = this.getClass_({
+                'propIxClass': propIxClass
+            });
+            const subcls_index = cls.subclasses.findIndex(_0x482224 => _0x482224.name === userSelection.subclass.name && _0x482224.source === userSelection.subclass.source);
+            if (!~subcls_index) {
+                throw new Error("Could not find selected subclass: " + JSON.stringify(userSelection.subclass));
+            }
+            this._state[propIxSubclass] = subcls_index;
+            } else {
+            this._state[propIxSubclass] = null;
+            }
+        });
+
+        //#region Render Class
+        const renderClassComponents = async _0xd4d6f7 => {
+            if(SETTINGS.FILTERS){this._modalFilterClasses.pageFilter.filterBox.off(filter_evnt_valchange_subclass);}
+            //FIXME SET STATE!
+            if (_0xd4d6f7) {
+            const toObj = Object.keys(this.__state).filter(propName => propName.startsWith(propPrefixClass) && propName !== propIxClass).mergeMap(_0x77ce3e => ({
+                [_0x77ce3e]: null
+            }));
+            this._proxyAssignSimple("state", toObj);
+            }
+            //First time this function is called, we will probably not get anything out of getClass since we haven't set anything to _state yet
+            const cls = this.getClass_({'propIxClass': propIxClass});
+            const subcls = this.getSubclass_({
+            'cls': cls,
+            'propIxSubclass': propIxSubclass
+            });
+
+            this._class_renderClass_stgSelectSubclass({
+            '$stgSelectSubclass': holder_selectSubclass,
+            'cls': cls,
+            'ix': ix,
+            'propIxSubclass': propIxSubclass,
+            'idFilterBoxChangeSubclass': filter_evnt_valchange_subclass,
+            'doApplyFilterToSelSubclass': applySubclassFilter
+            });
+            this._class_renderClass_stgHpMode({
+            '$stgHpMode': holder_hpMode,
+            'ix': ix,
+            'cls': cls
+            });
+            this._class_renderClass_stgHpInfo({
+            '$stgHpInfo': holder_hpInfo,
+            'ix': ix,
+            'cls': cls
+            }); 
+            this._class_renderClass_stgStartingProficiencies({
+            '$stgStartingProficiencies': holder_startingProf,
+            'ix': ix,
+            'cls': cls
+            });
+
+            //Now create the level select UI
+            await this._class_renderClass_pStgLevelSelect({
+            '$stgLevelSelect': holder_levelSelect,
+            '$stgFeatureOptions': holder_featureOptions,
+            'ix': ix,
+            'cls': cls,
+            'sc': subcls,
+            'propIxSubclass': propIxSubclass,
+            'propCurLevel': propCurLevel,
+            'propTargetLevel': propTargetLevel,
+            'propCntAsi': propCntAsi,
+            'lockRenderFeatureOptionsSelects': lockRenderFeatureOptionsSelects,
+            'idFilterBoxChangeClassLevels': filter_evnt_valchange_class
+            });
+            this._state.class_totalLevels = this.class_getTotalLevels();
+
+            //Create the element that lets us choose skill proficiencies
+            this._class_renderClass_stgSkills({ '$stgSkills': holder_skills, 'ix': ix, 'propIxClass': propIxClass });
+
+            //Create the element that lets us choose tool proficiencies
+            this._class_renderClass_stgTools({ '$stgTools': holder_tools, 'ix': ix, 'propIxClass': propIxClass })
+
+            //Create the element that handles drawing info about our class
+            await this._class_renderClass_pDispClass({
+                'ix': ix,
+                '$dispClass': holder_dispClass,
+                'cls': cls,
+                'sc': subcls
+            });
+            //Also clear the element that displays info about our subclass
+            disp_subclass.empty();
+        };
+
+        const renderClassComponents_safe = async _0x7a25e5 => {
+            try {
+            await this._pLock(lockChangeClass);
+            await renderClassComponents(_0x7a25e5);
+            } finally {
+            this._unlock(lockChangeClass);
+            }
+        };
+
+        //Add a hook so that when propIxClass changes, we try to render the class components again
+        this._addHookBase(propIxClass, renderClassComponents_safe);
+        //#endregion
+
+        //#region Render Subclass
+        const renderSubclassComponents = async () => {
+            if(SETTINGS.FILTERS){this._modalFilterClasses.pageFilter.filterBox.off(filter_evnt_valchange_subclass);}
+            const toObj = Object.keys(this.__state).filter(prop => prop.startsWith(propPrefixSubclass) && prop !== propIxSubclass).mergeMap(_0x207fe4 => ({
+            [_0x207fe4]: null
+            }));
+            this._proxyAssignSimple("state", toObj);
+            const cls = this.getClass_({
+            'propIxClass': propIxClass
+            });
+            const subcls = this.getSubclass_({
+            'cls': cls,
+            'propIxSubclass': propIxSubclass
+            });
+            /* const filteredFeatures = this._class_getFilteredFeatures(cls, subcls);
+            if (this._compsClassLevelSelect[ix]) {
+            this._compsClassLevelSelect[ix].setFeatures(filteredFeatures);
+            }
+            await this._class_pRenderFeatureOptionsSelects({
+            'ix': ix,
+            'propCntAsi': propCntAsi,
+            'filteredFeatures': filteredFeatures,
+            '$stgFeatureOptions': holder_featureOptions,
+            'lockRenderFeatureOptionsSelects': _0x3217e0
+            }); */
+            if(SETTINGS.FILTERS){this._modalFilterClasses.pageFilter.filterBox.on(filter_evnt_valchange_subclass, () => applySubclassFilter());}
+            /* applySubclassFilter();
+            await this._class_renderClass_pDispSubclass({
+            'ix': ix,
+            '$dispSubclass': disp_subclass,
+            'cls': cls,
+            'sc': subcls
+            }); */
+        };
+        const renderSubclass_safe = async () => {
+            try {
+            await this._pLock(lockChangeSubclass);
+            await renderSubclassComponents();
+            } finally {
+            this._unlock(lockChangeSubclass);
+            }
+        };
+        this._addHookBase(propIxSubclass, renderSubclass_safe);
+        //#endregion
+
+        //Create parent objects to hold subcomponents, hide the later ones
+        const header = $("<div class=\"bold\">Select a Class</div>");
+        const holder_selectSubclass = $(`<div class="ve-flex-col w-100"></div>`).hideVe();
+        const holder_hpMode = $(`<div class="ve-flex-col"></div>`).hideVe();
+        const holder_hpInfo = $(`<div class="ve-flex-col"></div>`).hideVe();
+        const holder_startingProf = $(`<div class="ve-flex-col"></div>`).hideVe();
+        const holder_levelSelect = $(`<div class="ve-flex-col"></div>`).hideVe();
+        const holder_featureOptions = $(`<div class="ve-flex-col"></div>`).hideVe();
+        const holder_skills = $(`<div class="ve-flex-col"></div>`).hideVe();
+        const holder_tools = $(`<div class="ve-flex-col"></div>`).hideVe();
+
+        let primaryBtn = null;
+        if (!this._existingClassMetas.length) {
+            primaryBtn = $("<button class=\"btn btn-5et btn-xs mr-2\"></button>").click(() => this._state.class_ixPrimaryClass = ix);
+            const primaryBtnHover = () => {
+            primaryBtn.text(this._state.class_ixPrimaryClass === ix ? "Primary Class" : "Make Primary").title(this._state.class_ixPrimaryClass === ix ? "This is your primary class, i.e. the one you chose at level 1 for the purposes of proficiencies/etc." : "Make this your primary class, i.e. the one you chose at level 1 for the purposes of proficiencies/etc.").prop("disabled", this._state.class_ixPrimaryClass === ix);
+            };
+            this._addHookBase("class_ixPrimaryClass", primaryBtnHover);
+            primaryBtnHover();
         }
-        classChoicePanels.toggleVe();
-      });
-      
-      const holder_dispClass = $(`<div class="ve-flex-col w-100"></div>`);
-      const disp_subclass = $(`<div class="ve-flex-col w-100"></div>`);
 
-      /* const classChoicePanels = $(`<div class="ve-flex-col w-100 mt-2">
-              <div class="ve-flex btn-group w-100">
-                  <div class="ve-flex no-shrink">
-                      ${filterBtn[0].outerHTML}
-                  </div>
-                  <div class="ve-flex-col w-100">
-                      ${wrapper[0].outerHTML}
-                      ${holder_selectSubclass[0].outerHTML}
-                  </div>
-              </div>
-              ${holder_hpMode[0].outerHTML}
-              ${holder_hpInfo[0].outerHTML}
-              ${holder_startingProf[0].outerHTML}
-              ${holder_skills[0].outerHTML}
-              ${holder_tools[0].outerHTML}
-              ${holder_levelSelect[0].outerHTML}
-              ${holder_featureOptions[0].outerHTML}
-          </div>`); */
-          const classChoicePanels = $$`<div class="ve-flex-col w-100 mt-2">
-              <div class="ve-flex btn-group w-100">
-                  <div class="ve-flex no-shrink">
-                      ${filterBtn}
-                  </div>
-                  <div class="ve-flex-col w-100">
-                        ${wrapper}
-                        ${holder_selectSubclass}
-                  </div>
-              </div>
-              ${holder_hpMode}
-              ${holder_hpInfo}
-              ${holder_startingProf}
-              ${holder_skills}
-              ${holder_tools}
-              ${holder_levelSelect}
-              ${holder_featureOptions}
-          </div>`;
+        const minimizerToggle = $("<div class=\"py-1 clickable ve-muted\">[‒]</div>").click(() => {
+            const isMinimized = minimizerToggle.text() === '[+]';
+            minimizerToggle.text(isMinimized ? "[‒]" : "[+]");
+            if (isMinimized) {
+            header.text("Select a Class");
+            } else {
+            const cls = this.getClass_({'propIxClass': propIxClass});
+            const subcls = this.getSubclass_({
+                'cls': cls,
+                'propIxSubclass': propIxSubclass
+            });
+            if (cls) { header.text('' + cls.name + (subcls ? " (" + subcls.name + ')' : ''));}
+            else { header.text("Select a Class"); }
+            }
+            classChoicePanels.toggleVe();
+        });
+        
+        const holder_dispClass = $(`<div class="ve-flex-col w-100"></div>`);
+        const disp_subclass = $(`<div class="ve-flex-col w-100"></div>`);
 
-      const classChoicePanelsWrapper = $$`<div class="ve-flex-col">
-        ${ix>0? `<hr class=\"hr-3 hr--heavy\">`:''}
-        <div class="split-v-center">
-            ${header}
-            <div class="ve-flex-v-center">
-                ${primaryBtn}
-                ${minimizerToggle}
+        const classChoicePanels = $$`<div class="ve-flex-col w-100 mt-2">
+            <div class="ve-flex btn-group w-100">
+                <div class="ve-flex no-shrink">
+                    ${filterBtn}
+                </div>
+                <div class="ve-flex-col w-100">
+                    ${wrapper}
+                    ${holder_selectSubclass}
+                </div>
             </div>
-        </div>
+            ${holder_hpMode}
+            ${holder_hpInfo}
+            ${holder_startingProf}
+            ${holder_skills}
+            ${holder_tools}
+            ${holder_levelSelect}
+            ${holder_featureOptions}
+        </div>`;
 
-        ${classChoicePanels}
-      </div>`;
-      classChoicePanelsWrapper.appendTo(parentDiv_left);
+        const classChoicePanelsWrapper = $$`<div class="ve-flex-col">
+            ${ix>0? `<hr class=\"hr-3 hr--heavy\">`:''}
+            <div class="split-v-center">
+                ${header}
+                <div class="ve-flex-v-center">
+                    ${primaryBtn}
+                    ${minimizerToggle}
+                </div>
+            </div>
 
-      //Sidebar display (class text info)
-      const sidebarContent=$(`<div>
-          ${ix>0?'<hr\x20class=\x22hr-2\x20hr--heavy\x22>':''}
+            ${classChoicePanels}
+        </div>`;
+        classChoicePanelsWrapper.appendTo(parentDiv_left);
 
-          ${holder_dispClass}
-          ${disp_subclass}
-      </div>`).appendTo(parentDiv_right);
+        //Sidebar display (class text info)
+        const sidebarContent = $$`<div>
+            ${ix>0?'<hr\x20class=\x22hr-2\x20hr--heavy\x22>':''}
 
-      renderClassComponents_safe().then(() => renderSubclass_safe());
+            ${holder_dispClass}
+            ${disp_subclass}
+        </div>`.appendTo(parentDiv_right);
+
+        renderClassComponents_safe().then(() => renderSubclass_safe());
     }
 
     get modalFilterClasses() {
@@ -14929,7 +14919,6 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
       return this._existingClassMetas.filter(Boolean).length;
     }
     getClass_({ix: ix, propIxClass: propIxClass}) {
-        //console.log("_getClass", ix, propIxClass, this._data);
       if (ix == null && propIxClass == null) { throw new Error("At least one argument must be provided!"); }
       //If a propIxClass was provived, try to get the class from this._state
       if (propIxClass != null) {
@@ -15119,7 +15108,6 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
                 const _features = this._class_getFilteredFeatures(cls, subclass);
                 //_features should have loadeds, an each in loadeds should have entity
                 //some of these entity should have an entryData, but this is only for specific choice class features
-                console.log("e_onChangeLevelSelected", _features); 
                 
 
                 //Debug
@@ -15321,35 +15309,28 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
     }
     //#endregion
 
-    async _class_renderClass_pDispClass({
-      ix: _0x3c9e06,
-      $dispClass: _0x1bf26,
-      cls: _0x50e1af,
-      sc: _0x1f1733
-    }) {
-      if (this._$wrpsClassTable[_0x3c9e06]) {
-        this._$wrpsClassTable[_0x3c9e06].detach();
-      } else {
-        this._$wrpsClassTable[_0x3c9e06] = $("<div class=\"ve-flex-col w-100\"></div>");
-      }
-      _0x1bf26.empty();
-      if (_0x50e1af) {
-        const _0x184e57 = _0x50e1af._isStub ? _0x50e1af : await DataLoader.pCacheAndGet("class", _0x50e1af.source, UrlUtil.URL_TO_HASH_BUILDER["class"](_0x50e1af));
-        let _0x5c41fe = MiscUtil.copy(_0x184e57.classFeatures || []).flat();
-        _0x5c41fe = Charactermancer_Class_Util.getFilteredEntries_bySource(_0x5c41fe, this._modalFilterClasses.pageFilter, this._modalFilterClasses.pageFilter.filterBox.getValues());
-        const _0x50ec18 = {
-          'type': "section",
-          'entries': _0x5c41fe
-        };
-        this._class_renderEntriesSection(_0x1bf26, _0x50e1af.name, _0x50ec18, {
-          '$wrpTable': this._$wrpsClassTable[_0x3c9e06]
-        });
-        await this._class_renderClass_pClassTable({
-          'ix': _0x3c9e06,
-          'cls': _0x50e1af,
-          'sc': _0x1f1733
-        });
-      }
+    //#region Text Roller Display
+    async _class_renderClass_pDispClass({ ix: ix, $dispClass: parentElement, cls: cls, sc: sc }) {
+        if (this._$wrpsClassTable[ix]) {this._$wrpsClassTable[ix].detach(); }
+        else {this._$wrpsClassTable[ix] = $("<div class=\"ve-flex-col w-100\"></div>");}
+        parentElement.empty();
+
+        if (cls) {
+            const classInfo = cls;//TEMPFIX //cls._isStub ? cls : await DataLoader.pCacheAndGet("class", cls.source, UrlUtil.URL_TO_HASH_BUILDER["class"](cls));
+            let entries = MiscUtil.copy(classInfo.classFeatures || []).flat();
+            if(SETTINGS.FILTERS){entries = Charactermancer_Class_Util.getFilteredEntries_bySource(entries,
+                this._modalFilterClasses.pageFilter, this._modalFilterClasses.pageFilter.filterBox.getValues());}
+            else {
+                //if we dont use the filters (the intended method), the 'entries' array is hidden deep within loadeds
+                //we can still use that entries array, but for simplicities sake we can just get the raw classfeatures again
+                entries = ContentGetter.getFeaturesFromClass(cls);
+            }
+            
+            const toRender = { 'type': "section", 'entries': entries};
+            this._class_renderEntriesSection(parentElement, cls.name, toRender, { '$wrpTable': this._$wrpsClassTable[ix] });
+            //Render the class table
+            //TEMPFIX await this._class_renderClass_pClassTable({ 'ix': ix, 'cls': cls, 'sc': sc });
+        }
     }
     async _class_renderClass_pDispSubclass({
       ix: _0xd8d788,
@@ -15403,6 +15384,24 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
       const _0x5e497c = DataConverterClass.getRenderedClassTableFromDereferenced(_0x57a945, _0x4d6b47);
       this._$wrpsClassTable[_0x29a0a3].html('').fastSetHtml(_0x5e497c);
     }
+    _class_renderEntriesSection(parentElement, cls, toRender, { $wrpTable = null } = {}) {
+        const minimizeButton = $("<div class=\"py-1 pl-2 clickable ve-muted\">[‒]</div>").click(() => {
+            minimizeButton.text(minimizeButton.text() === '[+]' ? '[‒]' : "[+]");
+            if ($wrpTable) { $wrpTable.toggleVe(); }
+            displayedElement.toggleVe();
+        });
+        const displayedElement = Renderer.hover.$getHoverContent_generic(toRender);
+        $$`<div class="ve-flex-col">
+                <div class="split-v-center">
+                    <div class="rd__h rd__h--0"><div class="entry-title-inner">${(cls || '').qq()}</div></div>
+                    ${minimizeButton}
+                </div>
+                ${$wrpTable}
+                ${displayedElement}
+        </div>`.appendTo(parentElement);
+    }
+    //#endregion
+
 
     /**Get the features of our current class and subclass */
     _class_getFilteredFeatures(cls, sc) {
@@ -15444,14 +15443,11 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
             Charactermancer_Util.doApplyFilterToFeatureEntries_bySource(features,
                 this._modalFilterClasses.pageFilter, this._modalFilterClasses.pageFilter.filterBox.getValues());
         }
-        console.log("_class_pRenderFeatureOptionsSelects_", features);
         //by this point, 'features' should be an array of classFeatures with property 'loadeds'
         const groupedByOptionsSet = Charactermancer_Util.getFeaturesGroupedByOptionsSet(features);
         //groupedByOptionsSet should be an array of objects like this: {optionsSets: [...], topLevelFeature: {...}}
         const {lvlMin: lvlMin, lvlMax: lvlMax } = await this._class_pGetMinMaxLevel(ix);
         this._class_unregisterFeatureSourceTrackingFeatureComps(ix);
-
-        console.log(lvlMin, lvlMax);
 
         let asiCount = 0;
         for (const grpA of groupedByOptionsSet) {
@@ -15480,11 +15476,7 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
     async _class_pRenderFeatureComps(ix, { $stgFeatureOptions: stgFeatureOptions }) {
         for (const component of this._compsClassFeatureOptionsSelect[ix]) {
             //component._optionsSet[0].entity.entryData exists
-            const isNoChoice = await component.pIsNoChoice();
-            const isAvailable = await component.pIsAvailable();
-            //if ((await component.pIsNoChoice()) && !(await component.pIsAvailable())) {continue;}
-            console.log(isNoChoice, isAvailable);
-            if(isNoChoice && !isAvailable){continue;}
+            if ((await component.pIsNoChoice()) && !(await component.pIsAvailable())) {continue;}
             
             if (!(await component.pIsNoChoice()) || (await component.pIsForceDisplay())) {
                 stgFeatureOptions.showVe().append('' + (component.modalTitle ?
@@ -15513,26 +15505,7 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
       };
     }
     
-    ["_class_renderEntriesSection"](_0x3413d5, _0x582d2d, _0x1aea64, {
-      $wrpTable = null
-    } = {}) {
-      const _0x4c8fa0 = $("<div class=\"py-1 pl-2 clickable ve-muted\">[‒]</div>").click(() => {
-        _0x4c8fa0.text(_0x4c8fa0.text() === '[+]' ? '[‒]' : "[+]");
-        if ($wrpTable) {
-          $wrpTable.toggleVe();
-        }
-        _0x3fe7d2.toggleVe();
-      });
-      const _0x3fe7d2 = Renderer.hover.$getHoverContent_generic(_0x1aea64);
-      $`<div class="ve-flex-col">
-              <div class="split-v-center">
-                  <div class="rd__h rd__h--0"><div class="entry-title-inner">${(_0x582d2d || '').qq()}</div></div>
-                  ${_0x4c8fa0}
-              </div>
-              ${$wrpTable}
-              ${_0x3fe7d2}
-          </div>`.appendTo(_0x3413d5);
-    }
+    
     ['class_getPrimaryClass']() {
       if (!~this._state.class_ixPrimaryClass) {
         return null;
@@ -22799,31 +22772,26 @@ class Charactermancer_Class_Util {
 
     static isClassEntryFilterMatch(entry, pageFilter, filterValues) {
         const source = entry.source;
-        const options = entry.isClassFeatureVariant ? {
-            isClassFeatureVariant: true
-        } : null;
+        const options = entry.isClassFeatureVariant ? {isClassFeatureVariant: true} : null;
 
         if (pageFilter.filterBox) {
             return pageFilter.filterBox.toDisplayByFilters(filterValues, ...[{
-                filter: pageFilter.sourceFilter,
-                value: source,
-            }, pageFilter.optionsFilter ? {
+                filter: pageFilter.sourceFilter, value: source, }, pageFilter.optionsFilter ? {
                 filter: pageFilter.optionsFilter,
                 value: options,
             } : null, ].filter(Boolean), );
         }
 
-        return pageFilter.sourceFilter.toDisplay(filterValues, source) && (!pageFilter.optionsFilter || pageFilter.optionsFilter.toDisplay(filterValues, options));
+        return pageFilter.sourceFilter.toDisplay(filterValues, source) && (!pageFilter.optionsFilter
+            || pageFilter.optionsFilter.toDisplay(filterValues, options));
     }
 
     static getFilteredEntries_bySource(entries, pageFilter, filterValues) {
         const isDisplayableEntry = ({entry, filterValues, pageFilter})=>{
-            if (!entry.source)
-                return true;
+            if (!entry.source){return true;}
 
             return this.isClassEntryFilterMatch(entry, pageFilter, filterValues);
-        }
-        ;
+        };
 
         return this._getFilteredEntries({
             entries,
@@ -22832,7 +22800,6 @@ class Charactermancer_Class_Util {
             fnIsDisplayableEntry: isDisplayableEntry,
         }, );
     }
-
     static _getFilteredEntries({entries, pageFilter, filterValues, fnIsDisplayableEntry, }, ) {
         const recursiveFilter = (entry)=>{
             if (entry == null)
@@ -22842,10 +22809,7 @@ class Charactermancer_Class_Util {
 
             if (entry instanceof Array) {
                 entry = entry.filter(it=>fnIsDisplayableEntry({
-                    entry: it,
-                    pageFilter,
-                    filterValues,
-                }));
+                    entry: it, pageFilter, filterValues, }));
 
                 return entry.map(it=>recursiveFilter(it));
             }
@@ -22860,8 +22824,7 @@ class Charactermancer_Class_Util {
             }
             );
             return entry;
-        }
-        ;
+        };
 
         entries = MiscUtil.copy(entries);
         return recursiveFilter(entries);
@@ -25801,7 +25764,6 @@ class Charactermancer_FeatureOptionsSelect extends BaseComponent {
     }
 
     render($wrp) {
-        console.log("render feature opt select");
         const $stgSubChoiceData = $$`<div class="w-100 ve-flex-col mt-2"></div>`.hideVe();
 
         this._render_options();
@@ -58644,7 +58606,6 @@ class ContentGetter{
             hash: classFeature.hash,
             className,
         };
-        console.log(entityRoot);
 
        /*  const isIgnored = await this._pGetIgnoredAndApplySideData(entityRoot, "classFeature");
         if (isIgnored) {
@@ -58710,7 +58671,7 @@ class ContentGetter{
         if(!_entryData){
             //If no entryData exists, let's ask our foundry.json file if they know if this feature should have any entryData
             let foundryFeature = ContentGetter.getFoundryDataForFeature({name: name, level:level, source:source, className:_className, classSource:classSource}, foundryData);
-            if(foundryFeature){ loadedRoot.entity.entryData = foundryFeature.entryData; console.log("entrydata set");}
+            if(foundryFeature){ loadedRoot.entity.entryData = foundryFeature.entryData; }
         }
         classFeature.loadeds = [loadedRoot];
     }
@@ -58753,7 +58714,7 @@ class ContentGetter{
         //Should only recieve one answer here
         if(filtered.length > 1){console.error("found too many entries");}
         //if(filtered.length < 1){console.log("Could not find foundry feature to match " + feature.name + "|" + feature.source); return null;} //Dont expect all classFeatures to be listed in here
-        if(filtered.length == 1){console.log("Found match for " + feature.name);}
+        //if(filtered.length == 1){console.log("Found match for " + feature.name);}
         return filtered[0];
     }
 }
