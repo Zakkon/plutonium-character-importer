@@ -56,6 +56,7 @@ class ParentWindow {
 
         this.data = ContentGetter._getBase();
         ContentGetter._cookData(this.data);
+        console.log("DATA RACES", this.data.race);
 
         this.comp_class = new ActorCharactermancerClass(this);
         this.comp_class.render();
@@ -4760,6 +4761,14 @@ String.prototype.toTitleCase = String.prototype.toTitleCase || function() {
     return str;
 };
 String.prototype.last = String.prototype.last || function() {return this[this.length - 1];};
+String.prototype.uppercaseFirst = String.prototype.uppercaseFirst || function() {
+    const str = this.toString();
+    if (str.length === 0)
+        return str;
+    if (str.length === 1)
+        return str.charAt(0).toUpperCase();
+    return str.charAt(0).toUpperCase() + str.slice(1);
+};
 //#endregion
 
 
@@ -6242,12 +6251,13 @@ globalThis.Renderer = function() {
     this._renderDice = function(entry, textStack, meta, options) {
         const pluginResults = this._getPlugins("dice").map(plugin=>plugin(entry, textStack, meta, options)).filter(Boolean);
 
+        console.log("entry", entry);
+        //TEMPFIX
+        if(!SETTINGS.DO_RENDER_DICE){textStack[0] += entry.displayText; return;}
         textStack[0] += Renderer.getEntryDice(entry, entry.name, {
-            isAddHandlers: this._isAddHandlers,
-            pluginResults
+            isAddHandlers: this._isAddHandlers, pluginResults
         });
-    }
-    ;
+    };
 
     this._renderActions = function(entry, textStack, meta, options) {
         const dataString = this._renderEntriesSubtypes_getDataString(entry);
@@ -8865,12 +8875,7 @@ Renderer.hover = {
 
     $getHoverContent_stats(page, toRender, opts, renderFnOpts) {
         opts = opts || {};
-        if (page === UrlUtil.PG_RECIPES){
-            opts = {
-                ...MiscUtil.copyFast(opts),
-                isBookContent: true
-            };
-        }
+        if (page === UrlUtil.PG_RECIPES){opts = {...MiscUtil.copyFast(opts), isBookContent: true};}
 
         const fnRender = opts.fnRender || Renderer.hover.getFnRenderCompact(page, {isStatic: opts.isStatic});
         const $out = $$`<table class="w-100 stats ${opts.isBookContent ? `stats--book` : ""}">${fnRender(toRender, renderFnOpts)}</table>`;
@@ -9079,8 +9084,7 @@ Renderer._splitByPipeBase = function(leadingCharacter) {
         return out;
     }
     ;
-}
-;
+};
 
 Renderer.splitTagByPipe = Renderer._splitByPipeBase("@");
 Renderer.utils = {
@@ -12164,11 +12168,13 @@ Renderer.getAbilityData._doRenderOuter = function(abObj) {
     function handleAbility(abObj, shortLabel, optToConvertToTextStorage) {
         if (abObj[shortLabel] != null) {
             const isNegMod = abObj[shortLabel] < 0;
+            console.log("handleability", shortLabel);
             const toAdd = `${shortLabel.uppercaseFirst()} ${(isNegMod ? "" : "+")}${abObj[shortLabel]}`;
 
             if (optToConvertToTextStorage) {
                 optToConvertToTextStorage.push(toAdd);
-            } else {
+            }
+            else {
                 toConvertToText.push(toAdd);
                 toConvertToShortText.push(toAdd);
             }
@@ -12671,7 +12677,7 @@ class MixedProxyBase //extends Cls
 
     _doFireHooks(hookProp, prop, value, prevValue) {
         if (this.__hooks[hookProp] && this.__hooks[hookProp][prop]){
-            console.log("Fire hooks");
+            console.log("Fire hook", hookProp, prop, value, prevValue);
             this.__hooks[hookProp][prop].forEach(hook=>hook(prop, value, prevValue));
         }
     }
@@ -14353,23 +14359,21 @@ class ActorCharactermancerBaseComponent extends BaseComponent {
         element.empty();
         //TEMPFIX
         //this._parent.featureSourceTracker_.unregister(this[propComp]);
+        console.log("renderotherprof", entity, propProf);
         if (entity && entity[propProf]) {
             element.showVe().append("<hr class=\"hr-2\"><div class=\"bold mb-2\">" + title + "</div>");
             const existingFvtt = fnGetExistingFvtt ? fnGetExistingFvtt(this._actor) : {
-            [propProf]: MiscUtil.get(this._actor, '_source', ...propPathActorExistingProficiencies)
+                [propProf]: MiscUtil.get(this._actor, '_source', ...propPathActorExistingProficiencies)
             };
             this[propComp] = new CompClass({
-            //'featureSourceTracker': this._parent.featureSourceTracker_,
-            'existing': CompClass.getExisting(existingFvtt),
-            'existingFvtt': existingFvtt,
-            'available': fnGetMappedProficiencies ? fnGetMappedProficiencies(entity[propProf], propProf) : entity[propProf]
+                //'featureSourceTracker': this._parent.featureSourceTracker_,
+                'existing': CompClass.getExisting(existingFvtt),
+                'existingFvtt': existingFvtt,
+                'available': fnGetMappedProficiencies ? fnGetMappedProficiencies(entity[propProf], propProf) : entity[propProf]
             });
             this[propComp].render(element);
         }
-        else {
-            element.hideVe();
-            this[propComp] = null;
-        }
+        else { element.hideVe(); this[propComp] = null; }
     }
     _shared_renderEntity_stgDiDrDvCi({
       $stg: _0x53e426,
@@ -17575,9 +17579,68 @@ class ActorCharactermancerAbility extends ActorCharactermancerBaseComponent {
       this._tabAbilities = _0x2b38cf.tabAbilities;
       this._compStatgen = null;
     }
-    get ['compStatgen']() {
-      return this._compStatgen;
+    render() {
+        const parentDiv = this._tabAbilities?.$wrpTab;
+        if (!parentDiv) {return;}
+
+        //This element will handle the heavy lifting, both UI wise and logic wise
+        this._compStatgen = new StatGenUiCharactermancer({
+            'isCharacterMode': true,
+            'isFvttMode': true,
+            'races': this._data.race,
+            'backgrounds': this._data.background,
+            'feats': this._data.feat,
+            /* 'modalFilterRaces': this._parent.compRace.modalFilterRaces,
+            'modalFilterBackgrounds': this._parent.compBackground.modalFilterBackgrounds,
+            'modalFilterFeats': this._parent.compFeat.modalFilterFeats, */
+            /* 'existingScores': this._getExistingScores() */
+        });
+
+        /* const clientThenWorld = GameStorage.getClientThenWorld(this.constructor._STORAGE_KEY__PB_CUSTOM);
+        if (clientThenWorld != null) {this._compStatgen.setStateFrom(clientThenWorld);} */
+
+        const _0x8ec07a = MiscUtil.throttle(this._doSavePbRules.bind(this), 0x64); 
+        this._compStatgen.addHookPointBuyCustom(_0x8ec07a);
+
+        //Render the ui for changing ability scores
+        this._compStatgen.render(parentDiv);
+        /*
+        const _0x1a56f6 = () => {
+            let _0x1eb097 = 0x0;
+            for (let _0x1d57fc = 0x0; _0x1d57fc < this._parent.compClass.state.class_ixMax + 0x1; ++_0x1d57fc) {
+            const {
+                propIxClass: _0x5a8f01,
+                propCntAsi: _0x320301
+            } = ActorCharactermancerBaseComponent.class_getProps(_0x1d57fc);
+            const _0x56ff24 = this._parent.compClass.getClass_({
+                'propIxClass': _0x5a8f01
+            });
+            if (!_0x56ff24) {
+                continue;
+            }
+            _0x1eb097 += Number(this._parent.compClass.state[_0x320301]) || 0x0;
+            }
+            this._compStatgen.common_cntAsi = _0x1eb097;
+        };
+        this._parent.compClass.addHookBase("class_pulseChange", _0x1a56f6);
+        this._parent.compClass.addHookBase('class_totalLevels', _0x1a56f6);
+        _0x1a56f6();
+        const _0x4ae28f = () => this._parent.compFeat.setAdditionalFeatStateFromStatgen_();
+        this._compStatgen.addHookPulseAsi(_0x4ae28f);
+        this._parent.compFeat.setAdditionalFeatStateFromStatgen_();
+        const _0x1ace3d = () => this._parent.compRace.state.race_ixRace = this._compStatgen.ixRace;
+        this._compStatgen.addHookIxRace(_0x1ace3d);
+        const _0x107d17 = () => this._parent.compBackground.state.background_ixBackground = this._compStatgen.ixBackground;
+        this._compStatgen.addHookIxBackground(_0x107d17);
+        const _0x5ef610 = () => this._compStatgen.ixRace = this._parent.compRace.state.race_ixRace;
+        this._parent.compRace.addHookBase("race_ixRace", _0x5ef610);
+        const _0xea4aee = () => this._compStatgen.ixBackground = this._parent.compBackground.state.background_ixBackground;
+        this._parent.compBackground.addHookBase("background_ixBackground", _0xea4aee);
+        this._compStatgen.ixRace = this._parent.compRace.state.race_ixRace;
+        this._compStatgen.ixBackground = this._parent.compBackground.state.background_ixBackground; */
     }
+
+    get compStatgen() { return this._compStatgen; }
     ["addHookAbilityScores"](..._0x42aa73) {
       return this._compStatgen.addHookAbilityScores(..._0x42aa73);
     }
@@ -17587,67 +17650,7 @@ class ActorCharactermancerAbility extends ActorCharactermancerBaseComponent {
     ["getTotals"](..._0x5d866f) {
       return this._compStatgen.getTotals(..._0x5d866f);
     }
-    render() {
-      const parentDiv = this._tabAbilities?.$wrpTab;
-      if (!parentDiv) {return;}
-      this._data.race = []; //TEMPFIX
-
-      //This element will handle the heavy lifting, both UI wise and logic wise
-      this._compStatgen = new StatGenUiCharactermancer({
-        'isCharacterMode': true,
-        'isFvttMode': true,
-        'races': this._data.race,
-        'backgrounds': this._data.background,
-        'feats': this._data.feat,
-        /* 'modalFilterRaces': this._parent.compRace.modalFilterRaces,
-        'modalFilterBackgrounds': this._parent.compBackground.modalFilterBackgrounds,
-        'modalFilterFeats': this._parent.compFeat.modalFilterFeats, */
-        /* 'existingScores': this._getExistingScores() */
-      });
-
-      /* const clientThenWorld = GameStorage.getClientThenWorld(this.constructor._STORAGE_KEY__PB_CUSTOM);
-      if (clientThenWorld != null) {this._compStatgen.setStateFrom(clientThenWorld);} */
-
-      const _0x8ec07a = MiscUtil.throttle(this._doSavePbRules.bind(this), 0x64); 
-      this._compStatgen.addHookPointBuyCustom(_0x8ec07a);
-
-      //Render the ui for changing ability scores
-      this._compStatgen.render(parentDiv);
-      /*
-      const _0x1a56f6 = () => {
-        let _0x1eb097 = 0x0;
-        for (let _0x1d57fc = 0x0; _0x1d57fc < this._parent.compClass.state.class_ixMax + 0x1; ++_0x1d57fc) {
-          const {
-            propIxClass: _0x5a8f01,
-            propCntAsi: _0x320301
-          } = ActorCharactermancerBaseComponent.class_getProps(_0x1d57fc);
-          const _0x56ff24 = this._parent.compClass.getClass_({
-            'propIxClass': _0x5a8f01
-          });
-          if (!_0x56ff24) {
-            continue;
-          }
-          _0x1eb097 += Number(this._parent.compClass.state[_0x320301]) || 0x0;
-        }
-        this._compStatgen.common_cntAsi = _0x1eb097;
-      };
-      this._parent.compClass.addHookBase("class_pulseChange", _0x1a56f6);
-      this._parent.compClass.addHookBase('class_totalLevels', _0x1a56f6);
-      _0x1a56f6();
-      const _0x4ae28f = () => this._parent.compFeat.setAdditionalFeatStateFromStatgen_();
-      this._compStatgen.addHookPulseAsi(_0x4ae28f);
-      this._parent.compFeat.setAdditionalFeatStateFromStatgen_();
-      const _0x1ace3d = () => this._parent.compRace.state.race_ixRace = this._compStatgen.ixRace;
-      this._compStatgen.addHookIxRace(_0x1ace3d);
-      const _0x107d17 = () => this._parent.compBackground.state.background_ixBackground = this._compStatgen.ixBackground;
-      this._compStatgen.addHookIxBackground(_0x107d17);
-      const _0x5ef610 = () => this._compStatgen.ixRace = this._parent.compRace.state.race_ixRace;
-      this._parent.compRace.addHookBase("race_ixRace", _0x5ef610);
-      const _0xea4aee = () => this._compStatgen.ixBackground = this._parent.compBackground.state.background_ixBackground;
-      this._parent.compBackground.addHookBase("background_ixBackground", _0xea4aee);
-      this._compStatgen.ixRace = this._parent.compRace.state.race_ixRace;
-      this._compStatgen.ixBackground = this._parent.compBackground.state.background_ixBackground; */
-    }
+    
     _doSavePbRules() {
       const pointBuySavedState = this._compStatgen.getSaveableStatePointBuyCustom();
       GameStorage.pSetWorldThenClient(this.constructor._STORAGE_KEY__PB_CUSTOM, pointBuySavedState).then(null);
@@ -20505,15 +20508,14 @@ class ActorCharactermancerRace extends ActorCharactermancerBaseComponent {
       this._compRaceDamageVulnerability = null;
       this._compRaceConditionImmunity = null;
     }
+
     render() {
         const parentDiv = this._tabRace?.$wrpTab;
         if (!parentDiv) {return;}
         if(!this._data.race || this._data.race.length < 1){console.error("No races provided!");}
-        const {
-            $sel: ele_sel,
-            $btnFilter: ele_btnFilter,
-            $stgSelVersion: ele_selVersion
-        } = Charactermancer_Util.getFilterSearchMeta({
+        
+        const {$sel: ele_sel, $btnFilter: ele_btnFilter, $stgSelVersion: ele_selVersion }
+        = Charactermancer_Util.getFilterSearchMeta({
             'comp': this,
             'prop': "race_ixRace",
             'propVersion': "race_ixRace_version",
@@ -20522,22 +20524,26 @@ class ActorCharactermancerRace extends ActorCharactermancerBaseComponent {
             'title': "Race"
         });
 
-        const _0x3b7997 = () => this._setStateValue('race_ixRace_version', null);
-        this._addHookBase('race_ixRace', _0x3b7997);
+        //When race changes, reset the race version
+        const onRaceChanged = () => this._setStateValue('race_ixRace_version', null);
+        this._addHookBase('race_ixRace', onRaceChanged);
 
         const createExtraInfoElements = () => {
-            const _0x4f6a85 = Object.keys(this.__state).filter(_0x2b0e53 => _0x2b0e53.startsWith('race_')
-                && !['race_ixRace', 'race_ixRace_version'].includes(_0x2b0e53)).mergeMap(_0x1b8cad => ({
-                [_0x1b8cad]: null
+            //Take all child names of __state
+            //Get only the child names that start with "race_" and arent 'race_ixRace' or 'race_ixRace_version'
+            //From those, return them all as an array? not sure
+            const racePropertyNames = Object.keys(this.__state).filter(prop => prop.startsWith('race_')
+                && !['race_ixRace', 'race_ixRace_version'].includes(prop)).mergeMap(props => ({
+                [props]: null
             }));
-            this._proxyAssignSimple("state", _0x4f6a85);
+
+            this._proxyAssignSimple("state", racePropertyNames);
             const curRace = this.getRace_();
+            if(this._data.race.length<1){console.error("data has no races?");}
+            console.log("currace", curRace, "race_ixRace", this.__state.race_ixRace);
 
             //#region Render proficiencies
-            this._race_renderRace_stgSize({
-                '$stgSize': ele_size,
-                'race': curRace
-            });
+            this._race_renderRace_stgSize({'$stgSize': ele_size, 'race': curRace });
             
             this._shared_renderEntity_stgOtherProficiencies({
                 '$stg': ele_skillToolLang,
@@ -20643,9 +20649,11 @@ class ActorCharactermancerRace extends ActorCharactermancerBaseComponent {
                 'propTraits': 'ci'
             });
             //#endregion
+            
             ele_textRoller.empty();
 
             if (curRace) {
+                //PG_RACES = "Races.html"
                 ele_textRoller.append(Renderer.hover.$getHoverContent_stats(UrlUtil.PG_RACES, MiscUtil.copy(curRace)));
                 const race = this._data.race[this._state.race_ixRace];
                 //TEMPFIX
@@ -20659,7 +20667,9 @@ class ActorCharactermancerRace extends ActorCharactermancerBaseComponent {
             }
         };
 
+        //When race version changes, redraw the elements
         this._addHookBase("race_ixRace_version", createExtraInfoElements);
+
         const ele_size = $$`<div class="ve-flex-col"></div>`.hideVe();
         const ele_skillToolLang = $$`<div class="ve-flex-col"></div>`.hideVe();
         const ele_skill = $$`<div class="ve-flex-col"></div>`.hideVe();
@@ -20700,6 +20710,7 @@ class ActorCharactermancerRace extends ActorCharactermancerBaseComponent {
                 ${ele_textRoller}
             </div>
         </div>`.appendTo(parentDiv);
+
         createExtraInfoElements();
     }
     
@@ -20808,38 +20819,24 @@ class ActorCharactermancerRace extends ActorCharactermancerBaseComponent {
       return _0x5858ca.name.toLowerCase().trim() === _0x10d38e || (PageFilterRaces.getInvertedName(_0x5858ca.name) || '').toLowerCase().trim() === _0x10d38e;
     }
     getRace_() {
-        const _0x41c84d = this._data.race[this._state.race_ixRace];
-        if (!_0x41c84d) {
-            return null;
+        console.log("getrace", this._data.race, this._state.race_ixRace);
+        const curRace = this._data.race[this._state.race_ixRace];
+        if (!curRace) { return null; }
+        console.log("getrace2", this._state.race_ixRace_version);
+        if (this._state.race_ixRace_version == null) { return curRace; }
+        const raceVersions = DataUtil.generic.getVersions(curRace);
+        return raceVersions[this._state.race_ixRace_version];
+    }
+    _race_renderRace_stgSize({$stgSize: parentDiv, race: race}) {
+        parentDiv.empty();
+        if (race && race.size) {
+            parentDiv.showVe().append("<hr class=\"hr-2\"><div class=\"bold mb-2\">Size</div>");
+            this._compRaceSize = new Charactermancer_Race_SizeSelect({'sizes': race.size});
+            this._compRaceSize.render(parentDiv);
         }
-        if (this._state.race_ixRace_version == null) {
-            return _0x41c84d;
-        }
-        const _0x4bcc16 = DataUtil.generic.getVersions(_0x41c84d);
-        return _0x4bcc16[this._state.race_ixRace_version];
+        else { parentDiv.hideVe(); this._compRaceSize = null; }
     }
-    ["_race_renderRace_stgSize"]({
-      $stgSize: _0x40232f,
-      race: _0x503779
-    }) {
-      _0x40232f.empty();
-      if (_0x503779 && _0x503779.size) {
-        _0x40232f.showVe().append("<hr class=\"hr-2\"><div class=\"bold mb-2\">Size</div>");
-        this._compRaceSize = new Charactermancer_Race_SizeSelect({
-          'sizes': _0x503779.size
-        });
-        this._compRaceSize.render(_0x40232f);
-      } else {
-        _0x40232f.hideVe();
-        this._compRaceSize = null;
-      }
-    }
-    ["_getDefaultState"]() {
-      return {
-        'race_ixRace': null,
-        'race_ixRace_version': null
-      };
-    }
+    _getDefaultState() { return {'race_ixRace': null, 'race_ixRace_version': null}; }
 }
 
 class Charactermancer_Race_Util {
@@ -53775,6 +53772,8 @@ class ContentGetter{
         }
         data.class = data.class?.filter(cls => !!cls);
         data.classFeature = data.classFeature?.filter(f => !!f);
+        data.race = data.race?.filter(r => !!r);
+        data.subrace = data.subrace?.filter(sr => !!sr);
         return data;
     }
     /**Grabs JSON information from a file filled with information used in specific circumstances, such as figuring out class feature options (which proficiencies you get to choose between)
