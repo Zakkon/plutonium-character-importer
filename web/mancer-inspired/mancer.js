@@ -14618,7 +14618,8 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
           'ix': ix,
           'cls': cls
         });
-        //Now render the level select ui
+
+        //Now create the level select UI
         await this._class_renderClass_pStgLevelSelect({
           '$stgLevelSelect': holder_levelSelect,
           '$stgFeatureOptions': holder_featureOptions,
@@ -14633,13 +14634,10 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
           'idFilterBoxChangeClassLevels': filter_evnt_valchange_class
         });
         this._state.class_totalLevels = this.class_getTotalLevels();
-        //Render skills that our class lets us choose
+        //Create the element that lets us choose skill proficiencies
         this._class_renderClass_stgSkills({ '$stgSkills': holder_skills, 'ix': ix, 'propIxClass': propIxClass });
-        /* this._class_renderClass_stgTools({
-          '$stgTools': holder_tools,
-          'ix': ix,
-          'propIxClass': propIxClass
-        }); */
+        //Create the element that lets us choose tool proficiencies
+        this._class_renderClass_stgTools({ '$stgTools': holder_tools, 'ix': ix, 'propIxClass': propIxClass })
         /* await this._class_renderClass_pDispClass({
           'ix': ix,
           '$dispClass': holder_dispClass,
@@ -14778,6 +14776,7 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
               ${holder_hpInfo}
               ${holder_startingProf}
               ${holder_skills}
+              ${holder_tools}
               ${holder_levelSelect}
               ${holder_featureOptions}
           </div>`;
@@ -15044,6 +15043,8 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
         this._metaHksClassStgSubclass[ix] = null;
       }
     }
+    //#region Health
+    /**Create the display for the choice of HP gain mode for our class (average, roll, etc) */
     _class_renderClass_stgHpMode({
       $stgHpMode: parentElement,
       ix: ix,
@@ -15060,6 +15061,7 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
         this._compsClassHpIncreaseMode[ix] = null;
       }
     }
+    /**Create the display for how our health will look as we level up */
     _class_renderClass_stgHpInfo({
       $stgHpInfo: parentElement,
       ix: ix,
@@ -15079,63 +15081,7 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
         this._compsClassHpInfo[ix] = null;
       }
     }
-    _class_renderClass_stgStartingProficiencies({
-        $stgStartingProficiencies: element, ix: ix, cls: cls}) {
-
-        const existingClassMeta = SETTINGS.USE_EXISTING? this._class_getExistingClassMeta(ix) : null;
-        if (existingClassMeta) {return;}
-        if (this._metaHksClassStgStartingProficiencies[ix]) {
-            this._metaHksClassStgStartingProficiencies[ix].unhook();
-        }
-        element.empty();
-
-        //Our parent should be an ActorCharactermancer
-        if(!SETTINGS.PARENTLESS_MODE){this._parent.featureSourceTracker_.unregister(this._compsClassStartingProficiencies[ix]);}
-        if (cls && (cls.startingProficiencies || cls.multiclassing?.["proficienciesGained"])) {
-            element.showVe().append("<hr class=\"hr-2\"><div class=\"bold mb-2\">Proficiencies</div>");
-            this._compsClassStartingProficiencies[ix] = Charactermancer_Class_StartingProficiencies.get({
-                //TEMPFIX //'featureSourceTracker': this._parent.featureSourceTracker_,
-                'primaryProficiencies': cls.startingProficiencies,
-                'multiclassProficiencies': cls.multiclassing?.["proficienciesGained"],
-                'savingThrowsProficiencies': cls.proficiency,
-                'existingProficienciesFvttArmor': MiscUtil.get(this._actor, "_source", "system", "traits", "armorProf"),
-                'existingProficienciesFvttWeapons': MiscUtil.get(this._actor, '_source', "system", "traits", "weaponProf"),
-                'existingProficienciesFvttSavingThrows': Charactermancer_Class_StartingProficiencies.getExistingProficienciesFvttSavingThrows(this._actor)
-            });
-            this._compsClassStartingProficiencies[ix].render(element);
-        }
-        else {
-            element.hideVe();
-            this._compsClassStartingProficiencies[ix] = null;
-        }
-
-        const setProfMode = () => {
-            if (this._compsClassStartingProficiencies[ix]) {
-            this._compsClassStartingProficiencies[ix].mode =
-            this._state.class_ixPrimaryClass === ix ? Charactermancer_Class_ProficiencyImportModeSelect.MODE_PRIMARY
-            : Charactermancer_Class_ProficiencyImportModeSelect.MODE_MULTICLASS;
-            }
-        };
-
-        this._addHookBase("class_ixPrimaryClass", setProfMode);
-        this._metaHksClassStgStartingProficiencies[ix] = {
-            'unhook': () => this._removeHookBase("class_ixPrimaryClass", setProfMode)
-        };
-
-        setProfMode();
-    }
-    _class_getExistingClassMeta(classIx) {
-      if (this._existingClassMetas[classIx]) {return this._existingClassMetas[classIx];}
-
-      const {propIxClass: propIxClass } = ActorCharactermancerBaseComponent.class_getProps(classIx);
-
-      const cls = this.getClass_({'propIxClass': propIxClass });
-
-      const classItems = Charactermancer_Class_Util.getExistingClassItems(this._actor, cls);
-      const firstItem = classItems.length ? classItems[0] : null;
-      if (!firstItem) { return null; }
-      return {'item': firstItem, 'level': Number(firstItem.system.levels || 0)};
-    }
+    //#endregion
 
     //#region Level Select
     /**Render a LevelSelect element */
@@ -15230,7 +15176,8 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
     }
     //#endregion
 
-    /**Try to render an element to display skill proficiency choices that our class gives us*/
+    //#region Skill and Tool proficiencies
+    /**Create an element to display skill proficiency choices that our class gives us*/
     _class_renderClass_stgSkills({ $stgSkills: parentElement, ix: ix, propIxClass: propIxClass }) {
       this._class_renderClass_stgSkillsTools({
         '$stg': parentElement,
@@ -15247,7 +15194,7 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
         'fnGetMapped': Charactermancer_OtherProficiencySelect.getMappedSkillProficiencies.bind(Charactermancer_OtherProficiencySelect)
       });
     }
-     /**Try to render an element to display tool proficiency choices that our class gives us*/
+     /**Create an element to display tool proficiency choices that our class gives us*/
     _class_renderClass_stgTools({ $stgTools: parentElement, ix: ix, propIxClass: propIxClass }) {
       this._class_renderClass_stgSkillsTools({
         '$stg': parentElement,
@@ -15265,7 +15212,7 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
       });
     }
 
-    /**Try to render an element to display skill or tool proficiency choices that our class gives us.
+    /**Create an element to display skill or tool proficiency choices that our class gives us.
      * Use _class_renderClass_stgSkills or _class_renderClass_stgTools if you specifically know which one you want to use  */
     _class_renderClass_stgSkillsTools({
         $stg: parentElement,
@@ -15313,7 +15260,67 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
 
         doRenderSkillsTools();
     }
-    
+
+    /**Create the element displaying starting proficiencies for our class */
+    _class_renderClass_stgStartingProficiencies({
+        $stgStartingProficiencies: element, ix: ix, cls: cls}) {
+
+        const existingClassMeta = SETTINGS.USE_EXISTING? this._class_getExistingClassMeta(ix) : null;
+        if (existingClassMeta) {return;}
+        if (this._metaHksClassStgStartingProficiencies[ix]) {
+            this._metaHksClassStgStartingProficiencies[ix].unhook();
+        }
+        element.empty();
+
+        //Our parent should be an ActorCharactermancer
+        if(!SETTINGS.PARENTLESS_MODE){this._parent.featureSourceTracker_.unregister(this._compsClassStartingProficiencies[ix]);}
+        if (cls && (cls.startingProficiencies || cls.multiclassing?.["proficienciesGained"])) {
+            element.showVe().append("<hr class=\"hr-2\"><div class=\"bold mb-2\">Proficiencies</div>");
+            this._compsClassStartingProficiencies[ix] = Charactermancer_Class_StartingProficiencies.get({
+                //TEMPFIX //'featureSourceTracker': this._parent.featureSourceTracker_,
+                'primaryProficiencies': cls.startingProficiencies,
+                'multiclassProficiencies': cls.multiclassing?.["proficienciesGained"],
+                'savingThrowsProficiencies': cls.proficiency,
+                'existingProficienciesFvttArmor': MiscUtil.get(this._actor, "_source", "system", "traits", "armorProf"),
+                'existingProficienciesFvttWeapons': MiscUtil.get(this._actor, '_source', "system", "traits", "weaponProf"),
+                'existingProficienciesFvttSavingThrows': Charactermancer_Class_StartingProficiencies.getExistingProficienciesFvttSavingThrows(this._actor)
+            });
+            this._compsClassStartingProficiencies[ix].render(element);
+        }
+        else {
+            element.hideVe();
+            this._compsClassStartingProficiencies[ix] = null;
+        }
+
+        const setProfMode = () => {
+            if (this._compsClassStartingProficiencies[ix]) {
+            this._compsClassStartingProficiencies[ix].mode =
+            this._state.class_ixPrimaryClass === ix ? Charactermancer_Class_ProficiencyImportModeSelect.MODE_PRIMARY
+            : Charactermancer_Class_ProficiencyImportModeSelect.MODE_MULTICLASS;
+            }
+        };
+
+        this._addHookBase("class_ixPrimaryClass", setProfMode);
+        this._metaHksClassStgStartingProficiencies[ix] = {
+            'unhook': () => this._removeHookBase("class_ixPrimaryClass", setProfMode)
+        };
+
+        setProfMode();
+    }
+    _class_getExistingClassMeta(classIx) {
+      if (this._existingClassMetas[classIx]) {return this._existingClassMetas[classIx];}
+
+      const {propIxClass: propIxClass } = ActorCharactermancerBaseComponent.class_getProps(classIx);
+
+      const cls = this.getClass_({'propIxClass': propIxClass });
+
+      const classItems = Charactermancer_Class_Util.getExistingClassItems(this._actor, cls);
+      const firstItem = classItems.length ? classItems[0] : null;
+      if (!firstItem) { return null; }
+      return {'item': firstItem, 'level': Number(firstItem.system.levels || 0)};
+    }
+    //#endregion
+
     async _class_renderClass_pDispClass({
       ix: _0x3c9e06,
       $dispClass: _0x1bf26,
@@ -15404,11 +15411,8 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
         cls.subclasses = [sc].filter(Boolean);
 
         //TEMPFIX
-        if(!SETTINGS.FILTERS){
-            //let a = ContentGetter.getFeaturesFromClass(cls);
-            let b = Charactermancer_Class_Util.getAllFeatures(cls);
-            //console.log(a, b);
-            return b;
+        if(!SETTINGS.FILTERS) {
+            return Charactermancer_Class_Util.getAllFeatures(cls);
         }
         return Charactermancer_Util.getFilteredFeatures(Charactermancer_Class_Util.getAllFeatures(cls),
         this._modalFilterClasses.pageFilter, this._modalFilterClasses.pageFilter.filterBox.getValues());
