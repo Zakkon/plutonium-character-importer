@@ -53,8 +53,9 @@ class ParentWindow {
         this.tabAbilities = new WindowTab($tabAbilities);
 
 
+
         this.data = ContentGetter._getBase();
-        this.data.races = ContentGetter.getRaces(true);
+        ContentGetter._cookData(this.data);
 
         this.comp_class = new ActorCharactermancerClass(this);
         this.comp_class.render();
@@ -132,6 +133,7 @@ class ParentWindow {
         if(active && $tab.hasClass(hi)){$tab.removeClass(hi);}
         else if(!active && !$tab.hasClass(hi)){$tab.addClass(hi);}
    }
+
 }
 /**Don't think of this as a tab button, but more as a tab screen */
 class WindowTab {
@@ -14411,7 +14413,7 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
       //TEMP not sure what this does, bloat code so im commenting it out for the moment
       this._modalFilterClasses = new ModalFilterClassesFvtt({
         'namespace': "ActorCharactermancer.classes",
-        'allData': this._data["class"]
+        'allData': this._data.class
       });
       this._metaHksClassStgSubclass = [];
       this._compsClassStartingProficiencies = [];
@@ -14455,7 +14457,7 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
         ${sidebarElement}
         </div>`.appendTo(wrptab);
     }
-    _class_renderClass(element1, element2, ix) {
+    _class_renderClass(parentDiv_left, parentDiv_right, ix) {
         //Main properties for asking our _state for information on this class
       const {
         propPrefixClass: propPrefixClass,
@@ -14472,12 +14474,12 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
       const {
         lockChangeClass: lockChangeClass,
         lockChangeSubclass: lockChangeSubclass,
-        lockRenderFeatureOptionsSelects: _0x3217e0
+        lockRenderFeatureOptionsSelects: lockRenderFeatureOptionsSelects
       } = this.constructor._class_getLocks(ix);
 
       this._addHookBase(propIxClass, () => this._state.class_pulseChange = !this._state.class_pulseChange);
 
-      //Get some information on how this class choice would be displayed (in a dropdown)
+      //Create a searchable select field for choosing a class
       const {
         $wrp: wrapper, //Wrapper DOM for the dropdown menu DOM object
         $iptDisplay: inputDisplay, //a function that returns the visible name of a class that you provide the index for
@@ -14575,7 +14577,8 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
         }
       });
 
-      const renderClass = async _0xd4d6f7 => {
+      //#region Render Class
+      const renderClassComponents = async _0xd4d6f7 => {
         if(SETTINGS.FILTERS){this._modalFilterClasses.pageFilter.filterBox.off(filter_evnt_valchange_subclass);}
         //FIXME SET STATE!
         if (_0xd4d6f7) {
@@ -14590,7 +14593,7 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
           'cls': cls,
           'propIxSubclass': propIxSubclass
         });
-        console.log("renderClass", cls);
+
         this._class_renderClass_stgSelectSubclass({
           '$stgSelectSubclass': holder_selectSubclass,
           'cls': cls,
@@ -14614,6 +14617,7 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
           'ix': ix,
           'cls': cls
         });
+        //Now render the level select ui
         await this._class_renderClass_pStgLevelSelect({
           '$stgLevelSelect': holder_levelSelect,
           '$stgFeatureOptions': holder_featureOptions,
@@ -14624,7 +14628,7 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
           'propCurLevel': propCurLevel,
           'propTargetLevel': propTargetLevel,
           'propCntAsi': propCntAsi,
-          'lockRenderFeatureOptionsSelects': _0x3217e0,
+          'lockRenderFeatureOptionsSelects': lockRenderFeatureOptionsSelects,
           'idFilterBoxChangeClassLevels': filter_evnt_valchange_class
         });
         this._state.class_totalLevels = this.class_getTotalLevels();
@@ -14646,17 +14650,19 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
         }); */
         disp_subclass.empty();
       };
-
-      const renderClass_safe = async _0x7a25e5 => {
+      const renderClassComponents_safe = async _0x7a25e5 => {
         try {
           await this._pLock(lockChangeClass);
-          await renderClass(_0x7a25e5);
+          await renderClassComponents(_0x7a25e5);
         } finally {
           this._unlock(lockChangeClass);
         }
       };
-      this._addHookBase(propIxClass, renderClass_safe);
+      //Add a hook so that when propIxClass changes, we try to render the class components again
+      this._addHookBase(propIxClass, renderClassComponents_safe);
+      //#endregion
 
+      //#region Render Subclass
       const renderSubclass = async () => {
         if(SETTINGS.FILTERS){this._modalFilterClasses.pageFilter.filterBox.off(filter_evnt_valchange_subclass);}
         const toObj = Object.keys(this.__state).filter(prop => prop.startsWith(propPrefixSubclass) && prop !== propIxSubclass).mergeMap(_0x207fe4 => ({
@@ -14698,8 +14704,8 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
           this._unlock(lockChangeSubclass);
         }
       };
-
       this._addHookBase(propIxSubclass, renderSubclass_safe);
+      //#endregion
 
       //Create parent objects to hold subcomponents, hide the later ones
       const header = $("<div class=\"bold\">Select a Class</div>");
@@ -14774,21 +14780,9 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
               ${holder_hpInfo}
               ${holder_startingProf}
               ${holder_levelSelect}
+              ${holder_featureOptions}
           </div>`;
 
-      /* const classChoicePanelsWrapper = $(`<div class="ve-flex-col">
-          ${ix>0? `<hr class=\"hr-3 hr--heavy\">`:''}
-
-          <div class="split-v-center">
-              ${header}
-              <div class="ve-flex-v-center">
-                  ${primaryBtn}
-                  ${minimizerToggle}
-              </div>
-          </div>
-
-          ${classChoicePanels}
-      </div>`); */
       const classChoicePanelsWrapper = $$`<div class="ve-flex-col">
         ${ix>0? `<hr class=\"hr-3 hr--heavy\">`:''}
         <div class="split-v-center">
@@ -14801,7 +14795,7 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
 
         ${classChoicePanels}
       </div>`;
-      classChoicePanelsWrapper.appendTo(element1);
+      classChoicePanelsWrapper.appendTo(parentDiv_left);
 
       //Sidebar display (class text info)
       const sidebarContent=$(`<div>
@@ -14809,9 +14803,9 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
 
           ${holder_dispClass}
           ${disp_subclass}
-      </div>`).appendTo(element2);
+      </div>`).appendTo(parentDiv_right);
 
-      renderClass_safe().then(() => renderSubclass_safe());
+      renderClassComponents_safe().then(() => renderSubclass_safe());
     }
 
     get modalFilterClasses() {
@@ -14929,7 +14923,9 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
       return _0x10558f.subclasses.findIndex(_0x54c0e7 => (IntegrationBabele.getOriginalName(_0x3e14d4) || '').toLowerCase().trim() === _0x54c0e7.name.toLowerCase().trim() && (!Config.get("import", 'isStrictMatching') || (UtilDocumentSource.getDocumentSource(_0x3e14d4).source || '').toLowerCase() === Parser.sourceJsonToAbv(_0x54c0e7.source).toLowerCase()));
     }
     getExistingClassTotalLevels_() {
-      return this._existingClassMetas.filter(Boolean).map(_0x29ccbb => _0x29ccbb.level).sum();
+        //TEMPFIX
+        if(!SETTINGS.USE_EXISTING){return 0;}
+        return this._existingClassMetas.filter(Boolean).map(_0x29ccbb => _0x29ccbb.level).sum();
     }
     _getExistingClassCount() {
       return this._existingClassMetas.filter(Boolean).length;
@@ -15141,6 +15137,9 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
       if (!firstItem) { return null; }
       return {'item': firstItem, 'level': Number(firstItem.system.levels || 0)};
     }
+
+    //#region Level Select
+    /**Render a LevelSelect element */
     async _class_renderClass_pStgLevelSelect({
         $stgLevelSelect: ele_levelSelect,
         $stgFeatureOptions: ele_featureOptions,
@@ -15158,7 +15157,9 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
         if (cls) {
             ele_levelSelect.showVe().append("<hr class=\"hr-2\"><div class=\"bold mb-2\">Select Levels</div>");
             const filteredFeatures = this._class_getFilteredFeatures(cls, sc);
-            const existingClassMeta = this._class_getExistingClassMeta(ix);
+
+            //TEMPFIX
+            const existingClassMeta = SETTINGS.USE_EXISTING? this._class_getExistingClassMeta(ix) : null;
             this._compsClassLevelSelect[ix] = new Charactermancer_Class_LevelSelect({
                 'features': filteredFeatures,
                 'isRadio': true,
@@ -15168,9 +15169,22 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
             });
             this._compsClassLevelSelect[ix].render(ele_levelSelect);
 
-            const e_onChange = async () => {
+            const e_onChangeLevelSelected = async () => {
                 const subclass = this.getSubclass_({'cls': cls, 'propIxSubclass': propIxSubclass});
                 const _features = this._class_getFilteredFeatures(cls, subclass);
+                //_features should have loadeds, an each in loadeds should have entity
+                //some of these entity should have an entryData, but this is only for specific choice class features
+                console.log("e_onChangeLevelSelected", _features); 
+                
+
+                //Debug
+                for(let f of _features){
+                    if(f.level == 3 && (f.name == "Expertise" || f.name == "Primal Knowledge") && !f.loadeds[0].entity.entryData){
+                        console.error("Class feature " + f.name + " is missing their entrydata!");
+                    }
+                }
+
+                //Re-render the Feature Options Selects
                 await this._class_pRenderFeatureOptionsSelects({
                     'ix': ix,
                     'propCntAsi': propCntAsi,
@@ -15183,29 +15197,28 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
                 this._state.class_totalLevels = this.class_getTotalLevels();
             };
 
-            this._compsClassLevelSelect[ix].onchange(e_onChange);
-            await e_onChange();
+            this._compsClassLevelSelect[ix].onchange(e_onChangeLevelSelected);
+            await e_onChangeLevelSelected();
 
-            this._modalFilterClasses.pageFilter.filterBox.on(idFilterBoxChangeClassLevels, () => {
-            if (!this._compsClassLevelSelect[ix]) {
-                return;
+            if(SETTINGS.FILTERS){ //TEMPFIX
+                this._modalFilterClasses.pageFilter.filterBox.on(idFilterBoxChangeClassLevels, () => {
+                    if (!this._compsClassLevelSelect[ix]) {
+                        return;
+                    }
+                    const subclass = this.getSubclass_({'cls': cls, 'propIxSubclass': propIxSubclass});
+                    const filteredFeatures = this._class_getFilteredFeatures(cls, subclass);
+                    if (this._compsClassLevelSelect[ix]) {
+                        this._compsClassLevelSelect[ix].setFeatures(filteredFeatures);
+                    }
+                    this._class_pRenderFeatureOptionsSelects({
+                        'ix': ix,
+                        'propCntAsi': propCntAsi,
+                        'filteredFeatures': filteredFeatures,
+                        '$stgFeatureOptions': ele_featureOptions,
+                        'lockRenderFeatureOptionsSelects': lockRenderFeatureOptionsSelects
+                    });
+                });
             }
-            const _0x5bc252 = this.getSubclass_({
-                'cls': cls,
-                'propIxSubclass': propIxSubclass
-            });
-            const _0x10299e = this._class_getFilteredFeatures(cls, _0x5bc252);
-            if (this._compsClassLevelSelect[ix]) {
-                this._compsClassLevelSelect[ix].setFeatures(_0x10299e);
-            }
-            this._class_pRenderFeatureOptionsSelects({
-                'ix': ix,
-                'propCntAsi': propCntAsi,
-                'filteredFeatures': _0x10299e,
-                '$stgFeatureOptions': ele_featureOptions,
-                'lockRenderFeatureOptionsSelects': lockRenderFeatureOptionsSelects
-            });
-            });
         }
         else {
             ele_levelSelect.hideVe();
@@ -15216,6 +15229,8 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
             if(SETTINGS.FILTERS){this._modalFilterClasses.pageFilter.filterBox.off(idFilterBoxChangeClassLevels);}
         }
     }
+    //#endregion
+
     /* _class_renderClass_stgSkills({
       $stgSkills: _0x18fe7d,
       ix: _0x138ef0,
@@ -15400,76 +15415,101 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
       const _0x5e497c = DataConverterClass.getRenderedClassTableFromDereferenced(_0x57a945, _0x4d6b47);
       this._$wrpsClassTable[_0x29a0a3].html('').fastSetHtml(_0x5e497c);
     }
+
+    /**Get the features of our current class and subclass */
     _class_getFilteredFeatures(cls, sc) {
         if (!cls) {return [];}
         cls = MiscUtil.copy(cls);
         cls.subclasses = [sc].filter(Boolean);
-        
+
+        //TEMPFIX
+        if(!SETTINGS.FILTERS){
+            //let a = ContentGetter.getFeaturesFromClass(cls);
+            let b = Charactermancer_Class_Util.getAllFeatures(cls);
+            //console.log(a, b);
+            return b;
+        }
         return Charactermancer_Util.getFilteredFeatures(Charactermancer_Class_Util.getAllFeatures(cls),
         this._modalFilterClasses.pageFilter, this._modalFilterClasses.pageFilter.filterBox.getValues());
     }
-    async _class_pRenderFeatureOptionsSelects(_0xd3c29b) {
-      const {
-        lockRenderFeatureOptionsSelects: _0x105085
-      } = _0xd3c29b;
-      try {
-        await this._pLock(_0x105085);
-        return this._class_pRenderFeatureOptionsSelects_(_0xd3c29b);
-      } finally {
-        this._unlock(_0x105085);
-      }
+
+    //#region Feature Options Selects
+    async _class_pRenderFeatureOptionsSelects(options) {
+        const { lockRenderFeatureOptionsSelects: lockRenderFeatureOptionsSelects } = options;
+        try {
+            await this._pLock(lockRenderFeatureOptionsSelects);
+            return this._class_pRenderFeatureOptionsSelects_(options);
+        }
+        finally { this._unlock(lockRenderFeatureOptionsSelects); }
     }
+
     async _class_pRenderFeatureOptionsSelects_({
-      ix: ix,
-      propCntAsi: propCntAsi,
-      filteredFeatures: filteredFeatures,
-      $stgFeatureOptions: stgFeatureOptions
-    }) {
-      const selElement = this._compsClassFeatureOptionsSelect[ix] || [];
-      selElement.forEach(e => this._parent.featureSourceTracker_.unregister(e));
-      stgFeatureOptions.empty();
-      const existingFeatureChecker = this._existingClassMetas[ix] ? new Charactermancer_Class_Util.ExistingFeatureChecker(this._actor) : null;
-      const importableFeatures = Charactermancer_Util.getImportableFeatures(filteredFeatures);
-      const features = MiscUtil.copy(importableFeatures);
-      Charactermancer_Util.doApplyFilterToFeatureEntries_bySource(features, this._modalFilterClasses.pageFilter, this._modalFilterClasses.pageFilter.filterBox.getValues());
-      const groupedByOptionsSet = Charactermancer_Util.getFeaturesGroupedByOptionsSet(features);
-      const {
-        lvlMin: lvlMin,
-        lvlMax: lvlMax
-      } = await this._class_pGetMinMaxLevel(ix);
-      this._class_unregisterFeatureSourceTrackingFeatureComps(ix);
-      let asiCount = 0;
-      for (const grpA of groupedByOptionsSet) {
-        const {
-          topLevelFeature: topLevelFeature,
-          optionsSets: optionsSets
-        } = _0x54d088;
-        if (topLevelFeature.level < lvlMin || topLevelFeature.level > lvlMax) {
-          continue;
+        ix: ix,
+        propCntAsi: propCntAsi,
+        filteredFeatures: filteredFeatures,
+        $stgFeatureOptions: stgFeatureOptions
+        }) {
+        const selElement = this._compsClassFeatureOptionsSelect[ix] || [];
+        //TEMPFIX //selElement.forEach(e => this._parent.featureSourceTracker_.unregister(e));
+        stgFeatureOptions.empty();
+        const existingFeatureChecker = this._existingClassMetas[ix] ? new Charactermancer_Class_Util.ExistingFeatureChecker(this._actor) : null;
+        const importableFeatures = Charactermancer_Util.getImportableFeatures(filteredFeatures);
+        const features = MiscUtil.copy(importableFeatures);
+        if(SETTINGS.FILTERS){ //TEMPFIX
+            Charactermancer_Util.doApplyFilterToFeatureEntries_bySource(features,
+                this._modalFilterClasses.pageFilter, this._modalFilterClasses.pageFilter.filterBox.getValues());
         }
-        const featureName = topLevelFeature.name.toLowerCase();
-        if (featureName === "ability score improvement") {
-          asiCount++;
-          continue;
+        console.log("_class_pRenderFeatureOptionsSelects_", features);
+        //by this point, 'features' should be an array of classFeatures with property 'loadeds'
+        const groupedByOptionsSet = Charactermancer_Util.getFeaturesGroupedByOptionsSet(features);
+        //groupedByOptionsSet should be an array of objects like this: {optionsSets: [...], topLevelFeature: {...}}
+        const {lvlMin: lvlMin, lvlMax: lvlMax } = await this._class_pGetMinMaxLevel(ix);
+        this._class_unregisterFeatureSourceTrackingFeatureComps(ix);
+
+        console.log(lvlMin, lvlMax);
+
+        let asiCount = 0;
+        for (const grpA of groupedByOptionsSet) {
+            const { topLevelFeature: topLevelFeature, optionsSets: optionsSets} = grpA;
+            //Only render features of the right level
+            if (topLevelFeature.level < lvlMin || topLevelFeature.level > lvlMax) { continue; }
+            const featureName = topLevelFeature.name.toLowerCase();
+            if (featureName === "ability score improvement") { asiCount++; continue; }
+            for (const set of optionsSets) {
+                const component = new Charactermancer_FeatureOptionsSelect({
+                    //TEMPFIX //'featureSourceTracker': this._parent.featureSourceTracker_,
+                    //TEMPFIX //'existingFeatureChecker': existingFeatureChecker,
+                    //TEMPFIX //'actor': this._actor,
+                    'optionsSet': set,
+                    'level': topLevelFeature.level,
+                    //TEMPFIX //'modalFilterSpells': this._parent.compSpell.modalFilterSpells
+                });
+                this._compsClassFeatureOptionsSelect[ix].push(component);
+                component.findAndCopyStateFrom(selElement);
+            }
         }
-        for (const set of optionsSets) {
-          const component = new Charactermancer_FeatureOptionsSelect({
-            'featureSourceTracker': this._parent.featureSourceTracker_,
-            'existingFeatureChecker': existingFeatureChecker,
-            'actor': this._actor,
-            'optionsSet': set,
-            'level': topLevelFeature.level,
-            'modalFilterSpells': this._parent.compSpell.modalFilterSpells
-          });
-          this._compsClassFeatureOptionsSelect[ix].push(component);
-          component.findAndCopyStateFrom(selElement);
+
+        this._state[propCntAsi] = asiCount;
+        await this._class_pRenderFeatureComps(ix, {'$stgFeatureOptions': stgFeatureOptions});
+    }
+    async _class_pRenderFeatureComps(ix, { $stgFeatureOptions: stgFeatureOptions }) {
+        for (const component of this._compsClassFeatureOptionsSelect[ix]) {
+            //component._optionsSet[0].entity.entryData exists
+            const isNoChoice = await component.pIsNoChoice();
+            const isAvailable = await component.pIsAvailable();
+            //if ((await component.pIsNoChoice()) && !(await component.pIsAvailable())) {continue;}
+            console.log(isNoChoice, isAvailable);
+            if(isNoChoice && !isAvailable){continue;}
+            
+            if (!(await component.pIsNoChoice()) || (await component.pIsForceDisplay())) {
+                stgFeatureOptions.showVe().append('' + (component.modalTitle ?
+                     "<hr class=\"hr-2\"><div class=\"mb-2 bold w-100\">" + component.modalTitle + "</div>" : ''));
+            }
+            component.render(stgFeatureOptions);
         }
       }
-      this._state[propCntAsi] = asiCount;
-      await this._class_pRenderFeatureComps(ix, {
-        '$stgFeatureOptions': stgFeatureOptions
-      });
-    }
+    //#endregion
+
     ["_class_unregisterFeatureSourceTrackingFeatureComps"](_0x3f9ba9) {
       (this._compsClassFeatureOptionsSelect[_0x3f9ba9] || []).forEach(_0x2edadc => _0x2edadc.unregisterFeatureSourceTracking());
       this._compsClassFeatureOptionsSelect[_0x3f9ba9] = [];
@@ -15487,19 +15527,7 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
         'lvlMax': _0x1005e8
       };
     }
-    async ["_class_pRenderFeatureComps"](_0x3f9795, {
-      $stgFeatureOptions: _0x3179cf
-    }) {
-      for (const _0x5b3543 of this._compsClassFeatureOptionsSelect[_0x3f9795]) {
-        if ((await _0x5b3543.pIsNoChoice()) && !(await _0x5b3543.pIsAvailable())) {
-          continue;
-        }
-        if (!(await _0x5b3543.pIsNoChoice()) || (await _0x5b3543.pIsForceDisplay())) {
-          _0x3179cf.showVe().append('' + (_0x5b3543.modalTitle ? "<hr class=\"hr-2\"><div class=\"mb-2 bold w-100\">" + _0x5b3543.modalTitle + "</div>" : ''));
-        }
-        _0x5b3543.render(_0x3179cf);
-      }
-    }
+    
     ["_class_renderEntriesSection"](_0x3413d5, _0x582d2d, _0x1aea64, {
       $wrpTable = null
     } = {}) {
@@ -15696,6 +15724,1432 @@ class Charactermancer_Class_HpInfo extends BaseComponent {
         we.appendTo($wrp);
     }
 }
+class Charactermancer_AdditionalSpellsUtil {
+    static getFlatData(additionalSpells) {
+        additionalSpells = MiscUtil.copy(additionalSpells);
+
+        return additionalSpells.map(additionalSpellBlock=>{
+            const outMeta = {};
+            const outSpells = {};
+
+            const keyPath = [];
+
+            Object.entries(additionalSpellBlock).forEach(([additionType,additionMeta])=>{
+                keyPath.push(additionType);
+
+                switch (additionType) {
+                case "name":
+                case "ability":
+                    outMeta[additionType] = additionMeta;
+                    break;
+
+                case "resourceName":
+                    break;
+
+                case "innate":
+                case "known":
+                case "prepared":
+                case "expanded":
+                    {
+                        this._getFlatData_doProcessAdditionMeta({
+                            additionType,
+                            additionMeta,
+                            outSpells,
+                            keyPath,
+                            resourceName: additionalSpellBlock.resourceName
+                        });
+                        break;
+                    }
+
+                default:
+                    throw new Error(`Unhandled spell addition type "${additionType}"`);
+                }
+
+                keyPath.pop();
+            }
+            );
+
+            return {
+                meta: outMeta,
+                spells: outSpells
+            };
+        }
+        );
+    }
+
+    static _getFlatData_doProcessAdditionMeta(opts) {
+        const {additionMeta, keyPath} = opts;
+
+        Object.entries(additionMeta).forEach(([levelOrCasterLevel,levelMeta])=>{
+            keyPath.push(levelOrCasterLevel);
+
+            if (levelMeta instanceof Array) {
+                levelMeta.forEach((spellItem,ix)=>this._getFlatData_doProcessSpellItem({
+                    ...opts,
+                    levelOrCasterLevel,
+                    spellItem,
+                    ix
+                }));
+            } else {
+                Object.entries(levelMeta).forEach(([rechargeType,levelMetaInner])=>{
+                    this._getFlatData_doProcessSpellRechargeBlock({
+                        ...opts,
+                        levelOrCasterLevel,
+                        rechargeType,
+                        levelMetaInner
+                    });
+                }
+                );
+            }
+
+            keyPath.pop();
+        }
+        );
+    }
+
+    static _getFlatData_doProcessSpellItem(opts) {
+        const {additionType, additionMeta, outSpells, keyPath, spellItem, ix, rechargeType, uses, usesPer, levelOrCasterLevel, consumeType, consumeAmount, consumeTarget, vetConsumes} = opts;
+
+        keyPath.push(ix);
+
+        const outSpell = {
+            isExpanded: additionType === "expanded",
+            isAlwaysPrepared: additionType === "prepared",
+            isAlwaysKnown: additionType === "known",
+            isPrepared: additionType === "prepared" || additionType === "innate" || additionType === "known",
+            preparationMode: (additionType === "prepared" || additionType === "known") ? "always" : "innate",
+            consumeType,
+            consumeAmount,
+            consumeTarget,
+            vetConsumes,
+        };
+
+        if (levelOrCasterLevel !== "_") {
+            const mCasterLevel = /^s(\d+)$/.exec(levelOrCasterLevel);
+            if (mCasterLevel)
+                outSpell.requiredCasterLevel = Number(mCasterLevel[1]);
+            else if (!isNaN(levelOrCasterLevel))
+                outSpell.requiredLevel = Number(levelOrCasterLevel);
+        }
+
+        if (rechargeType) {
+            switch (rechargeType) {
+            case "rest":
+            case "daily":
+                break;
+            case "will":
+            case "ritual":
+            case "resource":
+                {
+                    outSpell.preparationMode = "atwill";
+                    outSpell.isPrepared = rechargeType !== "ritual";
+                    break;
+                }
+
+            case "_":
+                break;
+
+            default:
+                throw new Error(`Unhandled recharge type "${rechargeType}"`);
+            }
+        }
+
+        if (uses)
+            outSpell.uses = uses;
+        if (usesPer)
+            outSpell.usesPer = usesPer;
+
+        if (typeof spellItem === "string") {
+            const key = keyPath.join("__");
+
+            outSpells[key] = new Charactermancer_AdditionalSpellsUtil.FlatSpell({
+                type: "spell",
+
+                key,
+                ...outSpell,
+                uid: spellItem,
+            });
+        } else {
+            if (spellItem.all != null) {
+                const key = keyPath.join("__");
+
+                outSpells[key] = new Charactermancer_AdditionalSpellsUtil.FlatSpell({
+                    type: "all",
+
+                    key,
+                    ...outSpell,
+                    filterExpression: spellItem.all,
+                });
+            } else if (spellItem.choose != null) {
+                if (typeof spellItem.choose === "string") {
+                    const count = spellItem.count || 1;
+
+                    for (let i = 0; i < count; ++i) {
+                        keyPath.push(i);
+
+                        const key = keyPath.join("__");
+
+                        outSpells[key] = new Charactermancer_AdditionalSpellsUtil.FlatSpell({
+                            type: "choose",
+
+                            key,
+                            ...outSpell,
+                            filterExpression: spellItem.choose,
+                        });
+
+                        keyPath.pop();
+                    }
+                } else if (spellItem.choose.from) {
+                    const count = spellItem.choose.count || 1;
+
+                    const groupId = CryptUtil.uid();
+                    [...spellItem.choose.from].sort((a,b)=>SortUtil.ascSortLower(a, b)).forEach((uid,i)=>{
+                        keyPath.push(i);
+
+                        const key = keyPath.join("__");
+
+                        outSpells[key] = new Charactermancer_AdditionalSpellsUtil.FlatSpell({
+                            type: "chooseFrom",
+
+                            key,
+                            ...outSpell,
+                            uid: uid,
+                            chooseFromGroup: groupId,
+                            chooseFromCount: count,
+                        });
+
+                        keyPath.pop();
+                    }
+                    );
+                } else {
+                    throw new Error(`Unhandled additional spell format: "${JSON.stringify(spellItem)}"`);
+                }
+            } else
+                throw new Error(`Unhandled additional spell format: "${JSON.stringify(spellItem)}"`);
+        }
+
+        keyPath.pop();
+    }
+
+    static _getFlatData_doProcessSpellRechargeBlock(opts) {
+        const {additionType, additionMeta, outSpells, keyPath, resourceName, levelOrCasterLevel, rechargeType, levelMetaInner} = opts;
+
+        keyPath.push(rechargeType);
+
+        switch (rechargeType) {
+        case "rest":
+        case "daily":
+            {
+                const usesPer = rechargeType === "rest" ? "sr" : "lr";
+
+                Object.entries(levelMetaInner).forEach(([numTimesCast,spellList])=>{
+                    keyPath.push(numTimesCast);
+
+                    numTimesCast = numTimesCast.replace(/^(\d+)e$/, "$1");
+                    const uses = Number(numTimesCast);
+
+                    spellList.forEach((spellItem,ix)=>this._getFlatData_doProcessSpellItem({
+                        ...opts,
+                        spellItem,
+                        ix,
+                        uses,
+                        usesPer
+                    }));
+
+                    keyPath.pop();
+                }
+                );
+
+                break;
+            }
+
+        case "resource":
+            {
+                Object.entries(levelMetaInner).forEach(([consumeAmount,spellList])=>{
+                    keyPath.push(consumeAmount);
+
+                    spellList.forEach((spellItem,ix)=>this._getFlatData_doProcessSpellItem({
+                        ...opts,
+                        spellItem,
+                        ix,
+                        vetConsumes: {
+                            name: resourceName,
+                            amount: Number(consumeAmount)
+                        }
+                    }));
+
+                    keyPath.pop();
+                }
+                );
+
+                break;
+            }
+
+        case "will":
+        case "ritual":
+        case "_":
+            {
+                levelMetaInner.forEach((spellItem,ix)=>this._getFlatData_doProcessSpellItem({
+                    ...opts,
+                    spellItem,
+                    ix
+                }));
+                break;
+            }
+
+        default:
+            throw new Error(`Unhandled spell recharge type "${rechargeType}"`);
+        }
+
+        keyPath.pop();
+    }
+}
+Charactermancer_AdditionalSpellsUtil.FlatSpell = class {
+    #opts = null;
+    constructor(opts) {
+        this.#opts = opts;
+
+        this.type = opts.type;
+        this.key = opts.key;
+        this.isExpanded = opts.isExpanded;
+        this.isPrepared = opts.isPrepared;
+        this.isAlwaysKnown = opts.isAlwaysKnown;
+        this.isAlwaysPrepared = opts.isAlwaysPrepared;
+        this.preparationMode = opts.preparationMode;
+        this.requiredCasterLevel = opts.requiredCasterLevel;
+        this.requiredLevel = opts.requiredLevel;
+
+        this.uses = opts.uses;
+        this.usesPer = opts.usesPer;
+
+        this.consumeType = opts.consumeType;
+        this.consumeAmount = opts.consumeAmount;
+        this.consumeTarget = opts.consumeTarget;
+
+        this.vetConsumes = opts.vetConsumes;
+
+        this.isCantrip = false;
+
+        this.uid = null;
+        this.castAtLevel = null;
+        if (opts.uid) {
+            const {uid, isCantrip, castAtLevel} = Charactermancer_AdditionalSpellsUtil.FlatSpell._getExpandedUid(opts.uid);
+            this.uid = uid;
+            this.isCantrip = isCantrip;
+            this.castAtLevel = castAtLevel;
+        }
+
+        this.filterExpression = opts.filterExpression;
+        if (opts.filterExpression && opts.filterExpression.split("|").filter(Boolean).some(it=>/^level=0$/i.test(it.trim()))) {
+            this.isCantrip = true;
+        }
+
+        this.chooseFromGroup = opts.chooseFromGroup;
+        this.chooseFromCount = opts.chooseFromCount;
+
+        if (this.isCantrip && !this.isExpanded)
+            this.isAlwaysKnown = true;
+    }
+
+    static _getExpandedUid(uidRaw) {
+        const [uidPart,castAtLevelPart] = uidRaw.split("#").map(it=>it.trim()).filter(Boolean);
+
+        let[name,source] = Renderer.splitTagByPipe(uidPart.toLowerCase());
+        source = source || Parser.SRC_PHB.toLowerCase();
+        const uid = `${name}|${source}`;
+
+        const isCantrip = castAtLevelPart && castAtLevelPart.toLowerCase() === "c";
+        const castAtLevel = isCantrip ? null : (castAtLevelPart && !isNaN(castAtLevelPart)) ? Number(castAtLevelPart) : null;
+
+        return {
+            uid,
+            isCantrip,
+            castAtLevel
+        };
+    }
+
+    getCopy(optsNxt=null) {
+        return new this.constructor({
+            ...this.#opts,
+            ...optsNxt || {},
+        });
+    }
+
+    toObject() {
+        return MiscUtil.copy(this);
+    }
+};
+
+class Charactermancer_AdditionalSpellsSelect extends BaseComponent {
+    static async pGetUserInput(opts) {
+        opts = opts || {};
+        const {additionalSpells} = opts;
+
+        if (!additionalSpells || !additionalSpells.length)
+            return {
+                isFormComplete: true,
+                data: []
+            };
+
+        const comp = this.getComp(opts);
+
+        if (comp.isNoChoice({
+            curLevel: opts.curLevel,
+            targetLevel: opts.targetLevel,
+            isStandalone: opts.isStandalone
+        }))
+            return comp.pGetFormData();
+
+        return UtilApplications.pGetImportCompApplicationFormData({
+            comp,
+            width: 640,
+            height: 220,
+        });
+    }
+
+    static _MODAL_FILTER_SPELLS_DEFAULT = null;
+
+    static async pGetInitModalFilterSpells() {
+        if (!this._MODAL_FILTER_SPELLS_DEFAULT) {
+            this._MODAL_FILTER_SPELLS_DEFAULT = new ModalFilterSpellsFvtt({
+                namespace: "Charactermancer_AdditionalSpellsSelect.spells",
+                isRadio: true
+            });
+            await this._MODAL_FILTER_SPELLS_DEFAULT.pPreloadHidden();
+        }
+        return this._MODAL_FILTER_SPELLS_DEFAULT;
+    }
+
+    static getComp(opts) {
+        opts = opts || {};
+
+        const comp = new this({
+            ...opts
+        });
+        comp.curLevel = opts.curLevel;
+        comp.targetLevel = opts.targetLevel;
+        comp.spellLevelLow = opts.spellLevelLow;
+        comp.spellLevelHigh = opts.spellLevelHigh;
+        comp.isAnyCantrips = !!opts.isAnyCantrips;
+
+        return comp;
+    }
+
+    static async pApplyFormDataToActor(actor, formData, opts) {
+        opts = opts || {};
+
+        if (!formData || !formData?.data?.length)
+            return [];
+
+        const ability = ((opts.abilityAbv === "inherit" ? opts.parentAbilityAbv : opts.abilityAbv) || (formData.abilityAbv === "inherit" ? opts.parentAbilityAbv : formData.abilityAbv)) ?? undefined;
+
+        const {ImportListSpell} = await Promise.resolve().then(function() {
+            return ImportListSpell$1;
+        });
+        const importListSpell = new ImportListSpell({
+            actor
+        });
+
+        const out = [];
+
+        for (const spellMeta of formData.data) {
+            if (spellMeta.isExpanded)
+                continue;
+
+            let[name,source] = spellMeta.uid.split("|");
+            if (!source)
+                source = Parser.SRC_PHB;
+            const hash = UrlUtil.URL_TO_HASH_BUILDER[UrlUtil.PG_SPELLS]({
+                name,
+                source
+            });
+
+            const spell = await DataLoader.pCacheAndGet(UrlUtil.PG_SPELLS, source, hash);
+            if (!spell) {
+                const message = `Could not find spell "${hash}" when applying additional spells!`;
+                ui.notifications.warn(message);
+                console.warn(...LGT, message);
+                continue;
+            }
+
+            const importSummary = await importListSpell.pImportEntry(spell, {
+                taskRunner: opts.taskRunner,
+                opts_pGetSpellItem: {
+                    ability,
+                    usesMax: spellMeta.uses,
+                    usesValue: spellMeta.uses,
+                    usesPer: spellMeta.usesPer,
+                    consumeType: spellMeta.consumeType,
+                    consumeAmount: spellMeta.consumeAmount,
+                    consumeTarget: spellMeta.consumeTarget,
+                    vetConsumes: spellMeta.vetConsumes,
+                    isPrepared: spellMeta.isPrepared,
+                    preparationMode: spellMeta.preparationMode,
+                    castAtLevel: spellMeta.castAtLevel,
+
+                    isIgnoreExisting: true,
+                },
+            }, );
+            out.push(importSummary);
+        }
+
+        return out;
+    }
+
+    static isNoChoice(additionalSpells, {additionalSpellsFlat=null, curLevel=null, targetLevel=null, isStandalone=false}={}) {
+        if (additionalSpells.length !== 1)
+            return false;
+        additionalSpellsFlat = additionalSpellsFlat || Charactermancer_AdditionalSpellsUtil.getFlatData(additionalSpells);
+
+        const minLevel = curLevel ?? Number.MIN_SAFE_INTEGER;
+        const maxLevel = targetLevel ?? Number.MAX_SAFE_INTEGER;
+
+        const spellsInRange = additionalSpellsFlat.some(it=>Object.values(it.spells).some(it=>(!isStandalone || !it.isExpanded) && (it.requiredLevel == null || (it.requiredLevel >= minLevel && it.requiredLevel <= maxLevel))), );
+
+        if (!spellsInRange)
+            return true;
+
+        return !additionalSpellsFlat.some(it=>it.meta.ability?.choose || Object.values(it.spells).some(it=>(it.type !== "all" && it.filterExpression != null) || it.chooseFromGroup != null));
+    }
+
+    constructor(opts) {
+        opts = opts || {};
+        super();
+
+        this._additionalSpells = opts.additionalSpells;
+        this._sourceHintText = opts.sourceHintText;
+        this._modalFilterSpells = opts.modalFilterSpells;
+
+        this._additionalSpellsFlat = Charactermancer_AdditionalSpellsUtil.getFlatData(opts.additionalSpells);
+    }
+
+    get modalTitle() {
+        return `Choose Additional Spell Set${this._sourceHintText ? ` (${this._sourceHintText})` : ""}`;
+    }
+
+    set curLevel(val) {
+        this._state.curLevel = val;
+    }
+    set targetLevel(val) {
+        this._state.targetLevel = val;
+    }
+    set spellLevelLow(val) {
+        this._state.spellLevelLow = val;
+    }
+    set spellLevelHigh(val) {
+        this._state.spellLevelHigh = val;
+    }
+    set isAnyCantrips(val) {
+        this._state.isAnyCantrips = !!val;
+    }
+
+    addHookAlwaysPreparedSpells(hk) {
+        this._addHookBase("spellsAlwaysPrepared", hk);
+    }
+    addHookExpandedSpells(hk) {
+        this._addHookBase("spellsExpanded", hk);
+    }
+    addHookAlwaysKnownSpells(hk) {
+        this._addHookBase("spellsAlwaysKnown", hk);
+    }
+
+    get spellsAlwaysPrepared() {
+        return this._state.spellsAlwaysPrepared;
+    }
+    get spellsExpanded() {
+        return this._state.spellsExpanded;
+    }
+    get spellsAlwaysKnown() {
+        return this._state.spellsAlwaysKnown;
+    }
+
+    _render_addLastAlwaysPreparedSpellsHook() {
+        return this._render_addLastBoolSpellsHook({
+            propState: "spellsAlwaysPrepared",
+            propIsBool: "isAlwaysPrepared"
+        });
+    }
+    _render_addLastExpandedSpellsHook() {
+        return this._render_addLastBoolSpellsHook({
+            propState: "spellsExpanded",
+            propIsBool: "isExpanded"
+        });
+    }
+    _render_addLastAlwaysKnownSpellsHook() {
+        return this._render_addLastBoolSpellsHook({
+            propState: "spellsAlwaysKnown",
+            propIsBool: "isAlwaysKnown"
+        });
+    }
+
+    _render_addLastBoolSpellsHook({propState, propIsBool}) {
+        const hk = ()=>{
+            const formData = this.getFormData();
+            const nxt = formData.data.filter(it=>it[propIsBool]).map(it=>it.uid.toLowerCase());
+
+            const setCurr = new Set(this._state[propState]);
+            const setNxt = new Set(nxt);
+            if (!CollectionUtil.setEq(setCurr, setNxt))
+                this._state[propState] = nxt;
+        }
+        ;
+        this._addHookBase("ixSet", hk);
+        this._addHookBase("curLevel", hk);
+        this._addHookBase("targetLevel", hk);
+        this._addHookBase("spellLevelLow", hk);
+        this._addHookBase("spellLevelHigh", hk);
+        this._addHookBase("isAnyCantrips", hk);
+        this._addHookBase("pulseChoose", hk);
+        hk();
+    }
+
+    render($wrp) {
+        this._render_addLastAlwaysPreparedSpellsHook();
+        this._render_addLastExpandedSpellsHook();
+        this._render_addLastAlwaysKnownSpellsHook();
+
+        const $wrpOptionsButtons = $(`<div class="ve-flex-v-center ve-flex-wrap w-100 btn-group ${this._additionalSpellsFlat.length > 1 ? "mb-1" : ""}"></div>`);
+        const $wrpOptions = $(`<div class="ve-flex-col w-100"></div>`);
+
+        for (let i = 0; i < this._additionalSpellsFlat.length; ++i)
+            this._render_renderOptions($wrpOptionsButtons, $wrpOptions, i);
+
+        $$($wrp)`
+			${$wrpOptionsButtons}
+			${$wrpOptions}
+		`;
+    }
+
+    _render_renderOptions($wrpOptionsButtons, $wrpOptions, ix) {
+        const additionalSpellsFlatBlock = this._additionalSpellsFlat[ix];
+
+        const $btnSelect = this._additionalSpellsFlat.length === 1 ? null : $(`<button class="btn btn-xs ve-flex-1" title="Select Spell Set">${additionalSpellsFlatBlock.meta.name ?? `Spell Set ${ix + 1}`}</button>`).click(()=>this._state.ixSet = ix);
+
+        const isInnatePreparedList = this._isAnyInnatePrepared(ix);
+        const isExpandedList = this._isAnyExpanded(ix);
+
+        const sortedSpells = Object.values(additionalSpellsFlatBlock.spells).sort((a,b)=>SortUtil.ascSort(a.requiredLevel || 0, b.requiredLevel || 0) || SortUtil.ascSort(a.requiredCasterLevel || 0, b.requiredCasterLevel || 0));
+
+        const $wrpInnatePreparedHeaders = isInnatePreparedList ? $(`<div class="ve-flex-v-center py-1">
+			<div class="col-3 ve-text-center">Level</div>
+			<div class="col-9">Spells</div>
+		</div>`) : null;
+
+        const $wrpExpandedHeaders = isExpandedList ? $(`<div class="ve-flex-v-center py-1">
+			<div class="col-3 ve-text-center">Spell Level</div>
+			<div class="col-9">Spells</div>
+		</div>`) : null;
+
+        const $rowsInnatePrepared = isInnatePreparedList ? this._render_$getRows(ix, sortedSpells, {
+            isExpandedMatch: false
+        }) : null;
+        const $rowsExpanded = isExpandedList ? this._render_$getRows(ix, sortedSpells, {
+            isExpandedMatch: true
+        }) : null;
+
+        const $wrpNoneAvailableInnatePrepared = isInnatePreparedList ? $(`<div class="ve-small ve-flex-v-center my-1 w-100 italic ve-muted">No spells at this level</div>`) : null;
+        const $wrpNoneAvailableExpanded = isExpandedList ? $(`<div class="ve-small ve-flex-v-center my-1 w-100 italic ve-muted">No spells at this level</div>`) : null;
+
+        const hkSpellsAvailable = ()=>{
+            const isInnatePreparedAvailable = !!this._getFlatInnatePreparedSpellsInRange(ix).length;
+            if ($wrpInnatePreparedHeaders)
+                $wrpInnatePreparedHeaders.toggleVe(isInnatePreparedAvailable);
+            if ($wrpNoneAvailableInnatePrepared)
+                $wrpNoneAvailableInnatePrepared.toggleVe(!isInnatePreparedAvailable);
+
+            const isExpandedAvailable = !!this._getFlatExpandedSpellsInRange(ix).length;
+            if ($wrpExpandedHeaders)
+                $wrpExpandedHeaders.toggleVe(isExpandedAvailable);
+            if ($wrpNoneAvailableExpanded)
+                $wrpNoneAvailableExpanded.toggleVe(!isExpandedAvailable);
+        }
+        ;
+        this._addHookBase("spellLevelLow", hkSpellsAvailable);
+        this._addHookBase("spellLevelHigh", hkSpellsAvailable);
+        this._addHookBase("isAnyCantrips", hkSpellsAvailable);
+        this._addHookBase("curLevel", hkSpellsAvailable);
+        this._addHookBase("targetLevel", hkSpellsAvailable);
+        this._addHookBase("ixSet", hkSpellsAvailable);
+        hkSpellsAvailable();
+
+        const $stgInnatePrepared = isInnatePreparedList ? $$`<div class="ve-flex-col">
+			<div class="bold my-0">Innate/Prepared/Known Spells</div>
+			${$wrpInnatePreparedHeaders}
+			${$rowsInnatePrepared}
+			${$wrpNoneAvailableInnatePrepared}
+		</div>` : null;
+
+        const $stgExpanded = isExpandedList ? $$`<div class="ve-flex-col">
+			<div class="bold my-0">Expanded Spell List</div>
+			${$wrpExpandedHeaders}
+			${$rowsExpanded}
+			${$wrpNoneAvailableExpanded}
+		</div>` : null;
+
+        const isChooseAbility = this._isChooseAbility(ix);
+
+        const $wrpChooseAbility = isChooseAbility ? this._render_$getSelChooseAbility(ix) : null;
+
+        const $stgAbility = isChooseAbility ? $$`<div class="split-v-center">
+			<div class="bold my-0 no-shrink mr-2">Ability Score</div>
+			${$wrpChooseAbility}
+		</div>` : null;
+
+        if ($btnSelect)
+            $wrpOptionsButtons.append($btnSelect);
+
+        const $stg = $$`<div class="ve-flex-col">
+			${$stgInnatePrepared}
+			${$stgExpanded}
+			${$stgAbility}
+		</div>`.appendTo($wrpOptions);
+
+        if (this._additionalSpellsFlat.length !== 1) {
+            const hkIsActive = ()=>{
+                $btnSelect.toggleClass("active", this._state.ixSet === ix);
+                $stg.toggleVe(this._state.ixSet === ix);
+            }
+            ;
+            this._addHookBase("ixSet", hkIsActive);
+            hkIsActive();
+
+            const hkResetActive = (prop,value,prevValue)=>{
+                const prevBlock = this._additionalSpellsFlat[prevValue];
+                const nxtState = Object.values(prevBlock.spells).mergeMap(it=>({
+                    [it.key]: null
+                }));
+                this._proxyAssignSimple("state", nxtState);
+            }
+            ;
+            this._addHookBase("ixSet", hkResetActive);
+        }
+    }
+
+    _getProps_chooseFrom({groupUid}) {
+        return {
+            propBase: `chooseFrom_${groupUid}`,
+        };
+    }
+
+    _render_$getRows(ix, spells, {isExpandedMatch}) {
+        if (!spells.length)
+            return null;
+
+        const byLevel = {};
+        spells.forEach(flat=>{
+            if (flat.isExpanded !== isExpandedMatch)
+                return;
+
+            const level = flat.requiredCasterLevel || flat.requiredLevel;
+            (byLevel[level] = byLevel[level] || []).push(flat);
+        }
+        );
+
+        const getFlatVars = flat=>({
+            requiredLevel: flat.requiredLevel,
+            requiredCasterLevel: flat.requiredCasterLevel,
+            isRequiredCasterLevel: flat.requiredCasterLevel != null,
+            isRequiredLevel: flat.requiredLevel != null,
+            isExpanded: flat.isExpanded,
+        });
+
+        return Object.entries(byLevel).sort(([kA],[kB])=>SortUtil.ascSort(Number(kA), Number(kB))).map(([,flats])=>{
+            const {requiredLevel, requiredCasterLevel, isRequiredCasterLevel, isRequiredLevel, isExpanded: isAnyExpanded, } = getFlatVars(flats[0]);
+
+            const metasRenderedFlats = [];
+
+            const chooseFromGroups = {};
+            flats = flats.filter(flat=>{
+                if (!flat.chooseFromGroup)
+                    return true;
+
+                chooseFromGroups[flat.chooseFromGroup] = chooseFromGroups[flat.chooseFromGroup] || {
+                    from: [],
+                    count: flat.chooseFromCount ?? 1,
+                    ...getFlatVars(flat),
+                };
+                chooseFromGroups[flat.chooseFromGroup].from.push(flat);
+
+                return false;
+            }
+            );
+
+            const [flatsBasic,flatsFilter] = flats.segregate(it=>it.filterExpression == null);
+            flatsBasic.sort((a,b)=>SortUtil.ascSortLower(a.uid, b.uid));
+            flatsFilter.sort((a,b)=>SortUtil.ascSortLower(a.filterExpression, b.filterExpression));
+
+            const $colSpells = $$`<div class="col-9 ve-flex-v-center ve-flex-wrap"></div>`;
+
+            flatsBasic.forEach(flat=>{
+                const $pt = $(`<div class="ve-flex-v-center"></div>`).fastSetHtml(Renderer.get().render(`{@spell ${flat.uid.toSpellCase()}}`)).appendTo($colSpells);
+                const $sep = $(`<div class="mr-1">,</div>`).appendTo($colSpells);
+
+                metasRenderedFlats.push({
+                    flat,
+                    $pt,
+                    $sep,
+                    ...getFlatVars(flat),
+                });
+            }
+            );
+
+            const [flatsFilterChoose,flatsFilterAll] = flatsFilter.segregate(it=>it.type !== "all");
+
+            flatsFilterChoose.forEach(flat=>{
+                const $dispSpell = $(`<div class="ve-flex-v-center"></div>`);
+                const hkChosenSpell = ()=>{
+                    $dispSpell.html(this._state[flat.key] != null && this._state.ixSet === ix ? `<div>${Renderer.get().render(`{@spell ${this._state[flat.key].toLowerCase()}}`)}</div>` : `<div class="italic ve-muted">(select a spell)</div>`, );
+                }
+                ;
+                this._addHookBase(flat.key, hkChosenSpell);
+                if (this._additionalSpellsFlat.length !== 1) {
+                    this._addHookBase("ixSet", hkChosenSpell);
+                }
+                hkChosenSpell();
+
+                const $btnFilter = $(`<button class="btn btn-default btn-xxs mx-1" title="Choose a Spell"><span class="fas fa-fw fa-search"></span></button>`).click(async()=>{
+                    const selecteds = await this._modalFilterSpells.pGetUserSelection({
+                        filterExpression: flat.filterExpression
+                    });
+                    if (selecteds == null || !selecteds.length)
+                        return;
+
+                    const selected = selecteds[0];
+
+                    this._state[flat.key] = DataUtil.proxy.getUid("spell", {
+                        name: selected.name,
+                        source: selected.values.sourceJson
+                    });
+                    this._state.pulseChoose = !this._state.pulseChoose;
+                }
+                );
+
+                if (this._additionalSpellsFlat.length !== 1) {
+                    const hkDisableBtnFilter = ()=>$btnFilter.prop("disabled", this._state.ixSet !== ix);
+                    this._addHookBase("ixSet", hkDisableBtnFilter);
+                    hkDisableBtnFilter();
+                }
+
+                const $pt = $$`<div class="ve-flex-v-center">${$btnFilter}${$dispSpell}</div>`.appendTo($colSpells);
+                const $sep = $(`<div class="mr-1">,</div>`).appendTo($colSpells);
+
+                metasRenderedFlats.push({
+                    flat,
+                    $pt,
+                    $sep,
+                    ...getFlatVars(flat),
+                });
+            }
+            );
+
+            flatsFilterAll.forEach(flat=>{
+                const ptFilter = this._modalFilterSpells.getRenderedFilterExpression({
+                    filterExpression: flat.filterExpression
+                });
+                const $pt = $$`<div class="ve-flex-v-center"><i class="mr-2 ve-muted">Spells matching:</i> ${ptFilter ? `${ptFilter} ` : ""}</div>`.appendTo($colSpells);
+                const $sep = $(`<div class="mr-1">,</div>`).appendTo($colSpells);
+
+                metasRenderedFlats.push({
+                    flat,
+                    $pt,
+                    $sep,
+                    ...getFlatVars(flat),
+                });
+            }
+            );
+
+            Object.entries(chooseFromGroups).forEach(([groupUid,group])=>{
+                const {propBase} = this._getProps_chooseFrom({
+                    groupUid
+                });
+
+                const meta = ComponentUiUtil.getMetaWrpMultipleChoice(this, propBase, {
+                    values: group.from.map(it=>it.uid),
+                    fnDisplay: v=>Renderer.get().render(`{@spell ${v}}`),
+                    count: group.count,
+                }, );
+
+                const hkPulse = ()=>this._state.pulseChoose = !this._state.pulseChoose;
+                this._addHookBase(meta.propPulse, hkPulse);
+
+                if (this._additionalSpellsFlat.length !== 1) {
+                    const hkDisableUi = ()=>{
+                        meta.rowMetas.forEach(({$cb})=>$cb.prop("disabled", this._state.ixSet !== ix));
+                    }
+                    ;
+                    this._addHookBase("ixSet", hkDisableUi);
+                    hkDisableUi();
+                }
+
+                const $ptsInline = meta.rowMetas.map(({$cb, displayValue})=>{
+                    return $$`<div class="ve-flex-v-center mr-2 no-wrap">${displayValue}${$cb.addClass("ml-1")}</div>`;
+                }
+                );
+
+                const $pt = $$`<div class="ve-flex-v-center ve-flex-wrap"><i class="mr-1 ve-muted no-wrap">Choose ${group.count === 1 ? "" : `${group.count} `}from:</i>${$ptsInline}</div>`.appendTo($colSpells);
+                const $sep = $(`<div class="mr-1">,</div>`).appendTo($colSpells);
+
+                metasRenderedFlats.push({
+                    flat: null,
+                    $pt,
+                    $sep,
+                    ...group,
+                });
+            }
+            );
+
+            const $row = $$`<div class="py-1 ve-flex-v-center stripe-even">
+					<div class="col-3 ve-text-center">${Parser.getOrdinalForm(requiredCasterLevel || requiredLevel) || `<i class="ve-muted">Current</i>`}</div>
+					${$colSpells}
+				</div>`;
+
+            const doShowInitialPts = ()=>{
+                metasRenderedFlats.forEach(({$pt, $sep},i)=>{
+                    $pt.showVe();
+                    $sep.toggleVe(i !== metasRenderedFlats.length - 1);
+                }
+                );
+            }
+            ;
+
+            const doShowExpandedPts = ()=>{
+                let isExpandedVisible;
+                let isAllVisible;
+                if (isRequiredCasterLevel) {
+                    isExpandedVisible = this._isRequiredCasterLevelInRangeUpper(requiredCasterLevel);
+                    isAllVisible = this._isRequiredCasterLevelInRange(requiredCasterLevel);
+                } else if (isRequiredLevel) {
+                    isExpandedVisible = this._isRequiredLevelInRangeUpper(requiredCasterLevel);
+                    isAllVisible = this._isRequiredLevelInRange(requiredCasterLevel);
+                } else
+                    throw new Error(`No need to use this method!`);
+
+                if (isAllVisible || !isExpandedVisible)
+                    return doShowInitialPts();
+
+                metasRenderedFlats.forEach((meta,i)=>{
+                    meta.$pt.toggleVe(meta.isExpanded);
+                    meta.$sep.toggleVe(i !== metasRenderedFlats.length - 1);
+                }
+                );
+
+                let isFoundFirst = false;
+                for (let i = metasRenderedFlats.length - 1; i >= 0; --i) {
+                    const meta = metasRenderedFlats[i];
+
+                    meta.$sep.hideVe();
+                    if (!meta.isExpanded)
+                        continue;
+
+                    if (isFoundFirst) {
+                        meta.$sep.showVe();
+                        break;
+                    }
+
+                    isFoundFirst = true;
+                }
+            }
+            ;
+
+            if (isRequiredCasterLevel) {
+                const hkLevel = ()=>{
+                    const isVisible = isAnyExpanded ? this._isRequiredCasterLevelInRangeUpper(requiredCasterLevel) : this._isRequiredCasterLevelInRange(requiredCasterLevel);
+                    $row.toggleVe(isVisible);
+                    if (!isVisible || !isAnyExpanded)
+                        return doShowInitialPts();
+                    doShowExpandedPts();
+                }
+                ;
+                this._addHookBase("spellLevelLow", hkLevel);
+                this._addHookBase("spellLevelHigh", hkLevel);
+                this._addHookBase("isAnyCantrips", hkLevel);
+                hkLevel();
+            } else if (isRequiredLevel) {
+                const hkLevel = ()=>{
+                    const isVisible = isAnyExpanded ? this._isRequiredLevelInRangeUpper(requiredLevel) : this._isRequiredLevelInRange(requiredLevel);
+                    $row.toggleVe(isVisible);
+                    if (!isVisible && !isAnyExpanded)
+                        return doShowInitialPts();
+                    doShowExpandedPts();
+                }
+                ;
+                this._addHookBase("curLevel", hkLevel);
+                this._addHookBase("targetLevel", hkLevel);
+                hkLevel();
+            } else {
+                $row.showVe();
+                doShowInitialPts();
+            }
+
+            return $row;
+        }
+        );
+    }
+
+    _render_$getSelChooseAbility(ix) {
+        return ComponentUiUtil.$getSelEnum(this, "ability", {
+            values: this._additionalSpells[ix].ability.choose,
+            fnDisplay: abv=>Parser.attAbvToFull(abv),
+            isAllowNull: true,
+        }, );
+    }
+
+    _isRequiredLevelInRange(requiredLevel) {
+        return this._isRequiredLevelInRangeLower(requiredLevel) && this._isRequiredLevelInRangeUpper(requiredLevel);
+    }
+
+    _isRequiredLevelInRangeLower(requiredLevel) {
+        return requiredLevel > (this._state.curLevel ?? Number.MAX_SAFE_INTEGER);
+    }
+
+    _isRequiredLevelInRangeUpper(requiredLevel) {
+        return requiredLevel <= (this._state.targetLevel ?? Number.MIN_SAFE_INTEGER);
+    }
+
+    _isRequiredCasterLevelInRange(requiredCasterLevel) {
+        if (requiredCasterLevel === 0)
+            return this._state.isAnyCantrips;
+
+        return this._isRequiredCasterLevelInRangeLower(requiredCasterLevel) && this._isRequiredCasterLevelInRangeUpper(requiredCasterLevel);
+    }
+
+    _isRequiredCasterLevelInRangeLower(requiredCasterLevel) {
+        if (requiredCasterLevel === 0)
+            return this._state.isAnyCantrips;
+
+        return requiredCasterLevel >= (this._state.spellLevelLow ?? Number.MAX_SAFE_INTEGER);
+    }
+
+    _isRequiredCasterLevelInRangeUpper(requiredCasterLevel) {
+        if (requiredCasterLevel === 0)
+            return this._state.isAnyCantrips;
+
+        return requiredCasterLevel <= (this._state.spellLevelHigh == null ? Number.MIN_SAFE_INTEGER : this._state.spellLevelHigh);
+    }
+
+    _getFlatSpellsInRange(ixSet=null, {isExpandedMatch=null}={}) {
+        if (ixSet == null)
+            ixSet = this._state.ixSet;
+
+        return Object.values((this._additionalSpellsFlat[ixSet] || {
+            spells: []
+        }).spells).filter(flat=>{
+            if (isExpandedMatch != null) {
+                if (flat.isExpanded !== isExpandedMatch)
+                    return false;
+            }
+
+            if (flat.isExpanded) {
+                if (flat.requiredCasterLevel != null)
+                    return this._isRequiredCasterLevelInRangeUpper(flat.requiredCasterLevel);
+                else if (flat.requiredLevel != null)
+                    return this._isRequiredLevelInRangeUpper(flat.requiredLevel);
+                return true;
+            }
+
+            if (flat.requiredCasterLevel != null)
+                return this._isRequiredCasterLevelInRange(flat.requiredCasterLevel);
+            else if (flat.requiredLevel != null)
+                return this._isRequiredLevelInRange(flat.requiredLevel);
+            return true;
+        }
+        );
+    }
+
+    _getFlatInnatePreparedSpellsInRange(ixSet) {
+        return this._getFlatSpellsInRange(ixSet, {
+            isExpandedMatch: false
+        });
+    }
+    _getFlatExpandedSpellsInRange(ixSet) {
+        return this._getFlatSpellsInRange(ixSet, {
+            isExpandedMatch: true
+        });
+    }
+
+    _isAnyInnatePrepared(ixSet) {
+        return this._isAnyInnatePreparedExpanded(ixSet, {
+            isExpandedMatch: false
+        });
+    }
+    _isAnyExpanded(ixSet) {
+        return this._isAnyInnatePreparedExpanded(ixSet, {
+            isExpandedMatch: true
+        });
+    }
+
+    _isAnyInnatePreparedExpanded(ixSet, {isExpandedMatch}) {
+        if (ixSet == null)
+            ixSet = this._state.ixSet;
+
+        return Object.values((this._additionalSpellsFlat[ixSet] || {
+            spells: []
+        }).spells).some(flat=>flat.isExpanded === isExpandedMatch);
+    }
+
+    _isChooseAbility(ixSet) {
+        if (ixSet == null)
+            ixSet = this._state.ixSet;
+        return (this._additionalSpells[ixSet]?.ability?.choose?.length ?? 0) > 1;
+    }
+
+    isNoChoice({curLevel, targetLevel, isStandalone}={}) {
+        return this.constructor.isNoChoice(this._additionalSpells, {
+            additionalSpellsFlat: this._additionalSpellsFlat,
+            curLevel,
+            targetLevel,
+            isStandalone
+        });
+    }
+
+    getFormData() {
+        let flatSpellsInRange = this._getFlatSpellsInRange().map(it=>it.getCopy());
+
+        const chooseFromGroups = {};
+        flatSpellsInRange.forEach(flat=>{
+            if (!flat.chooseFromGroup)
+                return;
+
+            chooseFromGroups[flat.chooseFromGroup] = chooseFromGroups[flat.chooseFromGroup] || {
+                from: [],
+                selectedValues: [],
+                isAcceptable: false,
+                count: flat.chooseFromCount ?? 1,
+            };
+            chooseFromGroups[flat.chooseFromGroup].from.push(flat);
+        }
+        );
+
+        Object.entries(chooseFromGroups).forEach(([groupUid,groupMeta])=>{
+            const {propBase} = this._getProps_chooseFrom({
+                groupUid
+            });
+
+            groupMeta.isAcceptable = this._state[ComponentUiUtil.getMetaWrpMultipleChoice_getPropIsAcceptable(propBase)];
+
+            groupMeta.selectedValues = ComponentUiUtil.getMetaWrpMultipleChoice_getSelectedValues(this, propBase, {
+                values: groupMeta.from.map(it=>it.uid)
+            });
+        }
+        );
+
+        let cntNotChosen = 0;
+        flatSpellsInRange = flatSpellsInRange.filter(flat=>{
+            if (flat.type === "all")
+                return true;
+            if (flat.filterExpression != null) {
+                const choiceMade = this._state[flat.key];
+                if (!choiceMade) {
+                    cntNotChosen++;
+                    return false;
+                }
+
+                flat.filterExpression = null;
+                flat.uid = this._state[flat.key];
+                return true;
+            }
+
+            if (flat.chooseFromGroup != null) {
+                return chooseFromGroups[flat.chooseFromGroup].selectedValues.includes(flat.uid);
+            }
+
+            return true;
+        }
+        );
+
+        flatSpellsInRange = flatSpellsInRange.flatMap(flat=>{
+            if (flat.type !== "all")
+                return flat;
+
+            if (flat.filterExpression != null) {
+                const filterExpression = flat.filterExpression;
+                flat.filterExpression = null;
+                return this._modalFilterSpells.getItemsMatchingFilterExpression({
+                    filterExpression
+                }).map((li,i)=>flat.getCopy({
+                    type: "spell",
+                    key: `${flat.key}__${i}`,
+                    uid: DataUtil.proxy.getUid("spell", {
+                        name: li.name,
+                        source: li.values.sourceJson
+                    }),
+                }, ));
+            }
+
+            if (flat.chooseFromGroup != null) {
+                if (chooseFromGroups[flat.chooseFromGroup].selectedValues.includes(flat.uid))
+                    return flat;
+            }
+
+            return null;
+        }
+        ).filter(Boolean);
+
+        let abilityAbv;
+        if (this._isChooseAbility(this._state.ixSet)) {
+            abilityAbv = this._state.ability;
+            if (abilityAbv == null)
+                cntNotChosen++;
+        } else
+            abilityAbv = (this._additionalSpellsFlat[this._state.ixSet] || {
+                meta: {}
+            }).meta.ability;
+
+        return {
+            isFormComplete: cntNotChosen === 0 && Object.values(chooseFromGroups).every(it=>it.isAcceptable),
+            data: flatSpellsInRange.map(it=>it.toObject()),
+            abilityAbv,
+        };
+    }
+
+    pGetFormData() {
+        return this.getFormData();
+    }
+
+    _getDefaultState() {
+        return {
+            ixSet: 0,
+
+            curLevel: null,
+            targetLevel: null,
+            spellLevelLow: null,
+            spellLevelHigh: null,
+            isAnyCantrips: false,
+
+            spellsAlwaysPrepared: [],
+            spellsExpanded: [],
+            spellsAlwaysKnown: [],
+
+            ability: null,
+
+            pulseChoose: false,
+        };
+    }
+}
+class Charactermancer_Class_LevelSelect extends BaseComponent {
+    static async pGetUserInput(opts) {
+        return UtilApplications.pGetImportCompApplicationFormData({
+            comp: new this(opts),
+            isUnskippable: true,
+            fnGetInvalidMeta: (formData)=>{
+                if (formData.data.length === 0)
+                    return {
+                        type: "error",
+                        message: `Please select some levels first!`
+                    };
+            }
+            ,
+            isAutoResize: true,
+            width: 640,
+        });
+    }
+
+    constructor(opts) {
+        super();
+
+        this._isSubclass = !!opts.isSubclass;
+        this._isRadio = !!opts.isRadio;
+        this._isForceSelect = !!opts.isForceSelect;
+        this._featureArr = this.constructor._getLevelGroupedFeatures(opts.features, this._isSubclass);
+        this._maxPreviousLevel = opts.maxPreviousLevel || 0;
+
+        this._list = null;
+        this._listSelectClickHandler = null;
+
+        this._fnsOnChange = [];
+    }
+
+    get modalTitle() {
+        return `Select ${this._isSubclass ? "Subclass" : "Class"} Levels`;
+    }
+
+    onchange(fn) {
+        this._fnsOnChange.push(fn);
+    }
+
+    _doRunFnsOnchange() {
+        this._fnsOnChange.forEach(fn=>fn());
+    }
+
+    setFeatures(features) {
+        this._featureArr = this.constructor._getLevelGroupedFeatures(features, this._isSubclass);
+        this._list.items.forEach(it=>it.data.fnUpdateRowText());
+    }
+
+    render($wrp) {
+        const $cbAll = this._isRadio ? null : $(`<input type="checkbox" name="cb-select-all">`);
+        const $wrpList = $(`<div class="veapp__list mb-1"></div>`);
+
+        this._list = new List({
+            $wrpList: $wrpList,
+            fnSort: null,
+            isUseJquery: true,
+        });
+
+        this._listSelectClickHandler = new ListSelectClickHandler({
+            list: this._list
+        });
+
+        for (let ix = 0; ix < this._featureArr.length; ++ix) {
+            const $cb = this._render_$getCbRow(ix);
+
+            const $dispFeatures = $(`<span class="col-9-5"></span>`);
+            const fnUpdateRowText = ()=>$dispFeatures.text(this.constructor._getRowText(this._featureArr[ix]));
+            fnUpdateRowText();
+
+            const $li = $$`<label class="w-100 ve-flex veapp__list-row veapp__list-row-hoverable ${this._isRadio && this._isForceSelect && ix <= this._maxPreviousLevel ? `list-multi-selected` : ""} ${ix < this._maxPreviousLevel ? `ve-muted` : ""}">
+				<span class="col-1 ve-flex-vh-center">${$cb}</span>
+				<span class="col-1-5 ve-text-center">${ix + 1}</span>
+				${$dispFeatures}
+			</label>`.click((evt)=>{
+                this._handleSelectClick(listItem, evt);
+            }
+            );
+
+            const listItem = new ListItem(ix,$li,"",{},{
+                cbSel: $cb[0],
+                fnUpdateRowText,
+            },);
+            this._list.addItem(listItem);
+        }
+
+        if (!this._isRadio)
+            this._listSelectClickHandler.bindSelectAllCheckbox($cbAll);
+
+        this._list.init();
+
+        $$`<div class="ve-flex-col min-h-0">
+			<div class="ve-flex-v-stretch input-group mb-1 no-shrink">
+				<label class="btn btn-5et col-1 px-1 ve-flex-vh-center">${$cbAll}</label>
+				<button class="btn-5et col-1-5">Level</button>
+				<button class="btn-5et col-9-5">Features</button>
+			</div>
+
+			${$wrpList}
+		</div>`.appendTo($wrp);
+    }
+
+    _render_$getCbRow(ix) {
+        if (!this._isRadio)
+            return $(`<input type="checkbox" class="no-events">`);
+
+        const $cb = $(`<input type="radio" class="no-events">`);
+        if (ix === this._maxPreviousLevel && this._isForceSelect)
+            $cb.prop("checked", true);
+        else if (ix < this._maxPreviousLevel)
+            $cb.prop("disabled", true);
+
+        return $cb;
+    }
+
+    _handleSelectClick(listItem, evt) {
+        if (!this._isRadio)
+            return this._listSelectClickHandler.handleSelectClick(listItem, evt);
+
+        const isCheckedOld = listItem.data.cbSel.checked;
+
+        const isDisabled = this._handleSelectClickRadio(this._list, listItem, evt);
+        if (isDisabled)
+            return;
+
+        const isCheckedNu = listItem.data.cbSel.checked;
+        if (isCheckedOld !== isCheckedNu)
+            this._doRunFnsOnchange();
+    }
+
+    _handleSelectClickRadio(list, item, evt) {
+        evt.preventDefault();
+        evt.stopPropagation();
+
+        if (item.data.cbSel.disabled)
+            return true;
+
+        list.items.forEach(it=>{
+            if (it === item) {
+                if (it.data.cbSel.checked && !this._isForceSelect) {
+                    it.data.cbSel.checked = false;
+                    it.ele.removeClass("list-multi-selected");
+                    return;
+                }
+
+                it.data.cbSel.checked = true;
+                it.ele.addClass("list-multi-selected");
+            } else {
+                it.data.cbSel.checked = false;
+                if (it.ix < item.ix)
+                    it.ele.addClass("list-multi-selected");
+                else
+                    it.ele.removeClass("list-multi-selected");
+            }
+        }
+        );
+    }
+
+    pGetFormData() {
+        let out = this._list.items.filter(it=>it.data.cbSel.checked).map(it=>it.ix);
+
+        if (this._isRadio && out.length) {
+            const max = out[0] + 1;
+            out = [];
+            for (let i = this._maxPreviousLevel; i < max; ++i)
+                out.push(i);
+        }
+
+        return {
+            isFormComplete: !!out.length,
+            data: out,
+        };
+    }
+
+    getCurLevel() {
+        if (this._maxPreviousLevel)
+            return this._maxPreviousLevel;
+        return 0;
+    }
+
+    getTargetLevel() {
+        const ixs = this._list.items.filter(it=>it.data.cbSel.checked).map(it=>it.ix);
+        if (!ixs.length)
+            return null;
+        return Math.max(...ixs) + 1;
+    }
+
+    static _getRowText(lvl) {
+        return lvl.map(f=>f.tableDisplayName || f.name).join(", ") || "\u2014";
+    }
+
+    static _getLevelGroupedFeatures(allFeatures, isSubclass) {
+        allFeatures = MiscUtil.copy(allFeatures);
+        if (!isSubclass)
+            allFeatures = allFeatures.filter(it=>it.classFeature);
+        const allFeaturesByLevel = [];
+
+        let level = 1;
+        let stack = [];
+        const output = ()=>{
+            allFeaturesByLevel.push(stack);
+            stack = [];
+        }
+        ;
+        allFeatures.forEach(f=>{
+            while (level < f.level) {
+                output();
+                level++;
+            }
+            stack.push(f);
+            level = f.level;
+        }
+        );
+        output();
+
+        while (level < Consts.CHAR_MAX_LEVEL) {
+            output();
+            level++;
+        }
+
+        return allFeaturesByLevel;
+    }
+}
 class Charactermancer_Class_ProficiencyImportModeSelect extends BaseComponent {
     static async pGetUserInput() {
         return UtilApplications.pGetImportCompApplicationFormData({
@@ -15736,12 +17190,12 @@ class Charactermancer_Class_ProficiencyImportModeSelect extends BaseComponent {
 Charactermancer_Class_ProficiencyImportModeSelect.MODE_MULTICLASS = 0;
 Charactermancer_Class_ProficiencyImportModeSelect.MODE_PRIMARY = 1;
 Charactermancer_Class_ProficiencyImportModeSelect.MODE_NONE = 2;
-
 Charactermancer_Class_ProficiencyImportModeSelect.DISPLAY_MODES = {
     [Charactermancer_Class_ProficiencyImportModeSelect.MODE_MULTICLASS]: "Add multiclass proficiencies (this is my second+ class)",
     [Charactermancer_Class_ProficiencyImportModeSelect.MODE_PRIMARY]: "Add base class proficiencies and equipment (this is my first class)",
     [Charactermancer_Class_ProficiencyImportModeSelect.MODE_NONE]: "Do not add proficiencies or equipment",
 };
+
 class Charactermancer_Class_StartingProficiencies extends BaseComponent {
     static get({featureSourceTracker, primaryProficiencies, multiclassProficiencies, savingThrowsProficiencies, mode, existingProficienciesFvttArmor, existingProficienciesFvttWeapons, existingProficienciesFvttSavingThrows, }={}, ) {
         const {existingProficienciesVetArmor, existingProficienciesCustomArmor,
@@ -19584,35 +21038,33 @@ class Charactermancer_Util {
 
     static getFilteredFeatures(allFeatures, pageFilter, filterValues) {
         return allFeatures.filter(f=>{
-            const source = f.source || (f.classFeature ? DataUtil.class.unpackUidClassFeature(f.classFeature).source : f.subclassFeature ? DataUtil.class.unpackUidSubclassFeature(f.subclassFeature) : null);
+            //Try to get the source of the feature
+            const source = f.source || (f.classFeature ? DataUtil.class.unpackUidClassFeature(f.classFeature).source 
+            : f.subclassFeature ? DataUtil.class.unpackUidSubclassFeature(f.subclassFeature) : null);
 
-            if (!pageFilter.sourceFilter.toDisplay(filterValues, source))
-                return false;
+            //Then filter out this feature if we don't allow the source
+            if (!pageFilter.sourceFilter.toDisplay(filterValues, source)){return false;}
 
             f.loadeds = f.loadeds.filter(meta=>{
                 return Charactermancer_Class_Util.isClassEntryFilterMatch(meta.entity, pageFilter, filterValues);
-            }
-            );
+            });
 
             return f.loadeds.length;
-        }
-        );
+        });
     }
 
+    /**Filters an array of features to only those we should import. For example removes features such as those that grant you a subclass */
     static getImportableFeatures(allFeatures) {
         return allFeatures.filter(f=>{
-            if (f.gainSubclassFeature && !f.gainSubclassFeatureHasContent)
-                return false;
+            if (f.gainSubclassFeature && !f.gainSubclassFeatureHasContent){return false;}
+            if(!f.name){console.error("Feature does not have property 'name' assigned!", f);}
 
             const lowName = f.name.toLowerCase();
             switch (lowName) {
-            case "proficiency versatility":
-                return false;
-            default:
-                return true;
+                case "proficiency versatility": return false;
+                default: return true;
             }
-        }
-        );
+        });
     }
 
     static doApplyFilterToFeatureEntries_bySource(allFeatures, pageFilter, filterValues) {
@@ -19635,33 +21087,29 @@ class Charactermancer_Util {
         return allFeatures;
     }
 
+    /**Expects each feature to have a .loadeds property */
     static getFeaturesGroupedByOptionsSet(allFeatures) {
         return allFeatures.map(topLevelFeature=>{
-            const optionsSets = [];
 
+            if(!topLevelFeature.loadeds){console.error("Feature does not have any loadeds!", topLevelFeature);}
+            const optionsSets = []; //Blank optionsSets array
             let optionsStack = [];
             let lastOptionsSetId = null;
+            //Go through each loadeds
             topLevelFeature.loadeds.forEach(l=>{
+                //try to get l.optionsMeta.setId;
                 const optionsSetId = MiscUtil.get(l, "optionsMeta", "setId") || null;
                 if (lastOptionsSetId !== optionsSetId) {
-                    if (optionsStack.length)
-                        optionsSets.push(optionsStack);
+                    if (optionsStack.length) { optionsSets.push(optionsStack); }
                     optionsStack = [l];
                     lastOptionsSetId = optionsSetId;
-                } else {
-                    optionsStack.push(l);
                 }
-            }
-            );
-            if (optionsStack.length)
-                optionsSets.push(optionsStack);
+                else { optionsStack.push(l); }
+            });
+            if (optionsStack.length) { optionsSets.push(optionsStack); }
 
-            return {
-                topLevelFeature,
-                optionsSets
-            };
-        }
-        );
+            return {topLevelFeature, optionsSets};
+        });
     }
 
     static getFilterSearchMeta({comp, prop, propVersion=null, data, modalFilter, title}) {
@@ -19788,6 +21236,654 @@ Charactermancer_Util.STR_WARN_SOURCE_SELECTION = `Did you change your source sel
 class ProxyBase extends MixedProxyBase{
 
 }
+
+//#region List
+let ListItem$1 = class ListItem {
+    constructor(ix, ele, name, values, data) {
+        this.ix = ix;
+        this.ele = ele;
+        this.name = name;
+        this.values = values || {};
+        this.data = data || {};
+
+        this.searchText = null;
+        this.mutRegenSearchText();
+
+        this._isSelected = false;
+    }
+
+    mutRegenSearchText() {
+        let searchText = `${this.name} - `;
+        for (const k in this.values) {
+            const v = this.values[k];
+            if (!v)
+                continue;
+            searchText += `${v} - `;
+        }
+        this.searchText = searchText.toAscii().toLowerCase();
+    }
+
+    set isSelected(val) {
+        if (this._isSelected === val)
+            return;
+        this._isSelected = val;
+
+        if (this.ele instanceof $) {
+            if (this._isSelected)
+                this.ele.addClass("list-multi-selected");
+            else
+                this.ele.removeClass("list-multi-selected");
+        } else {
+            if (this._isSelected)
+                this.ele.classList.add("list-multi-selected");
+            else
+                this.ele.classList.remove("list-multi-selected");
+        }
+    }
+
+    get isSelected() {
+        return this._isSelected;
+    }
+}
+;
+
+class _ListSearch {
+    #isInterrupted = false;
+
+    #term = null;
+    #fn = null;
+    #items = null;
+
+    constructor({term, fn, items}) {
+        this.#term = term;
+        this.#fn = fn;
+        this.#items = [...items];
+    }
+
+    interrupt() {
+        this.#isInterrupted = true;
+    }
+
+    async pRun() {
+        const out = [];
+        for (const item of this.#items) {
+            if (this.#isInterrupted)
+                break;
+            if (await this.#fn(item, this.#term))
+                out.push(item);
+        }
+        return {
+            isInterrupted: this.#isInterrupted,
+            searchedItems: out
+        };
+    }
+}
+
+let List$1 = class List {
+    #activeSearch = null;
+
+    constructor(opts) {
+        if (opts.fnSearch && opts.isFuzzy)
+            throw new Error(`The options "fnSearch" and "isFuzzy" are mutually incompatible!`);
+
+        this._$iptSearch = opts.$iptSearch;
+        this._$wrpList = opts.$wrpList;
+        this._fnSort = opts.fnSort === undefined ? SortUtil.listSort : opts.fnSort;
+        this._fnSearch = opts.fnSearch;
+        this._syntax = opts.syntax;
+        this._isFuzzy = !!opts.isFuzzy;
+        this._isSkipSearchKeybindingEnter = !!opts.isSkipSearchKeybindingEnter;
+        this._helpText = opts.helpText;
+
+        this._items = [];
+        this._eventHandlers = {};
+
+        this._searchTerm = List$1._DEFAULTS.searchTerm;
+        this._sortBy = opts.sortByInitial || List$1._DEFAULTS.sortBy;
+        this._sortDir = opts.sortDirInitial || List$1._DEFAULTS.sortDir;
+        this._sortByInitial = this._sortBy;
+        this._sortDirInitial = this._sortDir;
+        this._fnFilter = null;
+        this._isUseJquery = opts.isUseJquery;
+
+        if (this._isFuzzy)
+            this._initFuzzySearch();
+
+        this._searchedItems = [];
+        this._filteredItems = [];
+        this._sortedItems = [];
+
+        this._isInit = false;
+        this._isDirty = false;
+
+        this._prevList = null;
+        this._nextList = null;
+        this._lastSelection = null;
+        this._isMultiSelection = false;
+    }
+
+    get items() {
+        return this._items;
+    }
+    get visibleItems() {
+        return this._sortedItems;
+    }
+    get sortBy() {
+        return this._sortBy;
+    }
+    get sortDir() {
+        return this._sortDir;
+    }
+    set nextList(list) {
+        this._nextList = list;
+    }
+    set prevList(list) {
+        this._prevList = list;
+    }
+
+    setFnSearch(fn) {
+        this._fnSearch = fn;
+        this._isDirty = true;
+    }
+
+    init() {
+        if (this._isInit)
+            return;
+
+        if (this._$iptSearch) {
+            UiUtil.bindTypingEnd({
+                $ipt: this._$iptSearch,
+                fnKeyup: ()=>this.search(this._$iptSearch.val())
+            });
+            this._searchTerm = List$1.getCleanSearchTerm(this._$iptSearch.val());
+            this._init_bindKeydowns();
+
+            const helpText = [...(this._helpText || []), ...Object.values(this._syntax || {}).filter(({help})=>help).map(({help})=>help), ];
+
+            if (helpText.length)
+                this._$iptSearch.title(helpText.join(" "));
+        }
+
+        this._doSearch();
+        this._isInit = true;
+    }
+
+    _init_bindKeydowns() {
+        this._$iptSearch.on("keydown", evt=>{
+            if (evt._List__isHandled)
+                return;
+
+            switch (evt.key) {
+            case "Escape":
+                return this._handleKeydown_escape(evt);
+            case "Enter":
+                return this._handleKeydown_enter(evt);
+            }
+        }
+        );
+    }
+
+    _handleKeydown_escape(evt) {
+        evt._List__isHandled = true;
+
+        if (!this._$iptSearch.val()) {
+            $(document.activeElement).blur();
+            return;
+        }
+
+        this._$iptSearch.val("");
+        this.search("");
+    }
+
+    _handleKeydown_enter(evt) {
+        if (this._isSkipSearchKeybindingEnter)
+            return;
+
+        if (IS_VTT)
+            return;
+        if (!EventUtil.noModifierKeys(evt))
+            return;
+
+        const firstVisibleItem = this.visibleItems[0];
+        if (!firstVisibleItem)
+            return;
+
+        evt._List__isHandled = true;
+
+        $(firstVisibleItem.ele).click();
+        if (firstVisibleItem.values.hash)
+            window.location.hash = firstVisibleItem.values.hash;
+    }
+
+    _initFuzzySearch() {
+        elasticlunr.clearStopWords();
+        this._fuzzySearch = elasticlunr(function() {
+            this.addField("s");
+            this.setRef("ix");
+        });
+        SearchUtil.removeStemmer(this._fuzzySearch);
+    }
+
+    update({isForce=false}={}) {
+        if (!this._isInit || !this._isDirty || isForce)
+            return false;
+        this._doSearch();
+        return true;
+    }
+
+    _doSearch() {
+        this._doSearch_doInterruptExistingSearch();
+        this._doSearch_doSearchTerm();
+        this._doSearch_doPostSearchTerm();
+    }
+
+    _doSearch_doInterruptExistingSearch() {
+        if (!this.#activeSearch)
+            return;
+        this.#activeSearch.interrupt();
+        this.#activeSearch = null;
+    }
+
+    _doSearch_doSearchTerm() {
+        if (this._doSearch_doSearchTerm_preSyntax())
+            return;
+
+        const matchingSyntax = this._doSearch_getMatchingSyntax();
+        if (matchingSyntax) {
+            if (this._doSearch_doSearchTerm_syntax(matchingSyntax))
+                return;
+
+            this._searchedItems = [];
+            this._doSearch_doSearchTerm_pSyntax(matchingSyntax).then(isContinue=>{
+                if (!isContinue)
+                    return;
+                this._doSearch_doPostSearchTerm();
+            }
+            );
+
+            return;
+        }
+
+        if (this._isFuzzy)
+            return this._searchedItems = this._doSearch_doSearchTerm_fuzzy();
+
+        if (this._fnSearch)
+            return this._searchedItems = this._items.filter(it=>this._fnSearch(it, this._searchTerm));
+
+        this._searchedItems = this._items.filter(it=>this.constructor.isVisibleDefaultSearch(it, this._searchTerm));
+    }
+
+    _doSearch_doSearchTerm_preSyntax() {
+        if (!this._searchTerm && !this._fnSearch) {
+            this._searchedItems = [...this._items];
+            return true;
+        }
+    }
+
+    _doSearch_getMatchingSyntax() {
+        const [command,term] = this._searchTerm.split(/^([a-z]+):/).filter(Boolean);
+        if (!command || !term || !this._syntax?.[command])
+            return null;
+        return {
+            term: this._doSearch_getSyntaxSearchTerm(term),
+            syntax: this._syntax[command]
+        };
+    }
+
+    _doSearch_getSyntaxSearchTerm(term) {
+        if (!term.startsWith("/") || !term.endsWith("/"))
+            return term;
+        try {
+            return new RegExp(term.slice(1, -1));
+        } catch (ignored) {
+            return term;
+        }
+    }
+
+    _doSearch_doSearchTerm_syntax({term, syntax: {fn, isAsync}}) {
+        if (isAsync)
+            return false;
+
+        this._searchedItems = this._items.filter(it=>fn(it, term));
+        return true;
+    }
+
+    async _doSearch_doSearchTerm_pSyntax({term, syntax: {fn, isAsync}}) {
+        if (!isAsync)
+            return false;
+
+        this.#activeSearch = new _ListSearch({
+            term,
+            fn,
+            items: this._items,
+        });
+        const {isInterrupted, searchedItems} = await this.#activeSearch.pRun();
+
+        if (isInterrupted)
+            return false;
+        this._searchedItems = searchedItems;
+        return true;
+    }
+
+    static isVisibleDefaultSearch(li, searchTerm) {
+        return li.searchText.includes(searchTerm);
+    }
+
+    _doSearch_doSearchTerm_fuzzy() {
+        const results = this._fuzzySearch.search(this._searchTerm, {
+            fields: {
+                s: {
+                    expand: true
+                },
+            },
+            bool: "AND",
+            expand: true,
+        }, );
+
+        return results.map(res=>this._items[res.doc.ix]);
+    }
+
+    _doSearch_doPostSearchTerm() {
+        this._searchedItems = this._searchedItems.filter(it=>!it.data.isExcluded);
+
+        this._doFilter();
+    }
+
+    getFilteredItems({items=null, fnFilter}={}) {
+        items = items || this._searchedItems;
+        fnFilter = fnFilter || this._fnFilter;
+
+        if (!fnFilter)
+            return items;
+
+        return items.filter(it=>fnFilter(it));
+    }
+
+    _doFilter() {
+        this._filteredItems = this.getFilteredItems();
+        this._doSort();
+    }
+
+    getSortedItems({items=null}={}) {
+        items = items || [...this._filteredItems];
+
+        const opts = {
+            sortBy: this._sortBy,
+            sortDir: this._sortDir,
+        };
+        if (this._fnSort)
+            items.sort((a,b)=>this._fnSort(a, b, opts));
+        if (this._sortDir === "desc")
+            items.reverse();
+
+        return items;
+    }
+
+    _doSort() {
+        this._sortedItems = this.getSortedItems();
+        this._doRender();
+    }
+
+    _doRender() {
+        const len = this._sortedItems.length;
+
+        if (this._isUseJquery) {
+            this._$wrpList.children().detach();
+            for (let i = 0; i < len; ++i)
+                this._$wrpList.append(this._sortedItems[i].ele);
+        } else {
+            this._$wrpList[0].innerHTML = "";
+            const frag = document.createDocumentFragment();
+            for (let i = 0; i < len; ++i)
+                frag.appendChild(this._sortedItems[i].ele);
+            this._$wrpList[0].appendChild(frag);
+        }
+
+        this._isDirty = false;
+        this._trigger("updated");
+    }
+
+    search(searchTerm) {
+        const nextTerm = List$1.getCleanSearchTerm(searchTerm);
+        if (nextTerm === this._searchTerm)
+            return;
+        this._searchTerm = nextTerm;
+        return this._doSearch();
+    }
+
+    filter(fnFilter) {
+        if (this._fnFilter === fnFilter)
+            return;
+        this._fnFilter = fnFilter;
+        this._doFilter();
+    }
+
+    sort(sortBy, sortDir) {
+        if (this._sortBy !== sortBy || this._sortDir !== sortDir) {
+            this._sortBy = sortBy;
+            this._sortDir = sortDir;
+            this._doSort();
+        }
+    }
+
+    reset() {
+        if (this._searchTerm !== List$1._DEFAULTS.searchTerm) {
+            this._searchTerm = List$1._DEFAULTS.searchTerm;
+            return this._doSearch();
+        } else if (this._sortBy !== this._sortByInitial || this._sortDir !== this._sortDirInitial) {
+            this._sortBy = this._sortByInitial;
+            this._sortDir = this._sortDirInitial;
+        }
+    }
+
+    addItem(listItem) {
+        this._isDirty = true;
+        this._items.push(listItem);
+
+        if (this._isFuzzy)
+            this._fuzzySearch.addDoc({
+                ix: listItem.ix,
+                s: listItem.searchText
+            });
+    }
+
+    removeItem(listItem) {
+        const ixItem = this._items.indexOf(listItem);
+        return this.removeItemByIndex(listItem.ix, ixItem);
+    }
+
+    removeItemByIndex(ix, ixItem) {
+        ixItem = ixItem ?? this._items.findIndex(it=>it.ix === ix);
+        if (!~ixItem)
+            return;
+
+        this._isDirty = true;
+        const removed = this._items.splice(ixItem, 1);
+
+        if (this._isFuzzy)
+            this._fuzzySearch.removeDocByRef(ix);
+
+        return removed[0];
+    }
+
+    removeItemBy(valueName, value) {
+        const ixItem = this._items.findIndex(it=>it.values[valueName] === value);
+        return this.removeItemByIndex(ixItem, ixItem);
+    }
+
+    removeItemByData(dataName, value) {
+        const ixItem = this._items.findIndex(it=>it.data[dataName] === value);
+        return this.removeItemByIndex(ixItem, ixItem);
+    }
+
+    removeAllItems() {
+        this._isDirty = true;
+        this._items = [];
+        if (this._isFuzzy)
+            this._initFuzzySearch();
+    }
+
+    on(eventName, handler) {
+        (this._eventHandlers[eventName] = this._eventHandlers[eventName] || []).push(handler);
+    }
+
+    off(eventName, handler) {
+        if (!this._eventHandlers[eventName])
+            return false;
+        const ix = this._eventHandlers[eventName].indexOf(handler);
+        if (!~ix)
+            return false;
+        this._eventHandlers[eventName].splice(ix, 1);
+        return true;
+    }
+
+    _trigger(eventName) {
+        (this._eventHandlers[eventName] || []).forEach(fn=>fn());
+    }
+
+    doAbsorbItems(dataArr, opts) {
+        const children = [...this._$wrpList[0].children];
+
+        const len = children.length;
+        if (len !== dataArr.length)
+            throw new Error(`Data source length and list element length did not match!`);
+
+        for (let i = 0; i < len; ++i) {
+            const node = children[i];
+            const dataItem = dataArr[i];
+            const listItem = new ListItem$1(i,node,opts.fnGetName(dataItem),opts.fnGetValues ? opts.fnGetValues(dataItem) : {},{},);
+            if (opts.fnGetData)
+                listItem.data = opts.fnGetData(listItem, dataItem);
+            if (opts.fnBindListeners)
+                opts.fnBindListeners(listItem, dataItem);
+            this.addItem(listItem);
+        }
+    }
+
+    doSelect(item, evt) {
+        if (evt && evt.shiftKey) {
+            evt.preventDefault();
+            if (this._prevList && this._prevList._lastSelection) {
+                this._prevList._selectFromItemToEnd(this._prevList._lastSelection, true);
+                this._selectToItemFromStart(item);
+            } else if (this._nextList && this._nextList._lastSelection) {
+                this._nextList._selectToItemFromStart(this._nextList._lastSelection, true);
+                this._selectFromItemToEnd(item);
+            } else if (this._lastSelection && this.visibleItems.includes(item)) {
+                this._doSelect_doMulti(item);
+            } else {
+                this._doSelect_doSingle(item);
+            }
+        } else
+            this._doSelect_doSingle(item);
+    }
+
+    _doSelect_doSingle(item) {
+        if (this._isMultiSelection) {
+            this.deselectAll();
+            if (this._prevList)
+                this._prevList.deselectAll();
+            if (this._nextList)
+                this._nextList.deselectAll();
+        } else if (this._lastSelection)
+            this._lastSelection.isSelected = false;
+
+        item.isSelected = true;
+        this._lastSelection = item;
+    }
+
+    _doSelect_doMulti(item) {
+        this._selectFromItemToItem(this._lastSelection, item);
+
+        if (this._prevList && this._prevList._isMultiSelection) {
+            this._prevList.deselectAll();
+        }
+
+        if (this._nextList && this._nextList._isMultiSelection) {
+            this._nextList.deselectAll();
+        }
+    }
+
+    _selectFromItemToEnd(item, isKeepLastSelection=false) {
+        this.deselectAll(isKeepLastSelection);
+        this._isMultiSelection = true;
+        const ixStart = this.visibleItems.indexOf(item);
+        const len = this.visibleItems.length;
+        for (let i = ixStart; i < len; ++i) {
+            this.visibleItems[i].isSelected = true;
+        }
+    }
+
+    _selectToItemFromStart(item, isKeepLastSelection=false) {
+        this.deselectAll(isKeepLastSelection);
+        this._isMultiSelection = true;
+        const ixEnd = this.visibleItems.indexOf(item);
+        for (let i = 0; i <= ixEnd; ++i) {
+            this.visibleItems[i].isSelected = true;
+        }
+    }
+
+    _selectFromItemToItem(item1, item2) {
+        this.deselectAll(true);
+
+        if (item1 === item2) {
+            if (this._lastSelection)
+                this._lastSelection.isSelected = false;
+            item1.isSelected = true;
+            this._lastSelection = item1;
+            return;
+        }
+
+        const ix1 = this.visibleItems.indexOf(item1);
+        const ix2 = this.visibleItems.indexOf(item2);
+
+        this._isMultiSelection = true;
+        const [ixStart,ixEnd] = [ix1, ix2].sort(SortUtil.ascSort);
+        for (let i = ixStart; i <= ixEnd; ++i) {
+            this.visibleItems[i].isSelected = true;
+        }
+    }
+
+    deselectAll(isKeepLastSelection=false) {
+        if (!isKeepLastSelection)
+            this._lastSelection = null;
+        this._isMultiSelection = false;
+        this._items.forEach(it=>it.isSelected = false);
+    }
+
+    updateSelected(item) {
+        if (this.visibleItems.includes(item)) {
+            if (this._isMultiSelection)
+                this.deselectAll(true);
+
+            if (this._lastSelection && this._lastSelection !== item)
+                this._lastSelection.isSelected = false;
+
+            item.isSelected = true;
+            this._lastSelection = item;
+        } else
+            this.deselectAll();
+    }
+
+    getSelected() {
+        return this.visibleItems.filter(it=>it.isSelected);
+    }
+
+    static getCleanSearchTerm(str) {
+        return (str || "").toAscii().trim().toLowerCase().split(/\s+/g).join(" ");
+    }
+}
+;
+List$1._DEFAULTS = {
+    searchTerm: "",
+    sortBy: "name",
+    sortDir: "asc",
+    fnFilter: null,
+};
+
+globalThis.List = List$1;
+globalThis.ListItem = ListItem$1;
+//#endregion
 
 //#region TabUIUtil
 class TabUiUtilBase {
@@ -20661,11 +22757,13 @@ globalThis.CollectionUtil = {
 
 //#region Charactermancer
 class Charactermancer_Class_Util {
+    /**return all features from a class (UID string format, except for gainSubclass features, which are objects with properties)*/
     static getAllFeatures(cls) {
         let allFeatures = [];
         const seenSubclassFeatureHashes = new Set();
 
-        const gainSubclassFeatureLevels = cls.classFeatures.filter(it=>it.gainSubclassFeature).map(cf=>cf.level ?? DataUtil.class.unpackUidClassFeature(cf.classFeature || cf).level);
+        const gainSubclassFeatureLevels = cls.classFeatures.filter(it=>it.gainSubclassFeature).map(cf=>cf.level ??
+            DataUtil.class.unpackUidClassFeature(cf.classFeature || cf).level);
 
         cls.classFeatures.forEach(cf=>{
             allFeatures.push(cf);
@@ -21024,12 +23122,10 @@ class Charactermancer_Class_Util {
     }
 
     static getExistingClassItems(actor, cls) {
-        if (!cls)
-            return [];
+        if (!cls){return [];}
 
         return actor.items.filter(actItem=>{
-            if (actItem.type !== "class")
-                return false;
+            if (actItem.type !== "class"){return;}
 
             const {page, source, hash, propDroppable} = MiscUtil.get(actItem, "flags", SharedConsts.MODULE_ID) || {};
             if (page === UrlUtil.PG_CLASSES && propDroppable === "class" && source === cls.source && hash === UrlUtil.URL_TO_HASH_BUILDER["class"](cls))
@@ -22623,10 +24719,10 @@ class Charactermancer_SkillSaveProficiencySelect extends Charactermancer_Profici
         this._addHookBase("ixSet", this._hk_ixSet.bind(this));
         this._hk_ixSet();
 
-        $$($wrp)`
+        $$`
 			${$stgSelGroup}
 			${this._$stgGroup}
-		`;
+		`.appendTo($wrp);
     }
 
     _render_$getStgSelGroup() {
@@ -23664,197 +25760,6 @@ class Charactermancer_SenseSelect extends BaseComponent {
 }
 
 class Charactermancer_FeatureOptionsSelect extends BaseComponent {
-    static async pGetUserInput(opts) {
-        const comp = new this({
-            ...opts,
-            featureSourceTracker: opts.featureSourceTracker || new Charactermancer_FeatureSourceTracker(),
-            isModal: true,
-        });
-        if (await comp.pIsNoChoice()) {
-            comp.render($(document.createElement("div")));
-            return comp.pGetFormData();
-        }
-
-        return UtilApplications.pGetImportCompApplicationFormData({
-            comp,
-            width: 640,
-            height: Util.getMaxWindowHeight(),
-            isAutoResize: true,
-        });
-    }
-
-    static async pDoApplyProficiencyFormDataToActorUpdate(actor, actorUpdate, formData) {
-        const formDataData = formData.data;
-        if (!formDataData)
-            return;
-
-        const {DataConverter} = await Promise.resolve().then(function() {
-            return DataConverter$1;
-        });
-
-        actorUpdate.system = actorUpdate.system || {};
-
-        for (const formData of formDataData.formDatasSkillToolLanguageProficiencies || []) {
-            DataConverter.doApplySkillFormDataToActorUpdate({
-                existingProfsActor: MiscUtil.get(actor, "_source", "system", "skills"),
-                formData: formData,
-                actorData: actorUpdate.system,
-            });
-
-            DataConverter.doApplyLanguageProficienciesFormDataToActorUpdate({
-                existingProfsActor: MiscUtil.get(actor, "_source", "system", "traits", "languages"),
-                formData,
-                actorData: actorUpdate.system,
-            });
-
-            DataConverter.doApplyToolProficienciesFormDataToActorUpdate({
-                existingProfsActor: MiscUtil.get(actor, "_source", "system", "tools"),
-                formData,
-                actorData: actorUpdate.system,
-            });
-        }
-
-        for (const formData of formDataData.formDatasSkillProficiencies || []) {
-            DataConverter.doApplySkillFormDataToActorUpdate({
-                existingProfsActor: MiscUtil.get(actor, "_source", "system", "skills"),
-                formData: formData,
-                actorData: actorUpdate.system,
-            });
-        }
-
-        for (const formData of formDataData.formDatasLanguageProficiencies || []) {
-            DataConverter.doApplyLanguageProficienciesFormDataToActorUpdate({
-                existingProfsActor: MiscUtil.get(actor, "_source", "system", "traits", "languages"),
-                formData,
-                actorData: actorUpdate.system,
-            });
-        }
-
-        for (const formData of formDataData.formDatasToolProficiencies || []) {
-            DataConverter.doApplyToolProficienciesFormDataToActorUpdate({
-                existingProfsActor: MiscUtil.get(actor, "_source", "system", "tools"),
-                formData,
-                actorData: actorUpdate.system,
-            });
-        }
-
-        for (const formData of formDataData.formDatasWeaponProficiencies || []) {
-            DataConverter.doApplyWeaponProficienciesFormDataToActorUpdate({
-                existingProfsActor: MiscUtil.get(actor, "_source", "system", "traits", "weaponProf"),
-                formData,
-                actorData: actorUpdate.system,
-            });
-        }
-
-        for (const formData of formDataData.formDatasArmorProficiencies || []) {
-            DataConverter.doApplyArmorProficienciesFormDataToActorUpdate({
-                existingProfsActor: MiscUtil.get(actor, "_source", "system", "traits", "armorProf"),
-                formData,
-                actorData: actorUpdate.system,
-            });
-        }
-
-        for (const formData of formDataData.formDatasSavingThrowProficiencies || []) {
-            DataConverter.doApplySavingThrowProficienciesFormDataToActorUpdate({
-                existingProfsActor: MiscUtil.get(actor, "_source", "system", "abilities"),
-                formData,
-                actorData: actorUpdate.system,
-            });
-        }
-
-        for (const formData of formDataData.formDatasDamageImmunities || []) {
-            DataConverter.doApplyDamageImmunityFormDataToActorUpdate({
-                existingProfsActor: MiscUtil.get(actor, "_source", "system", "traits", "di"),
-                formData,
-                actorData: actorUpdate.system,
-            });
-        }
-
-        for (const formData of formDataData.formDatasDamageResistances || []) {
-            DataConverter.doApplyDamageResistanceFormDataToActorUpdate({
-                existingProfsActor: MiscUtil.get(actor, "_source", "system", "traits", "dr"),
-                formData,
-                actorData: actorUpdate.system,
-            });
-        }
-
-        for (const formData of formDataData.formDatasDamageVulnerabilities || []) {
-            DataConverter.doApplyDamageVulnerabilityFormDataToActorUpdate({
-                existingProfsActor: MiscUtil.get(actor, "_source", "system", "traits", "dv"),
-                formData,
-                actorData: actorUpdate.system,
-            });
-        }
-
-        for (const formData of formDataData.formDatasConditionImmunities || []) {
-            DataConverter.doApplyConditionImmunityFormDataToActorUpdate({
-                existingProfsActor: MiscUtil.get(actor, "_source", "system", "traits", "ci"),
-                formData,
-                actorData: actorUpdate.system,
-            });
-        }
-
-        for (const formData of formDataData.formDatasExpertise || []) {
-            DataConverter.doApplyExpertiseFormDataToActorUpdate({
-                existingProfsActor: {
-                    skillProficiencies: MiscUtil.get(actor, "_source", "system", "skills"),
-                    toolProficiencies: MiscUtil.get(actor, "_source", "system", "tools"),
-                },
-                formData: formData,
-                actorData: actorUpdate.system,
-            });
-        }
-    }
-
-    static async pDoApplyResourcesFormDataToActor({actor, formData}) {
-        const formDataData = formData.data;
-
-        if (!formDataData?.formDatasResources?.length)
-            return;
-
-        for (const formDataResources of formDataData.formDatasResources) {
-            await Charactermancer_ResourceSelect.pApplyFormDataToActor(actor, formDataResources, );
-        }
-    }
-
-    static async pDoApplySensesFormDataToActor({actor, actorUpdate, formData, configGroup}) {
-        const formDataData = formData.data;
-        if (!formDataData || !formDataData.formDatasSenses?.length)
-            return;
-
-        const {DataConverter} = await Promise.resolve().then(function() {
-            return DataConverter$1;
-        });
-
-        actorUpdate.prototypeToken = actorUpdate.prototypeToken || {};
-        actorUpdate.system = actorUpdate.system || {};
-
-        for (const formData of formDataData.formDatasSenses || []) {
-            DataConverter.doApplySensesFormDataToActorUpdate({
-                existingSensesActor: MiscUtil.get(actor, "_source", "system", "attributes", "senses"),
-                existingTokenActor: MiscUtil.get(actor, "_source", "prototypeToken"),
-                formData: formData,
-                actorData: actorUpdate.system,
-                actorToken: actorUpdate.prototypeToken,
-                configGroup,
-            });
-        }
-    }
-
-    static async pDoApplyAdditionalSpellsFormDataToActor({actor, formData, abilityAbv, parentAbilityAbv=null, taskRunner=null}) {
-        const formDataData = formData.data;
-        if (!formDataData || !formDataData.formDatasAdditionalSpells?.length)
-            return;
-
-        for (const formDataAdditionalSpells of formDataData.formDatasAdditionalSpells) {
-            await Charactermancer_AdditionalSpellsSelect.pApplyFormDataToActor(actor, formDataAdditionalSpells, {
-                taskRunner,
-                abilityAbv,
-                parentAbilityAbv,
-            }, );
-        }
-    }
-
     constructor(opts) {
         super();
 
@@ -23869,7 +25774,8 @@ class Charactermancer_FeatureOptionsSelect extends BaseComponent {
         this._isSkipRenderingFirstFeatureTitle = !!opts.isSkipRenderingFirstFeatureTitle;
 
         if (this._isOptions()) {
-            this._optionsSet.sort((a,b)=>SortUtil.ascSortLower(a.entity.name, b.entity.name) || SortUtil.ascSortLower(Parser.sourceJsonToAbv(a.entity.source), Parser.sourceJsonToAbv(b.entity.source)));
+            this._optionsSet.sort((a,b)=>SortUtil.ascSortLower(a.entity.name, b.entity.name)
+            || SortUtil.ascSortLower(Parser.sourceJsonToAbv(a.entity.source), Parser.sourceJsonToAbv(b.entity.source)));
         }
 
         this._lastMeta = null;
@@ -23908,8 +25814,134 @@ class Charactermancer_FeatureOptionsSelect extends BaseComponent {
         this._prevSubCompsAdditionalSpells = null;
     }
 
+    render($wrp) {
+        console.log("render feature opt select");
+        const $stgSubChoiceData = $$`<div class="w-100 ve-flex-col mt-2"></div>`.hideVe();
+
+        this._render_options();
+
+        $$`<div class="ve-flex-col min-h-0 overflow-y-auto">
+			${this._lastMeta?.$ele}
+			${$stgSubChoiceData}
+		</div>`.appendTo($wrp);
+
+        this._addHookBase(ComponentUiUtil.getMetaWrpMultipleChoice_getPropPulse("ixsChosen"), ()=>this._render_pHkIxsChosen({
+            $stgSubChoiceData
+        }), );
+        return this._render_pHkIxsChosen({$stgSubChoiceData});
+    }
+
     get optionSet_() {
         return this._optionsSet;
+    }
+
+    async pIsNoChoice() {
+        if (this._isOptions())
+            return false;
+        //TEMPFIX
+        /* if (await this._pHasChoiceInSideData_chooseSystem())
+            return false;
+        if (await this._pHasChoiceInSideData_chooseFlags())
+            return false; */
+        if (await this._pHasSubChoice_entryData_skillToolLanguageProficiencies())
+            return false;
+        if (await this._pHasSubChoice_entryData_skillProficiencies())
+            return false;
+        if (await this._pHasSubChoice_entryData_languageProficiencies())
+            return false;
+        if (await this._pHasSubChoice_entryData_toolProficiencies())
+            return false;
+        if (await this._pHasSubChoice_entryData_weaponProficiencies())
+            return false;
+        if (await this._pHasSubChoice_entryData_armorProficiencies())
+            return false;
+        if (await this._pHasSubChoice_entryData_savingThrowProficiencies())
+            return false;
+        if (await this._pHasSubChoice_damageImmunities())
+            return false;
+        if (await this._pHasSubChoice_damageResistances())
+            return false;
+        if (await this._pHasSubChoice_damageVulnerabilities())
+            return false;
+        if (await this._pHasSubChoice_conditionImmunities())
+            return false;
+        if (await this._pHasSubChoice_expertise())
+            return false;
+        if (await this._pHasSubChoice_resources())
+            return false;
+        if (await this._pHasSubChoice_entryData_senses())
+            return false;
+        if (await this._pHasSubChoice_entryData_additionalSpells())
+            return false;
+        return true;
+    }
+
+    async pIsForceDisplay() {
+        if (await this._pIsForceDisplay_skillToolLanguageProficiencies())
+            return true;
+        if (await this._pIsForceDisplay_skillProficiencies())
+            return true;
+        if (await this._pIsForceDisplay_languageProficiencies())
+            return true;
+        if (await this._pIsForceDisplay_toolProficiencies())
+            return true;
+        if (await this._pIsForceDisplay_weaponProficiencies())
+            return true;
+        if (await this._pIsForceDisplay_armorProficiencies())
+            return true;
+        if (await this._pIsForceDisplay_savingThrowProficiencies())
+            return true;
+        if (await this._pIsForceDisplay_damageImmunities())
+            return true;
+        if (await this._pIsForceDisplay_damageResistances())
+            return true;
+        if (await this._pIsForceDisplay_damageVulnerabilities())
+            return true;
+        if (await this._pIsForceDisplay_conditionImmunities())
+            return true;
+        if (await this._pIsForceDisplay_expertise())
+            return true;
+        if (await this._pIsForceDisplay_resources())
+            return true;
+        if (await this._pIsForceDisplay_senses())
+            return true;
+        if (await this._pIsForceDisplay_additionalSpells())
+            return true;
+        return false;
+    }
+
+    async pIsAvailable() {
+        if (await this._pIsAvailable_skillToolLanguageProficiencies())
+            return true;
+        if (await this._pIsAvailable_skillProficiencies())
+            return true;
+        if (await this._pIsAvailable_languageProficiencies())
+            return true;
+        if (await this._pIsAvailable_toolProficiencies())
+            return true;
+        if (await this._pIsAvailable_weaponProficiencies())
+            return true;
+        if (await this._pIsAvailable_armorProficiencies())
+            return true;
+        if (await this._pIsAvailable_savingThrowProficiencies())
+            return true;
+        if (await this._pIsAvailable_damageImmunities())
+            return true;
+        if (await this._pIsAvailable_damageResistances())
+            return true;
+        if (await this._pIsAvailable_damageVulnerabilities())
+            return true;
+        if (await this._pIsAvailable_conditionImmunities())
+            return true;
+        if (await this._pIsAvailable_expertise())
+            return true;
+        if (await this._pIsAvailable_resources())
+            return true;
+        if (await this._pIsAvailable_senses())
+            return true;
+        if (await this._pIsAvailable_additionalSpells())
+            return true;
+        return false;
     }
 
     _isOptions() {
@@ -23923,8 +25955,9 @@ class Charactermancer_FeatureOptionsSelect extends BaseComponent {
     }
 
     async _pIsSubChoiceForceDisplay(selectedLoadeds) {
-        const isSubChoice_sideDataChooseSystem = await this._pHasChoiceInSideData_chooseSystem(selectedLoadeds);
-        const isSubChoice_sideDataChooseFlags = await this._pHasChoiceInSideData_chooseFlags(selectedLoadeds);
+        //TEMPFIX
+        const isSubChoice_sideDataChooseSystem = false;//await this._pHasChoiceInSideData_chooseSystem(selectedLoadeds);
+        const isSubChoice_sideDataChooseFlags = false; //await this._pHasChoiceInSideData_chooseFlags(selectedLoadeds);
         const isForceDisplay_entryDataSkillToolLanguageProficiencies = await this._pIsForceDisplay_skillToolLanguageProficiencies(selectedLoadeds);
         const isForceDisplay_entryDataSkillProficiencies = await this._pIsForceDisplay_skillProficiencies(selectedLoadeds);
         const isForceDisplay_entryDataLanguageProficiencies = await this._pIsForceDisplay_languageProficiencies(selectedLoadeds);
@@ -23943,10 +25976,10 @@ class Charactermancer_FeatureOptionsSelect extends BaseComponent {
 
         return [isSubChoice_sideDataChooseSystem, isSubChoice_sideDataChooseFlags, isForceDisplay_entryDataSkillToolLanguageProficiencies, isForceDisplay_entryDataSkillProficiencies, isForceDisplay_entryDataLanguageProficiencies, isForceDisplay_entryDataToolProficiencies, isForceDisplay_entryDataWeaponProficiencies, isForceDisplay_entryDataArmorProficiencies, isForceDisplay_entryDataSavingThrowProficiencies, isForceDisplay_entryDataDamageImmunities, isForceDisplay_entryDataDamageResistances, isForceDisplay_entryDataDamageVulnerabilities, isForceDisplay_entryDataConditionImmunities, isForceDisplay_entryDataExpertise, isForceDisplay_entryDataResources, isForceDisplay_entryDataSenses, isForceDisplay_entryDataAdditionalSpells, ].some(Boolean);
     }
-
     async _pIsSubChoiceAvailable(selectedLoadeds) {
-        const isSubChoice_sideDataChooseSystem = await this._pHasChoiceInSideData_chooseSystem(selectedLoadeds);
-        const isSubChoice_sideDataChooseFlags = await this._pHasChoiceInSideData_chooseFlags(selectedLoadeds);
+        //TEMPFIX
+        const isSubChoice_sideDataChooseSystem = false; //await this._pHasChoiceInSideData_chooseSystem(selectedLoadeds);
+        const isSubChoice_sideDataChooseFlags = false; //await this._pHasChoiceInSideData_chooseFlags(selectedLoadeds);
         const isAvailable_entryDataSkillToolLanguageProficiencies = await this._pIsAvailable_skillToolLanguageProficiencies(selectedLoadeds);
         const isAvailable_entryDataSkillProficiencies = await this._pIsAvailable_skillProficiencies(selectedLoadeds);
         const isAvailable_entryDataLanguageProficiencies = await this._pIsAvailable_languageProficiencies(selectedLoadeds);
@@ -23966,6 +25999,44 @@ class Charactermancer_FeatureOptionsSelect extends BaseComponent {
         return [isSubChoice_sideDataChooseSystem, isSubChoice_sideDataChooseFlags, isAvailable_entryDataSkillToolLanguageProficiencies, isAvailable_entryDataSkillProficiencies, isAvailable_entryDataLanguageProficiencies, isAvailable_entryDataToolProficiencies, isAvailable_entryDataWeaponProficiencies, isAvailable_entryDataArmorProficiencies, isAvailable_entryDataSavingThrowProficiencies, isAvailable_entryDataDamageImmunities, isAvailable_entryDataDamageResistances, isAvailable_entryDataDamageVulnerabilities, isAvailable_entryDataConditionImmunities, isAvailable_entryDataExpertise, isAvailable_entryDataResources, isAvailable_entryDataSenses, isAvailable_entryDataAdditionalSpells, ].some(Boolean);
     }
 
+    
+
+    async _pHasChoiceInSideData_chooseSystem(optionsSet) {
+        return this._pHasChoiceInSideData_chooseSystemOrFlags({
+            optionsSet,
+            propChoose: "chooseSystem"
+        });
+    }
+    async _pHasChoiceInSideData_chooseFlags(optionsSet) {
+        return this._pHasChoiceInSideData_chooseSystemOrFlags({
+            optionsSet,
+            propChoose: "chooseFlags"
+        });
+    }
+    async _pHasChoiceInSideData_chooseSystemOrFlags({optionsSet, propChoose}) {
+        optionsSet = optionsSet || this._optionsSet;
+
+        if (this._isSkipCharactermancerHandled)
+            return false;
+
+        for (const loaded of optionsSet) {
+            const {entity, type} = loaded;
+
+            console.log(loaded, type);
+            const sideDataConverterMeta = this.constructor._ENTITY_TYPE_TO_SIDE_DATA_META[type];
+
+            if (sideDataConverterMeta) {
+                if (!sideDataConverterMeta.file.startsWith("SideDataInterface"))
+                    throw new Error(`Expected side-data interface to start with "SideDataInterface"!`);
+                const mod = await __variableDynamicImportRuntime2__(`./SideDataInterface/SideDataInterface${sideDataConverterMeta.file.replace(/^SideDataInterface/, "")}.js`);
+
+                const sideData = await mod[sideDataConverterMeta.sideDataInterface].pGetSideLoaded(entity);
+                if (sideData?.[propChoose]?.length)
+                    return true;
+            }
+        }
+        return false;
+    }
     static _ENTITY_TYPE_TO_SIDE_DATA_META = {
         "backgroundFeature": {
             file: "SideDataInterfaceBackgroundFeature",
@@ -24005,44 +26076,6 @@ class Charactermancer_FeatureOptionsSelect extends BaseComponent {
         },
     };
 
-    async _pHasChoiceInSideData_chooseSystem(optionsSet) {
-        return this._pHasChoiceInSideData_chooseSystemOrFlags({
-            optionsSet,
-            propChoose: "chooseSystem"
-        });
-    }
-
-    async _pHasChoiceInSideData_chooseFlags(optionsSet) {
-        return this._pHasChoiceInSideData_chooseSystemOrFlags({
-            optionsSet,
-            propChoose: "chooseFlags"
-        });
-    }
-
-    async _pHasChoiceInSideData_chooseSystemOrFlags({optionsSet, propChoose}) {
-        optionsSet = optionsSet || this._optionsSet;
-
-        if (this._isSkipCharactermancerHandled)
-            return false;
-
-        for (const loaded of optionsSet) {
-            const {entity, type} = loaded;
-
-            const sideDataConverterMeta = this.constructor._ENTITY_TYPE_TO_SIDE_DATA_META[type];
-
-            if (sideDataConverterMeta) {
-                if (!sideDataConverterMeta.file.startsWith("SideDataInterface"))
-                    throw new Error(`Expected side-data interface to start with "SideDataInterface"!`);
-                const mod = await __variableDynamicImportRuntime2__(`./SideDataInterface/SideDataInterface${sideDataConverterMeta.file.replace(/^SideDataInterface/, "")}.js`);
-
-                const sideData = await mod[sideDataConverterMeta.sideDataInterface].pGetSideLoaded(entity);
-                if (sideData?.[propChoose]?.length)
-                    return true;
-            }
-        }
-        return false;
-    }
-
     async _pHasSubChoice_entryData_skillToolLanguageProficiencies(optionsSet) {
         return this._pHasEntryData_prop({
             optionsSet,
@@ -24053,6 +26086,8 @@ class Charactermancer_FeatureOptionsSelect extends BaseComponent {
     }
 
     async _pHasSubChoice_entryData_skillProficiencies(optionsSet) {
+        //Check if optionsSet has the property "skillProficiencies" in its entryData (or in the root object), and checks if its a choice between several
+        //Also provides it a function to map the choices
         return this._pHasEntryData_prop({
             optionsSet,
             CompClass: Charactermancer_OtherProficiencySelect,
@@ -24184,26 +26219,23 @@ class Charactermancer_FeatureOptionsSelect extends BaseComponent {
         });
     }
 
+    /**Checks if an object has a property in their entryData called 'prop'*/
     async _pHasEntryData_prop({optionsSet, CompClass, prop, isRequireChoice, fnGetMappedProficiencies}) {
         optionsSet = optionsSet || this._optionsSet;
 
-        if (this._isSkipCharactermancerHandled)
-            return false;
+        if (this._isSkipCharactermancerHandled){return false;}
 
         for (const loaded of optionsSet) {
             const {entity} = loaded;
 
             let proficiencies = entity?.[prop] || entity?.entryData?.[prop];
             if (proficiencies) {
-                if (fnGetMappedProficiencies)
-                    proficiencies = fnGetMappedProficiencies(proficiencies);
+                if (fnGetMappedProficiencies){proficiencies = fnGetMappedProficiencies(proficiencies);}
 
-                if (!isRequireChoice)
-                    return true;
+                if (!isRequireChoice){return true;}
                 else {
                     const isNoChoice = CompClass.isNoChoice(proficiencies);
-                    if (!isNoChoice)
-                        return true;
+                    if (!isNoChoice){return true;}
                 }
             }
         }
@@ -24423,113 +26455,7 @@ class Charactermancer_FeatureOptionsSelect extends BaseComponent {
         return out;
     }
 
-    async pIsNoChoice() {
-        if (this._isOptions())
-            return false;
-        if (await this._pHasChoiceInSideData_chooseSystem())
-            return false;
-        if (await this._pHasChoiceInSideData_chooseFlags())
-            return false;
-        if (await this._pHasSubChoice_entryData_skillToolLanguageProficiencies())
-            return false;
-        if (await this._pHasSubChoice_entryData_skillProficiencies())
-            return false;
-        if (await this._pHasSubChoice_entryData_languageProficiencies())
-            return false;
-        if (await this._pHasSubChoice_entryData_toolProficiencies())
-            return false;
-        if (await this._pHasSubChoice_entryData_weaponProficiencies())
-            return false;
-        if (await this._pHasSubChoice_entryData_armorProficiencies())
-            return false;
-        if (await this._pHasSubChoice_entryData_savingThrowProficiencies())
-            return false;
-        if (await this._pHasSubChoice_damageImmunities())
-            return false;
-        if (await this._pHasSubChoice_damageResistances())
-            return false;
-        if (await this._pHasSubChoice_damageVulnerabilities())
-            return false;
-        if (await this._pHasSubChoice_conditionImmunities())
-            return false;
-        if (await this._pHasSubChoice_expertise())
-            return false;
-        if (await this._pHasSubChoice_resources())
-            return false;
-        if (await this._pHasSubChoice_entryData_senses())
-            return false;
-        if (await this._pHasSubChoice_entryData_additionalSpells())
-            return false;
-        return true;
-    }
-
-    async pIsForceDisplay() {
-        if (await this._pIsForceDisplay_skillToolLanguageProficiencies())
-            return true;
-        if (await this._pIsForceDisplay_skillProficiencies())
-            return true;
-        if (await this._pIsForceDisplay_languageProficiencies())
-            return true;
-        if (await this._pIsForceDisplay_toolProficiencies())
-            return true;
-        if (await this._pIsForceDisplay_weaponProficiencies())
-            return true;
-        if (await this._pIsForceDisplay_armorProficiencies())
-            return true;
-        if (await this._pIsForceDisplay_savingThrowProficiencies())
-            return true;
-        if (await this._pIsForceDisplay_damageImmunities())
-            return true;
-        if (await this._pIsForceDisplay_damageResistances())
-            return true;
-        if (await this._pIsForceDisplay_damageVulnerabilities())
-            return true;
-        if (await this._pIsForceDisplay_conditionImmunities())
-            return true;
-        if (await this._pIsForceDisplay_expertise())
-            return true;
-        if (await this._pIsForceDisplay_resources())
-            return true;
-        if (await this._pIsForceDisplay_senses())
-            return true;
-        if (await this._pIsForceDisplay_additionalSpells())
-            return true;
-        return false;
-    }
-
-    async pIsAvailable() {
-        if (await this._pIsAvailable_skillToolLanguageProficiencies())
-            return true;
-        if (await this._pIsAvailable_skillProficiencies())
-            return true;
-        if (await this._pIsAvailable_languageProficiencies())
-            return true;
-        if (await this._pIsAvailable_toolProficiencies())
-            return true;
-        if (await this._pIsAvailable_weaponProficiencies())
-            return true;
-        if (await this._pIsAvailable_armorProficiencies())
-            return true;
-        if (await this._pIsAvailable_savingThrowProficiencies())
-            return true;
-        if (await this._pIsAvailable_damageImmunities())
-            return true;
-        if (await this._pIsAvailable_damageResistances())
-            return true;
-        if (await this._pIsAvailable_damageVulnerabilities())
-            return true;
-        if (await this._pIsAvailable_conditionImmunities())
-            return true;
-        if (await this._pIsAvailable_expertise())
-            return true;
-        if (await this._pIsAvailable_resources())
-            return true;
-        if (await this._pIsAvailable_senses())
-            return true;
-        if (await this._pIsAvailable_additionalSpells())
-            return true;
-        return false;
-    }
+   
 
     _getTrackableFeatures() {
         const ixs = ComponentUiUtil.getMetaWrpMultipleChoice_getSelectedIxs(this, "ixsChosen");
@@ -24808,23 +26734,7 @@ class Charactermancer_FeatureOptionsSelect extends BaseComponent {
         }
     }
 
-    render($wrp) {
-        const $stgSubChoiceData = $$`<div class="w-100 ve-flex-col mt-2"></div>`.hideVe();
-
-        this._render_options();
-
-        $$`<div class="ve-flex-col min-h-0 overflow-y-auto">
-			${this._lastMeta?.$ele}
-			${$stgSubChoiceData}
-		</div>`.appendTo($wrp);
-
-        this._addHookBase(ComponentUiUtil.getMetaWrpMultipleChoice_getPropPulse("ixsChosen"), ()=>this._render_pHkIxsChosen({
-            $stgSubChoiceData
-        }), );
-        return this._render_pHkIxsChosen({
-            $stgSubChoiceData
-        });
-    }
+    
 
     async pRender($wrp) {
         return this.render($wrp);
@@ -24862,19 +26772,18 @@ class Charactermancer_FeatureOptionsSelect extends BaseComponent {
         $stgSubChoiceData.empty();
         this._unregisterSubComps();
 
-        const sideDataRaws = await this._pGetLoadedsSideDataRaws(selectedLoadeds);
-        const ptrIsFirstSection = {
-            _: true
-        };
+        //TEMPFIX
+        const sideDataRaws = null;//await this._pGetLoadedsSideDataRaws(selectedLoadeds);
+        const ptrIsFirstSection = {_: true };
 
         for (let i = 0; i < selectedLoadeds.length; ++i) {
             const loaded = selectedLoadeds[i];
 
             if (!(await this._pIsSubChoiceForceDisplay([selectedLoadeds[i]]) || await this._pIsSubChoiceAvailable([selectedLoadeds[i]])))
                 continue;
-
-            const isSubChoice_sideDataChooseSystem = await this._pHasChoiceInSideData_chooseSystem([selectedLoadeds[i]]);
-            const isSubChoice_sideDataChooseFlags = await this._pHasChoiceInSideData_chooseFlags([selectedLoadeds[i]]);
+            //TEMPFIX
+            const isSubChoice_sideDataChooseSystem = false; //await this._pHasChoiceInSideData_chooseSystem([selectedLoadeds[i]]);
+            const isSubChoice_sideDataChooseFlags = false; //await this._pHasChoiceInSideData_chooseFlags([selectedLoadeds[i]]);
 
             const isForceDisplay_entryDataSkillToolLanguageProficiencies = await this._pIsForceDisplay_skillToolLanguageProficiencies([selectedLoadeds[i]]);
             const isForceDisplay_entryDataSkillProficiencies = await this._pIsForceDisplay_skillProficiencies([selectedLoadeds[i]]);
@@ -24913,7 +26822,8 @@ class Charactermancer_FeatureOptionsSelect extends BaseComponent {
             if (i !== 0 || !this._isSkipRenderingFirstFeatureTitle)
                 $stgSubChoiceData.append(this._render_getSubCompTitle(entity));
 
-            if (isSubChoice_sideDataChooseSystem) {
+            //TEMPFIX
+           /*  if (isSubChoice_sideDataChooseSystem) {
                 const sideDataRaw = sideDataRaws[i];
                 if (sideDataRaw?.chooseSystem) {
                     ptrIsFirstSection._ = false;
@@ -24927,7 +26837,7 @@ class Charactermancer_FeatureOptionsSelect extends BaseComponent {
                     ptrIsFirstSection._ = false;
                     this._render_renderSubComp_chooseFlags(i, $stgSubChoiceData, entity, type, sideDataRaw);
                 }
-            }
+            } */
 
             this._render_pHkIxsChosen_comp({
                 ix: i,
@@ -25443,6 +27353,197 @@ class Charactermancer_FeatureOptionsSelect extends BaseComponent {
             ixsChosen: [],
         };
     }
+
+    static async pGetUserInput(opts) {
+        const comp = new this({
+            ...opts,
+            featureSourceTracker: opts.featureSourceTracker || new Charactermancer_FeatureSourceTracker(),
+            isModal: true,
+        });
+        if (await comp.pIsNoChoice()) {
+            comp.render($(document.createElement("div")));
+            return comp.pGetFormData();
+        }
+
+        return UtilApplications.pGetImportCompApplicationFormData({
+            comp,
+            width: 640,
+            height: Util.getMaxWindowHeight(),
+            isAutoResize: true,
+        });
+    }
+
+    static async pDoApplyProficiencyFormDataToActorUpdate(actor, actorUpdate, formData) {
+        const formDataData = formData.data;
+        if (!formDataData)
+            return;
+
+        const {DataConverter} = await Promise.resolve().then(function() {
+            return DataConverter$1;
+        });
+
+        actorUpdate.system = actorUpdate.system || {};
+
+        for (const formData of formDataData.formDatasSkillToolLanguageProficiencies || []) {
+            DataConverter.doApplySkillFormDataToActorUpdate({
+                existingProfsActor: MiscUtil.get(actor, "_source", "system", "skills"),
+                formData: formData,
+                actorData: actorUpdate.system,
+            });
+
+            DataConverter.doApplyLanguageProficienciesFormDataToActorUpdate({
+                existingProfsActor: MiscUtil.get(actor, "_source", "system", "traits", "languages"),
+                formData,
+                actorData: actorUpdate.system,
+            });
+
+            DataConverter.doApplyToolProficienciesFormDataToActorUpdate({
+                existingProfsActor: MiscUtil.get(actor, "_source", "system", "tools"),
+                formData,
+                actorData: actorUpdate.system,
+            });
+        }
+
+        for (const formData of formDataData.formDatasSkillProficiencies || []) {
+            DataConverter.doApplySkillFormDataToActorUpdate({
+                existingProfsActor: MiscUtil.get(actor, "_source", "system", "skills"),
+                formData: formData,
+                actorData: actorUpdate.system,
+            });
+        }
+
+        for (const formData of formDataData.formDatasLanguageProficiencies || []) {
+            DataConverter.doApplyLanguageProficienciesFormDataToActorUpdate({
+                existingProfsActor: MiscUtil.get(actor, "_source", "system", "traits", "languages"),
+                formData,
+                actorData: actorUpdate.system,
+            });
+        }
+
+        for (const formData of formDataData.formDatasToolProficiencies || []) {
+            DataConverter.doApplyToolProficienciesFormDataToActorUpdate({
+                existingProfsActor: MiscUtil.get(actor, "_source", "system", "tools"),
+                formData,
+                actorData: actorUpdate.system,
+            });
+        }
+
+        for (const formData of formDataData.formDatasWeaponProficiencies || []) {
+            DataConverter.doApplyWeaponProficienciesFormDataToActorUpdate({
+                existingProfsActor: MiscUtil.get(actor, "_source", "system", "traits", "weaponProf"),
+                formData,
+                actorData: actorUpdate.system,
+            });
+        }
+
+        for (const formData of formDataData.formDatasArmorProficiencies || []) {
+            DataConverter.doApplyArmorProficienciesFormDataToActorUpdate({
+                existingProfsActor: MiscUtil.get(actor, "_source", "system", "traits", "armorProf"),
+                formData,
+                actorData: actorUpdate.system,
+            });
+        }
+
+        for (const formData of formDataData.formDatasSavingThrowProficiencies || []) {
+            DataConverter.doApplySavingThrowProficienciesFormDataToActorUpdate({
+                existingProfsActor: MiscUtil.get(actor, "_source", "system", "abilities"),
+                formData,
+                actorData: actorUpdate.system,
+            });
+        }
+
+        for (const formData of formDataData.formDatasDamageImmunities || []) {
+            DataConverter.doApplyDamageImmunityFormDataToActorUpdate({
+                existingProfsActor: MiscUtil.get(actor, "_source", "system", "traits", "di"),
+                formData,
+                actorData: actorUpdate.system,
+            });
+        }
+
+        for (const formData of formDataData.formDatasDamageResistances || []) {
+            DataConverter.doApplyDamageResistanceFormDataToActorUpdate({
+                existingProfsActor: MiscUtil.get(actor, "_source", "system", "traits", "dr"),
+                formData,
+                actorData: actorUpdate.system,
+            });
+        }
+
+        for (const formData of formDataData.formDatasDamageVulnerabilities || []) {
+            DataConverter.doApplyDamageVulnerabilityFormDataToActorUpdate({
+                existingProfsActor: MiscUtil.get(actor, "_source", "system", "traits", "dv"),
+                formData,
+                actorData: actorUpdate.system,
+            });
+        }
+
+        for (const formData of formDataData.formDatasConditionImmunities || []) {
+            DataConverter.doApplyConditionImmunityFormDataToActorUpdate({
+                existingProfsActor: MiscUtil.get(actor, "_source", "system", "traits", "ci"),
+                formData,
+                actorData: actorUpdate.system,
+            });
+        }
+
+        for (const formData of formDataData.formDatasExpertise || []) {
+            DataConverter.doApplyExpertiseFormDataToActorUpdate({
+                existingProfsActor: {
+                    skillProficiencies: MiscUtil.get(actor, "_source", "system", "skills"),
+                    toolProficiencies: MiscUtil.get(actor, "_source", "system", "tools"),
+                },
+                formData: formData,
+                actorData: actorUpdate.system,
+            });
+        }
+    }
+
+    static async pDoApplyResourcesFormDataToActor({actor, formData}) {
+        const formDataData = formData.data;
+
+        if (!formDataData?.formDatasResources?.length)
+            return;
+
+        for (const formDataResources of formDataData.formDatasResources) {
+            await Charactermancer_ResourceSelect.pApplyFormDataToActor(actor, formDataResources, );
+        }
+    }
+
+    static async pDoApplySensesFormDataToActor({actor, actorUpdate, formData, configGroup}) {
+        const formDataData = formData.data;
+        if (!formDataData || !formDataData.formDatasSenses?.length)
+            return;
+
+        const {DataConverter} = await Promise.resolve().then(function() {
+            return DataConverter$1;
+        });
+
+        actorUpdate.prototypeToken = actorUpdate.prototypeToken || {};
+        actorUpdate.system = actorUpdate.system || {};
+
+        for (const formData of formDataData.formDatasSenses || []) {
+            DataConverter.doApplySensesFormDataToActorUpdate({
+                existingSensesActor: MiscUtil.get(actor, "_source", "system", "attributes", "senses"),
+                existingTokenActor: MiscUtil.get(actor, "_source", "prototypeToken"),
+                formData: formData,
+                actorData: actorUpdate.system,
+                actorToken: actorUpdate.prototypeToken,
+                configGroup,
+            });
+        }
+    }
+
+    static async pDoApplyAdditionalSpellsFormDataToActor({actor, formData, abilityAbv, parentAbilityAbv=null, taskRunner=null}) {
+        const formDataData = formData.data;
+        if (!formDataData || !formDataData.formDatasAdditionalSpells?.length)
+            return;
+
+        for (const formDataAdditionalSpells of formDataData.formDatasAdditionalSpells) {
+            await Charactermancer_AdditionalSpellsSelect.pApplyFormDataToActor(actor, formDataAdditionalSpells, {
+                taskRunner,
+                abilityAbv,
+                parentAbilityAbv,
+            }, );
+        }
+    }
 }
 //#endregion
 
@@ -25841,6 +27942,466 @@ UiUtil$1.TYPE_TIMEOUT_MS = 100;
 UiUtil$1._MODAL_STACK = null;
 UiUtil$1._MODAL_LAST_MOUSEDOWN = null;
 globalThis.UiUtil = UiUtil$1;
+
+let ListSelectClickHandlerBase$1 = class ListSelectClickHandlerBase {
+    static _EVT_PASS_THOUGH_TAGS = new Set(["A", "BUTTON"]);
+
+    constructor() {
+        this._firstSelection = null;
+        this._lastSelection = null;
+
+        this._selectionInitialValue = null;
+    }
+
+    get _visibleItems() {
+        throw new Error("Unimplemented!");
+    }
+
+    get _allItems() {
+        throw new Error("Unimplemented!");
+    }
+
+    _getCb(item, opts) {
+        throw new Error("Unimplemented!");
+    }
+
+    _setCheckbox(item, opts) {
+        throw new Error("Unimplemented!");
+    }
+
+    _setHighlighted(item, opts) {
+        throw new Error("Unimplemented!");
+    }
+
+    handleSelectClick(item, evt, opts) {
+        opts = opts || {};
+
+        if (opts.isPassThroughEvents) {
+            const evtPath = evt.composedPath();
+            const subEles = evtPath.slice(0, evtPath.indexOf(evt.currentTarget));
+            if (subEles.some(ele=>this.constructor._EVT_PASS_THOUGH_TAGS.has(ele?.tagName)))
+                return;
+        }
+
+        evt.preventDefault();
+        evt.stopPropagation();
+
+        const cb = this._getCb(item, opts);
+        if (cb.disabled)
+            return true;
+
+        if (evt && evt.shiftKey && this._firstSelection) {
+            if (this._lastSelection === item) {
+
+                this._setCheckbox(item, {
+                    ...opts,
+                    toVal: !cb.checked
+                });
+            } else if (this._firstSelection === item && this._lastSelection) {
+
+                const ix1 = this._visibleItems.indexOf(this._firstSelection);
+                const ix2 = this._visibleItems.indexOf(this._lastSelection);
+
+                const [ixStart,ixEnd] = [ix1, ix2].sort(SortUtil.ascSort);
+                for (let i = ixStart; i <= ixEnd; ++i) {
+                    const it = this._visibleItems[i];
+                    this._setCheckbox(it, {
+                        ...opts,
+                        toVal: false
+                    });
+                }
+
+                this._setCheckbox(item, opts);
+            } else {
+                this._selectionInitialValue = this._getCb(this._firstSelection, opts).checked;
+
+                const ix1 = this._visibleItems.indexOf(this._firstSelection);
+                const ix2 = this._visibleItems.indexOf(item);
+                const ix2Prev = this._lastSelection ? this._visibleItems.indexOf(this._lastSelection) : null;
+
+                const [ixStart,ixEnd] = [ix1, ix2].sort(SortUtil.ascSort);
+                const nxtOpts = {
+                    ...opts,
+                    toVal: this._selectionInitialValue
+                };
+                for (let i = ixStart; i <= ixEnd; ++i) {
+                    const it = this._visibleItems[i];
+                    this._setCheckbox(it, nxtOpts);
+                }
+
+                if (this._selectionInitialValue && ix2Prev != null) {
+                    if (ix2Prev > ixEnd) {
+                        const nxtOpts = {
+                            ...opts,
+                            toVal: !this._selectionInitialValue
+                        };
+                        for (let i = ixEnd + 1; i <= ix2Prev; ++i) {
+                            const it = this._visibleItems[i];
+                            this._setCheckbox(it, nxtOpts);
+                        }
+                    } else if (ix2Prev < ixStart) {
+                        const nxtOpts = {
+                            ...opts,
+                            toVal: !this._selectionInitialValue
+                        };
+                        for (let i = ix2Prev; i < ixStart; ++i) {
+                            const it = this._visibleItems[i];
+                            this._setCheckbox(it, nxtOpts);
+                        }
+                    }
+                }
+            }
+
+            this._lastSelection = item;
+        } else {
+
+            const cbMaster = this._getCb(item, opts);
+            if (cbMaster) {
+                cbMaster.checked = !cbMaster.checked;
+
+                if (opts.fnOnSelectionChange)
+                    opts.fnOnSelectionChange(item, cbMaster.checked);
+
+                if (!opts.isNoHighlightSelection) {
+                    this._setHighlighted(item, cbMaster.checked);
+                }
+            } else {
+                if (!opts.isNoHighlightSelection) {
+                    this._setHighlighted(item, false);
+                }
+            }
+
+            this._firstSelection = item;
+            this._lastSelection = null;
+            this._selectionInitialValue = null;
+        }
+    }
+
+    handleSelectClickRadio(item, evt) {
+        evt.preventDefault();
+        evt.stopPropagation();
+
+        this._allItems.forEach(itemOther=>{
+            const cb = this._getCb(itemOther);
+
+            if (itemOther === item) {
+                cb.checked = true;
+                this._setHighlighted(itemOther, true);
+            } else {
+                cb.checked = false;
+                this._setHighlighted(itemOther, false);
+            }
+        }
+        );
+    }
+}
+;
+
+globalThis.ListSelectClickHandlerBase = ListSelectClickHandlerBase$1;
+
+let ListSelectClickHandler$1 = class ListSelectClickHandler extends ListSelectClickHandlerBase$1 {
+    constructor({list}) {
+        super();
+        this._list = list;
+    }
+
+    get _visibleItems() {
+        return this._list.visibleItems;
+    }
+
+    get _allItems() {
+        return this._list.items;
+    }
+
+    _getCb(item, opts={}) {
+        return opts.fnGetCb ? opts.fnGetCb(item) : item.data.cbSel;
+    }
+
+    _setCheckbox(item, opts={}) {
+        return this.setCheckbox(item, opts);
+    }
+
+    _setHighlighted(item, isHighlighted) {
+        if (isHighlighted)
+            item.ele instanceof $ ? item.ele.addClass("list-multi-selected") : item.ele.classList.add("list-multi-selected");
+        else
+            item.ele instanceof $ ? item.ele.removeClass("list-multi-selected") : item.ele.classList.remove("list-multi-selected");
+    }
+
+    setCheckbox(item, {fnGetCb, fnOnSelectionChange, isNoHighlightSelection, toVal=true}={}) {
+        const cbSlave = this._getCb(item, {
+            fnGetCb,
+            fnOnSelectionChange,
+            isNoHighlightSelection
+        });
+
+        if (cbSlave?.disabled)
+            return;
+
+        if (cbSlave) {
+            cbSlave.checked = toVal;
+            if (fnOnSelectionChange)
+                fnOnSelectionChange(item, toVal);
+        }
+
+        if (isNoHighlightSelection)
+            return;
+
+        this._setHighlighted(item, toVal);
+    }
+
+    bindSelectAllCheckbox($cbAll) {
+        $cbAll.change(()=>{
+            const isChecked = $cbAll.prop("checked");
+            this.setCheckboxes({
+                isChecked
+            });
+        }
+        );
+    }
+
+    setCheckboxes({isChecked, isIncludeHidden}) {
+        (isIncludeHidden ? this._list.items : this._list.visibleItems).forEach(item=>{
+            if (item.data.cbSel?.disabled)
+                return;
+
+            if (item.data.cbSel)
+                item.data.cbSel.checked = isChecked;
+
+            this._setHighlighted(item, isChecked);
+        }
+        );
+    }
+}
+;
+
+globalThis.ListSelectClickHandler = ListSelectClickHandler$1;
+
+let ListUiUtil$1 = class ListUiUtil {
+    static bindPreviewButton(page, allData, item, btnShowHidePreview, {$fnGetPreviewStats}={}) {
+        btnShowHidePreview.addEventListener("click", evt=>{
+            const entity = allData[item.ix];
+            page = page || entity?.__prop;
+
+            const elePreviewWrp = this.getOrAddListItemPreviewLazy(item);
+
+            this.handleClickBtnShowHideListPreview(evt, page, entity, btnShowHidePreview, elePreviewWrp, {
+                $fnGetPreviewStats
+            });
+        }
+        );
+    }
+
+    static handleClickBtnShowHideListPreview(evt, page, entity, btnShowHidePreview, elePreviewWrp, {nxtText=null, $fnGetPreviewStats}={}) {
+        evt.stopPropagation();
+        evt.preventDefault();
+
+        nxtText = nxtText ?? btnShowHidePreview.innerHTML.trim() === this.HTML_GLYPHICON_EXPAND ? this.HTML_GLYPHICON_CONTRACT : this.HTML_GLYPHICON_EXPAND;
+        const isHidden = nxtText === this.HTML_GLYPHICON_EXPAND;
+        const isFluff = !!evt.shiftKey;
+
+        elePreviewWrp.classList.toggle("ve-hidden", isHidden);
+        btnShowHidePreview.innerHTML = nxtText;
+
+        const elePreviewWrpInner = elePreviewWrp.lastElementChild;
+
+        const isForce = (elePreviewWrp.dataset.dataType === "stats" && isFluff) || (elePreviewWrp.dataset.dataType === "fluff" && !isFluff);
+        if (!isForce && elePreviewWrpInner.innerHTML)
+            return;
+
+        $(elePreviewWrpInner).empty().off("click").on("click", evt=>{
+            evt.stopPropagation();
+        }
+        );
+
+        if (isHidden)
+            return;
+
+        elePreviewWrp.dataset.dataType = isFluff ? "fluff" : "stats";
+
+        const doAppendStatView = ()=>($fnGetPreviewStats || Renderer.hover.$getHoverContent_stats)(page, entity, {
+            isStatic: true
+        }).appendTo(elePreviewWrpInner);
+
+        if (!evt.shiftKey || !UrlUtil.URL_TO_HASH_BUILDER[page]) {
+            doAppendStatView();
+            return;
+        }
+
+        Renderer.hover.pGetHoverableFluff(page, entity.source, UrlUtil.URL_TO_HASH_BUILDER[page](entity)).then(fluffEntity=>{
+            if (elePreviewWrpInner.innerHTML)
+                return;
+
+            if (!fluffEntity)
+                return doAppendStatView();
+            Renderer.hover.$getHoverContent_fluff(page, fluffEntity).appendTo(elePreviewWrpInner);
+        }
+        );
+    }
+
+    static getOrAddListItemPreviewLazy(item) {
+        let elePreviewWrp;
+        if (item.ele.children.length === 1) {
+            elePreviewWrp = e_({
+                ag: "div",
+                clazz: "ve-hidden ve-flex",
+                children: [e_({
+                    tag: "div",
+                    clazz: "col-0-5"
+                }), e_({
+                    tag: "div",
+                    clazz: "col-11-5 ui-list__wrp-preview py-2 pr-2"
+                }), ],
+            }).appendTo(item.ele);
+        } else
+            elePreviewWrp = item.ele.lastElementChild;
+        return elePreviewWrp;
+    }
+
+    static bindPreviewAllButton($btnAll, list) {
+        $btnAll.click(async()=>{
+            const nxtHtml = $btnAll.html() === ListUiUtil$1.HTML_GLYPHICON_EXPAND ? ListUiUtil$1.HTML_GLYPHICON_CONTRACT : ListUiUtil$1.HTML_GLYPHICON_EXPAND;
+
+            if (nxtHtml === ListUiUtil$1.HTML_GLYPHICON_CONTRACT && list.visibleItems.length > 500) {
+                const isSure = await InputUiUtil$1.pGetUserBoolean({
+                    title: "Are You Sure?",
+                    htmlDescription: `You are about to expand ${list.visibleItems.length} rows. This may seriously degrade performance.<br>Are you sure you want to continue?`,
+                });
+                if (!isSure)
+                    return;
+            }
+
+            $btnAll.html(nxtHtml);
+
+            list.visibleItems.forEach(listItem=>{
+                if (listItem.data.btnShowHidePreview.innerHTML !== nxtHtml)
+                    listItem.data.btnShowHidePreview.click();
+            }
+            );
+        }
+        );
+    }
+
+    static ListSyntax = class {
+        static _READONLY_WALKER = null;
+
+        constructor({fnGetDataList, pFnGetFluff, }, ) {
+            this._fnGetDataList = fnGetDataList;
+            this._pFnGetFluff = pFnGetFluff;
+        }
+
+        get _dataList() {
+            return this._fnGetDataList();
+        }
+
+        build() {
+            return {
+                stats: {
+                    help: `"stats:<text>" ("/text/" for regex) to search within stat blocks.`,
+                    fn: (listItem,searchTerm)=>{
+                        if (listItem.data._textCacheStats == null)
+                            listItem.data._textCacheStats = this._getSearchCacheStats(this._dataList[listItem.ix]);
+                        return this._listSyntax_isTextMatch(listItem.data._textCacheStats, searchTerm);
+                    }
+                    ,
+                },
+                info: {
+                    help: `"info:<text>" ("/text/" for regex) to search within info.`,
+                    fn: async(listItem,searchTerm)=>{
+                        if (listItem.data._textCacheFluff == null)
+                            listItem.data._textCacheFluff = await this._pGetSearchCacheFluff(this._dataList[listItem.ix]);
+                        return this._listSyntax_isTextMatch(listItem.data._textCacheFluff, searchTerm);
+                    }
+                    ,
+                    isAsync: true,
+                },
+                text: {
+                    help: `"text:<text>" ("/text/" for regex) to search within stat blocks plus info.`,
+                    fn: async(listItem,searchTerm)=>{
+                        if (listItem.data._textCacheAll == null) {
+                            const {textCacheStats, textCacheFluff, textCacheAll} = await this._pGetSearchCacheAll(this._dataList[listItem.ix], {
+                                textCacheStats: listItem.data._textCacheStats,
+                                textCacheFluff: listItem.data._textCacheFluff
+                            });
+                            listItem.data._textCacheStats = listItem.data._textCacheStats || textCacheStats;
+                            listItem.data._textCacheFluff = listItem.data._textCacheFluff || textCacheFluff;
+                            listItem.data._textCacheAll = textCacheAll;
+                        }
+                        return this._listSyntax_isTextMatch(listItem.data._textCacheAll, searchTerm);
+                    }
+                    ,
+                    isAsync: true,
+                },
+            };
+        }
+
+        _listSyntax_isTextMatch(str, searchTerm) {
+            if (!str)
+                return false;
+            if (searchTerm instanceof RegExp)
+                return searchTerm.test(str);
+            return str.includes(searchTerm);
+        }
+
+        _getSearchCacheStats(entity) {
+            return this._getSearchCache_entries(entity);
+        }
+
+        static _INDEXABLE_PROPS_ENTRIES = ["entries", ];
+
+        _getSearchCache_entries(entity, {indexableProps=null}={}) {
+            if ((indexableProps || this.constructor._INDEXABLE_PROPS_ENTRIES).every(it=>!entity[it]))
+                return "";
+            const ptrOut = {
+                _: ""
+            };
+            (indexableProps || this.constructor._INDEXABLE_PROPS_ENTRIES).forEach(it=>this._getSearchCache_handleEntryProp(entity, it, ptrOut));
+            return ptrOut._;
+        }
+
+        _getSearchCache_handleEntryProp(entity, prop, ptrOut) {
+            if (!entity[prop])
+                return;
+
+            this.constructor._READONLY_WALKER = this.constructor._READONLY_WALKER || MiscUtil.getWalker({
+                keyBlocklist: new Set(["type", "colStyles", "style"]),
+                isNoModification: true,
+            });
+
+            this.constructor._READONLY_WALKER.walk(entity[prop], {
+                string: (str)=>this._getSearchCache_handleString(ptrOut, str),
+            }, );
+        }
+
+        _getSearchCache_handleString(ptrOut, str) {
+            ptrOut._ += `${Renderer.stripTags(str).toLowerCase()} -- `;
+        }
+
+        async _pGetSearchCacheFluff(entity) {
+            const fluff = this._pFnGetFluff ? await this._pFnGetFluff(entity) : null;
+            return fluff ? this._getSearchCache_entries(fluff, {
+                indexableProps: ["entries"]
+            }) : "";
+        }
+
+        async _pGetSearchCacheAll(entity, {textCacheStats=null, textCacheFluff=null}) {
+            textCacheStats = textCacheStats || this._getSearchCacheStats(entity);
+            textCacheFluff = textCacheFluff || await this._pGetSearchCacheFluff(entity);
+            return {
+                textCacheStats,
+                textCacheFluff,
+                textCacheAll: [textCacheStats, textCacheFluff].filter(Boolean).join(" -- "),
+            };
+        }
+    }
+    ;
+
+}
+;
+ListUiUtil$1.HTML_GLYPHICON_EXPAND = `[+]`;
+ListUiUtil$1.HTML_GLYPHICON_CONTRACT = `[\u2012]`;
+
+globalThis.ListUiUtil = ListUiUtil$1;
 //#endregion
 
 //#region ComponentUiUtil
@@ -51265,6 +53826,8 @@ class ContentGetter{
             data.race = data.race.concat(parsed.race);
             data.subrace = data.subrace.concat(parsed.subrace);
         }
+        data.class = data.class?.filter(cls => !!cls);
+        data.classFeature = data.classFeature?.filter(f => !!f);
         return data;
     }
     /**Grabs JSON information from a file filled with information used in specific circumstances, such as figuring out class feature options (which proficiencies you get to choose between)
@@ -55921,7 +58484,7 @@ class ContentGetter{
         return ContentGetter._getBase().subrace;
     }
     static getFeaturesFromClass(cls){
-        return this._getBase().classFeature.filter(f => f.className == cls.name && f.classSource == cls.source);
+        return ContentGetter._getBase().classFeature.filter(f => !!f && f.className == cls.name && f.classSource == cls.source);
     }
     static getFeaturesFromSubclass(sc){
         return this._getBase().subclassFeature.filter(f =>
@@ -55930,11 +58493,11 @@ class ContentGetter{
             f.subclassSource == sc.source &&
             f.subclassShortName == sc.shortName);
     }
-    static getClassByNameAndSource(name, source){
-        return ContentGetter.getClasses().filter(cls => cls.name == name && cls.source == source);
+    static getClassByNameAndSource(name, source) {
+        return ContentGetter.getClasses().filter(cls => !!cls && cls.name == name && cls.source == source);
     }
     static getClassFeatureByUID(featureUID){
-        const unpacked = MyDataUtil.unpackUidClassFeature(featureUID);
+        const unpacked = ContentGetter.unpackUidClassFeature(featureUID);
         const foundClasses = this.getClassByNameAndSource(unpacked.className, unpacked.classSource);
         if(foundClasses.length<1){console.error("Did not find any classes with name and source ", unpacked.className, unpacked.classSource);}
         if(foundClasses.length>1){console.error("Found too many classes with name and source ", unpacked.className, unpacked.classSource);}
@@ -55942,7 +58505,7 @@ class ContentGetter{
         const allFeatures = ContentGetter.getFeaturesFromClass(cls);
         return allFeatures.filter(f => f.name == unpacked.name && f.level == unpacked.level)[0];
     }
-    _cookData(){
+    static async _cookData(data){
         //Prep class feature info
         const isIgnoredLookup = {
             "elemental disciplines|monk||four elements||3":true,
@@ -55951,10 +58514,11 @@ class ContentGetter{
             "maneuver options|fighter||battle master||3|tce":true,
             "maneuvers|fighter||battle master||3":true
         };
-        const opts = {actor: this._actor, isIgnoredLookup: isIgnoredLookup};
-        for(let j = 0; j < this._data.class.length; ++j)
+        
+        const opts = {actor: null, isIgnoredLookup: isIgnoredLookup};
+        for(let j = 0; j < data.class.length; ++j)
         {
-            let cls = this._data.class[j];
+            let cls = data.class[j];
             //Make sure the classFeatures aren't just strings, look like this:
             //{classFeature: "string"}
             for(let i = 0; i < cls.classFeatures.length; ++i){
@@ -55963,10 +58527,11 @@ class ContentGetter{
             }
     
             //Now we need to flesh out some more data about the class features, using just the UID we can get a lot of such info.
-            await (cls.classFeatures || []).pSerialAwaitMap(cf => MyDataUtil.pInitClassFeatureLoadeds({...opts, classFeature: cf, className: cls.name}));
-    
+            //await (cls.classFeatures || []).pSerialAwaitMap(cf => ContentGetter.pInitClassFeatureLoadedsSync({...opts, classFeature: cf, className: cls.name}));
+            await (cls.classFeatures || []).map(cf => ContentGetter.pInitClassFeatureLoadedsSync({...opts, classFeature: cf, className: cls.name}));
+
             if (cls.classFeatures) {cls.classFeatures = cls.classFeatures.filter(it => !it.isIgnored);}
-            this._data.class[j] = cls;
+            data.class[j] = cls;
     
             /* for (const sc of cls.subclasses || []) {
             await (sc.subclassFeatures || []).pSerialAwaitMap(scf => this.pInitSubclassFeatureLoadeds({...opts, subclassFeature: scf, className: cls.name, subclassName: sc.name}));
@@ -55975,7 +58540,7 @@ class ContentGetter{
         } */
         }
     }
-    /**Sligtly parses the class features a bit to prepare them with loadeds, a property needed to convert them to option sets later. */
+    /**Slightly parses the class features a bit to prepare them with loadeds, a property needed to convert them to option sets later. */
     static async cookClassFeatures(cls){
         const isIgnoredLookup = {
             "elemental disciplines|monk||four elements||3":true,
@@ -55993,11 +58558,217 @@ class ContentGetter{
         }
     
         //Now we need to flesh out some more data about the class features, using just the UID we can get a lot of such info.
-        await (cls.classFeatures || []).pSerialAwaitMap(cf => MyDataUtil.pInitClassFeatureLoadeds({...opts, classFeature: cf, className: cls.name}));
+        await (cls.classFeatures || []).pSerialAwaitMap(cf => ContentGetter.pInitClassFeatureLoadeds({...opts, classFeature: cf, className: cls.name}));
 
         if (cls.classFeatures) {cls.classFeatures = cls.classFeatures.filter(it => !it.isIgnored);}
 
         return cls.classFeatures;
+    }
+
+    static SRC_PHB = "PHB";
+    /**Takes a UID from a class feature (like Rage|Barbarian|1|PHB) and unpacks it into separate values. Returns name, className, classSource, level, source, displayText */
+    static unpackUidClassFeature (uid, opts) {
+        opts = opts || {};
+        if (opts.isLower) uid = uid.toLowerCase();
+        let [name, className, classSource, level, source, displayText] = uid.split("|").map(it => it.trim());
+        classSource = classSource || (opts.isLower ? ContentGetter.SRC_PHB.toLowerCase() : ContentGetter.SRC_PHB);
+        source = source || classSource;
+        level = Number(level);
+        return {
+            name,
+            className,
+            classSource,
+            level,
+            source,
+            displayText,
+        };
+    }
+    static unpackUidSubclassFeature(uid, opts) {
+        opts = opts || {};
+        if (opts.isLower){uid = uid.toLowerCase();}
+        let[name,className,classSource,subclassShortName,subclassSource,level,source,displayText] = uid.split("|").map(it=>it.trim());
+        classSource = classSource || (opts.isLower ? ContentGetter.SRC_PHB.toLowerCase() : ContentGetter.SRC_PHB);
+        subclassSource = subclassSource || (opts.isLower ? ContentGetter.SRC_PHB.toLowerCase() : ContentGetter.SRC_PHB);
+        source = source || subclassSource;
+        level = Number(level);
+        return {
+            name,
+            className,
+            classSource,
+            subclassShortName,
+            subclassSource,
+            level,
+            source,
+            displayText,
+        };
+    }
+    
+    static getFeaturesGroupedByOptionsSet(allFeatures) {
+        return allFeatures.map(topLevelFeature=>{
+            const optionsSets = [];
+
+            let optionsStack = [];
+            let lastOptionsSetId = null;
+            topLevelFeature.loadeds.forEach(l=>{
+                const optionsSetId = MiscUtil.get(l, "optionsMeta", "setId") || null;
+                if (lastOptionsSetId !== optionsSetId) {
+                    if (optionsStack.length)
+                        optionsSets.push(optionsStack);
+                    optionsStack = [l];
+                    lastOptionsSetId = optionsSetId;
+                } else {
+                    optionsStack.push(l);
+                }
+            }
+            );
+            if (optionsStack.length)
+                optionsSets.push(optionsStack);
+
+            return {
+                topLevelFeature,
+                optionsSets
+            };
+        }
+        );
+    }
+
+
+    static async pInitClassFeatureLoadeds({classFeature, className, ...opts}) {
+        if (typeof classFeature !== "object")
+            throw new Error(`Expected an object of the form {classFeature: "<UID>"}`);
+
+        const unpacked = MyDataUtil.unpackUidClassFeature(classFeature.classFeature);
+
+        classFeature.hash = UrlUtil.URL_TO_HASH_BUILDER["classFeature"](unpacked);
+
+        const {name, level, source} = unpacked;
+        classFeature.name = name;
+        classFeature.level = level;
+        classFeature.source = source;
+
+        const entityRoot = ContentGetter.getClassFeatureByUID(classFeature.classFeature);
+        /* const entityRoot = await DataLoader.pCacheAndGet("raw_classFeature", classFeature.source, classFeature.hash, {
+            isCopy: true
+        }); */
+        const loadedRoot = {
+            type: "classFeature",
+            entity: entityRoot,
+            page: "classFeature",
+            source: classFeature.source,
+            hash: classFeature.hash,
+            className,
+        };
+        console.log(entityRoot);
+
+       /*  const isIgnored = await this._pGetIgnoredAndApplySideData(entityRoot, "classFeature");
+        if (isIgnored) {
+            classFeature.isIgnored = true;
+            return;
+        }
+
+        const {entityRoot: entityRootNxt, subLoadeds} = await this._pLoadSubEntries(this._getPostLoadWalker(), entityRoot, {
+            ...opts,
+            ancestorType: "classFeature",
+            ancestorMeta: {
+                _ancestorClassName: className,
+            },
+        }, );
+        loadedRoot.entity = entityRootNxt;
+
+        classFeature.loadeds = [loadedRoot, ...subLoadeds]; */
+    }
+    static pInitClassFeatureLoadedsSync({classFeature, className, ...opts}) {
+        if (typeof classFeature !== "object")
+            throw new Error(`Expected an object of the form {classFeature: "<UID>"}`);
+
+        const unpacked = ContentGetter.unpackUidClassFeature(classFeature.classFeature);
+        classFeature.hash = UrlUtil.URL_TO_HASH_BUILDER["classFeature"](unpacked);
+
+        const {name, level, source, classSource, _className} = unpacked;
+        classFeature.name = name;
+        classFeature.level = level;
+        classFeature.source = source;
+
+        const entityRoot = ContentGetter.getClassFeatureByUID(classFeature.classFeature);
+        /* const entityRoot = await DataLoader.pCacheAndGet("raw_classFeature", classFeature.source, classFeature.hash, {
+            isCopy: true
+        }); */
+        const loadedRoot = {
+            type: "classFeature",
+            entity: entityRoot,
+            page: "classFeature",
+            source: classFeature.source,
+            hash: classFeature.hash,
+            className,
+        };
+
+       /*  const isIgnored = await this._pGetIgnoredAndApplySideData(entityRoot, "classFeature");
+        if (isIgnored) { classFeature.isIgnored = true; return;}
+
+        const {entityRoot: entityRootNxt, subLoadeds} = await this._pLoadSubEntries(this._getPostLoadWalker(), entityRoot, {
+            ...opts,
+            ancestorType: "classFeature",
+            ancestorMeta: {
+                _ancestorClassName: className,
+            },
+        }, );
+        loadedRoot.entity = entityRootNxt;
+
+        classFeature.loadeds = [loadedRoot, ...subLoadeds]; */
+
+        //TEMPFIX
+        //very lazy fix attempt
+        const foundryData = ContentGetter._getFoundryData();
+        //console.log("loadedroot", loadedRoot, classFeature);
+        let _entryData = loadedRoot.entity.entryData; //Check if the entity has an 'entryData' object (contains info about the choices)
+        if(!_entryData){
+            //If no entryData exists, let's ask our foundry.json file if they know if this feature should have any entryData
+            let foundryFeature = ContentGetter.getFoundryDataForFeature({name: name, level:level, source:source, className:_className, classSource:classSource}, foundryData);
+            if(foundryFeature){ loadedRoot.entity.entryData = foundryFeature.entryData; console.log("entrydata set");}
+        }
+        classFeature.loadeds = [loadedRoot];
+    }
+
+    /**Deprecated */
+    static addClassFeatureEntryDatas(features){
+        //First we need to get the features to parse through
+    /*  const filteredClassFeatures = MiscUtil.copy(ContentGetter.getFeaturesFromClass(curClass));
+        const filteredSubclassFeatures = curSubclass == null? [] : MiscUtil.copy(ContentGetter.getFeaturesFromSubclass(curSubclass));
+        
+        //Might wanna sort this by level later
+        let features = filteredClassFeatures.concat(filteredSubclassFeatures); */
+        
+        //Right now, the info for class feature choices is unfortunately stored in another JSON files
+        //Brewed subclasses on 5eTools should contains this information (i.e. it has the 'entryData' component in the subclass feature)
+        //Our base 5e SRD classes unfortunately do not have this information, that's why we need the foundry JSON
+        const foundryData = ContentGetter._getFoundryData();
+        for(let f of features)
+        {
+            let _entryData = f.entryData; //Check if the feature has an 'entryData' object (contains info about the choices)
+            if(!_entryData){
+                //If no entryData exists, let's ask our foundry.json file if they know if this feature should have any entryData
+                let foundryFeature = ContentGetter.getFoundryDataForFeature(f, foundryData);
+                if(foundryFeature){ _entryData = foundryFeature.entryData; }
+            }
+            //Maybe it was set during the previous if statement, check again
+            if(_entryData){
+                f.entryData = _entryData;
+            }
+        }
+    }
+    static getFoundryDataForFeature(feature, foundryData){
+        const matchClass = false;
+        const matchClassSource = false;
+        const filtered = foundryData.classFeature.filter(f => 
+            f.name == feature.name && f.level == feature.level
+            && f.source == feature.source && 
+            (!matchClass || f.className == feature.className) &&
+            (!matchClassSource || f.classSource == feature.classSource));
+        //Should only recieve one answer here
+        if(filtered.length > 1){console.error("found too many entries");}
+        //if(filtered.length < 1){console.log("Could not find foundry feature to match " + feature.name + "|" + feature.source); return null;} //Dont expect all classFeatures to be listed in here
+        if(filtered.length == 1){console.log("Found match for " + feature.name);}
+        return filtered[0];
     }
 }
 //#endregion
@@ -57234,6 +60005,8 @@ globalThis.MiscUtil = {
         return true;
     },
 
+    /**Returns null if object doesn't have all the child (and grandchild) properties listed in the path.
+     * Returns the final property in the path if it exists */
     get(object, ...path) {
         if (object == null)
             return null;
@@ -63399,6 +66172,46 @@ globalThis.VeLock = function({name=null, isDbg=false}={}) {
     ;
 }
 ;
+//#endregion
+//#region Consts
+class Consts {
+    static RUN_TIME = `${Date.now()}`;
+    static FLAG_IFRAME_URL = "iframe_url";
+
+    static TERMS_COUNT = [{
+        tokens: ["once"],
+        count: 1
+    }, {
+        tokens: ["twice"],
+        count: 2
+    }, {
+        tokens: ["thrice"],
+        count: 3
+    }, {
+        tokens: ["three", " ", "times"],
+        count: 3
+    }, {
+        tokens: ["four", " ", "times"],
+        count: 4
+    }, ];
+
+    static Z_INDEX_MAX_FOUNDRY = 9999;
+
+    static ACTOR_TEMP_NAME = "Importing...";
+
+    static CHAR_MAX_LEVEL = 20;
+
+    static RE_ID_STR = `[A-Za-z0-9]{16}`;
+    static RE_ID = new RegExp(`^${this.RE_ID_STR}$`);
+
+    static FLAG_IS_DEV_CLEANUP = "isDevCleanup";
+
+    static USER_DATA_TRACKING_KEYS__ACTOR = ["system.details.biography.value",
+    "system.attributes.hp.value", "system.attributes.death.success", "system.attributes.death.failure", "system.attributes.exhaustion", "system.attributes.inspiration",
+    "system.details.xp.value",
+    "system.resources.primary.value", "system.resources.secondary.value", "system.resources.tertiary.value", "system.resources.legact.value", "system.resources.legres.value", "system.resources.lair.value",
+    "system.currency.cp", "system.currency.sp", "system.currency.ep", "system.currency.gp", "system.currency.pp", ];
+}
 //#endregion
 //#region Config
 class Config {
@@ -70761,7 +73574,9 @@ let PageFilterClassesRaw$1 = class PageFilterClassesRaw extends PageFilterClasse
         return data;
     }
 
+    /**Creates the .loadeds property on class features */
     static async pInitClassFeatureLoadeds({classFeature, className, ...opts}) {
+        //Does loadeds stand for "loaded entry datas"?
         if (typeof classFeature !== "object")
             throw new Error(`Expected an object of the form {classFeature: "<UID>"}`);
 
@@ -71870,7 +74685,8 @@ class ModalFilterClasses extends ModalFilter {
 
     async _pLoadAllData() {
         this._pLoadingAllData = this._pLoadingAllData || (async()=>{
-            const [data,prerelease,brew] = await Promise.all([MiscUtil.copy(await DataUtil.class.loadRawJSON()), PrereleaseUtil.pGetBrewProcessed(), BrewUtil2.pGetBrewProcessed(), ]);
+            const [data,prerelease,brew] = await Promise.all([MiscUtil.copy(await DataUtil.class.loadRawJSON()),
+                PrereleaseUtil.pGetBrewProcessed(), BrewUtil2.pGetBrewProcessed(), ]);
 
             this._pLoadAllData_mutAddPrereleaseBrew({
                 data,
@@ -71884,8 +74700,7 @@ class ModalFilterClasses extends ModalFilter {
             });
 
             this._allData = (await PageFilterClassesRaw$1.pPostLoad(data)).class;
-        }
-        )();
+        })();
 
         await this._pLoadingAllData;
         return this._allData;
@@ -72016,9 +74831,7 @@ function MixinModalFilterFvtt(Cls) {
             this._prevApp = null;
         }
 
-        _getNameStyle() {
-            return "";
-        }
+        _getNameStyle() {return "";}
 
         _getShowModal(resolve) {
             if (this._prevApp)
