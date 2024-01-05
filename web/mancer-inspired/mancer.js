@@ -28695,8 +28695,7 @@ class ComponentUiUtil {
             metaOptions.forEach(it=>{
                 it.isVisible = it.searchTerm.includes(cleanTerm);
                 it.$ele.toggleVe(it.isVisible && !it.isForceHidden);
-            }
-            );
+            });
         };
 
         const handleSearchChangeDebounced = MiscUtil.debounce(handleSearchChange, 30);
@@ -28744,11 +28743,11 @@ class ComponentUiUtil {
         .attr("autocomplete", "new-password").attr("autocapitalize", "off").attr("spellcheck", "false");
 
         //This object will be the parent of our choices in the dropdown menu
-        const $wrpChoices = $(`<div class="absolute ui-sel2__wrp-options overflow-y-scroll"></div>`);
-        const $wrp = $(`<div class="ve-flex relative ui-sel2__wrp w-100 overflow-x-vis">
-			${$iptDisplay[0].outerHTML}
-			${$iptSearch[0].outerHTML}
-		</div>`);
+        const $wrpChoices = $$`<div class="absolute ui-sel2__wrp-options overflow-y-scroll"></div>`;
+        const $wrp = $$`<div class="ve-flex relative ui-sel2__wrp w-100 overflow-x-vis">
+			${$iptDisplay}
+			${$iptSearch}
+		</div>`;
 
         
 
