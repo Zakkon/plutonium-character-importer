@@ -14397,6 +14397,7 @@ class ActorCharactermancerBaseComponent extends BaseComponent {
       }
     }
 }
+//#region Charactermancer Class
 class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
     _data;
     _tabClass;
@@ -14632,11 +14633,8 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
           'idFilterBoxChangeClassLevels': filter_evnt_valchange_class
         });
         this._state.class_totalLevels = this.class_getTotalLevels();
-        /* this._class_renderClass_stgSkills({
-          '$stgSkills': holder_skills,
-          'ix': ix,
-          'propIxClass': propIxClass
-        }); */
+        //Render skills that our class lets us choose
+        this._class_renderClass_stgSkills({ '$stgSkills': holder_skills, 'ix': ix, 'propIxClass': propIxClass });
         /* this._class_renderClass_stgTools({
           '$stgTools': holder_tools,
           'ix': ix,
@@ -14779,6 +14777,7 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
               ${holder_hpMode}
               ${holder_hpInfo}
               ${holder_startingProf}
+              ${holder_skills}
               ${holder_levelSelect}
               ${holder_featureOptions}
           </div>`;
@@ -15231,108 +15230,90 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
     }
     //#endregion
 
-    /* _class_renderClass_stgSkills({
-      $stgSkills: _0x18fe7d,
-      ix: _0x138ef0,
-      propIxClass: _0x2f063c
-    }) {
+    /**Try to render an element to display skill proficiency choices that our class gives us*/
+    _class_renderClass_stgSkills({ $stgSkills: parentElement, ix: ix, propIxClass: propIxClass }) {
       this._class_renderClass_stgSkillsTools({
-        '$stg': _0x18fe7d,
-        'ix': _0x138ef0,
-        'propIxClass': _0x2f063c,
+        '$stg': parentElement,
+        'ix': ix,
+        'propIxClass': propIxClass,
         'propMetaHks': "_metaHksClassStgSkills",
         'propCompsClass': '_compsClassSkillProficiencies',
         'propSystem': 'skills',
-        'fnGetProfs': ({
-          cls: _0x1dbeaa,
-          isPrimaryClass: _0x155251
-        }) => {
-          if (!_0x1dbeaa) {
-            return null;
-          }
-          return _0x155251 ? _0x1dbeaa.startingProficiencies?.["skills"] : _0x1dbeaa.multiclassing?.['proficienciesGained']?.["skills"];
+        'fnGetProfs': ({ cls: cls, isPrimaryClass: isPrimaryClass }) => {
+          if (!cls) { return null; }
+          return isPrimaryClass ? cls.startingProficiencies?.["skills"] : cls.multiclassing?.['proficienciesGained']?.["skills"];
         },
         'headerText': "Skill Proficiencies",
         'fnGetMapped': Charactermancer_OtherProficiencySelect.getMappedSkillProficiencies.bind(Charactermancer_OtherProficiencySelect)
       });
     }
-    _class_renderClass_stgTools({
-      $stgTools: _0x32cea1,
-      ix: _0x40352a,
-      propIxClass: _0x1e9a92
-    }) {
+     /**Try to render an element to display tool proficiency choices that our class gives us*/
+    _class_renderClass_stgTools({ $stgTools: parentElement, ix: ix, propIxClass: propIxClass }) {
       this._class_renderClass_stgSkillsTools({
-        '$stg': _0x32cea1,
-        'ix': _0x40352a,
-        'propIxClass': _0x1e9a92,
+        '$stg': parentElement,
+        'ix': ix,
+        'propIxClass': propIxClass,
         'propMetaHks': "_metaHksClassStgTools",
         'propCompsClass': '_compsClassToolProficiencies',
         'propSystem': "tools",
-        'fnGetProfs': ({
-          cls: _0x5ed998,
-          isPrimaryClass: _0x1be964
-        }) => {
-          if (!_0x5ed998) {
-            return null;
-          }
-          return _0x1be964 ? Charactermancer_Class_Util.getToolProficiencyData(_0x5ed998.startingProficiencies) : Charactermancer_Class_Util.getToolProficiencyData(_0x5ed998.multiclassing?.['proficienciesGained']);
+        'fnGetProfs': ({ cls: cls, isPrimaryClass: isPrimaryClass  }) => {
+          if (!cls) { return null; }
+          return isPrimaryClass ? Charactermancer_Class_Util.getToolProficiencyData(cls.startingProficiencies) : Charactermancer_Class_Util.getToolProficiencyData(cls.multiclassing?.['proficienciesGained']);
         },
         'headerText': "Tool Proficiencies",
         'fnGetMapped': Charactermancer_OtherProficiencySelect.getMappedToolProficiencies.bind(Charactermancer_OtherProficiencySelect)
       });
-    } */
-    _class_renderClass_stgSkillsTools({
-      $stg: _0x469daf,
-      ix: _0x3fe1d8,
-      propIxClass: _0x15d389,
-      propMetaHks: _0x343f18,
-      propCompsClass: _0x122a08,
-      propSystem: _0x4a9a60,
-      fnGetProfs: _0x39bdbe,
-      headerText: _0x17d1c9,
-      fnGetMapped: _0x2664f3
-    }) {
-      const _0x1d6f33 = this._class_getExistingClassMeta(_0x3fe1d8);
-      if (_0x1d6f33) {
-        return;
-      }
-      if (this[_0x343f18][_0x3fe1d8]) {
-        this[_0x343f18][_0x3fe1d8].unhook();
-      }
-      const _0x3f3f87 = () => {
-        _0x469daf.empty();
-        const _0x456745 = this.getClass_({
-          'propIxClass': _0x15d389
-        });
-        const _0x405d40 = this._state.class_ixPrimaryClass === _0x3fe1d8;
-        this._parent.featureSourceTracker_.unregister(this[_0x122a08][_0x3fe1d8]);
-        const _0x52873c = _0x39bdbe({
-          'cls': _0x456745,
-          'isPrimaryClass': _0x405d40
-        });
-        if (_0x456745 && _0x52873c) {
-          _0x469daf.showVe().append("<hr class=\"hr-2\"><div class=\"bold mb-2\">" + _0x17d1c9 + "</div>");
-          const _0x16d7ec = {
-            'skillProficiencies': MiscUtil.get(this._actor, "_source", "system", _0x4a9a60)
-          };
-          this[_0x122a08][_0x3fe1d8] = new Charactermancer_OtherProficiencySelect({
-            'featureSourceTracker': this._parent.featureSourceTracker_,
-            'existing': Charactermancer_OtherProficiencySelect.getExisting(_0x16d7ec),
-            'existingFvtt': _0x16d7ec,
-            'available': _0x2664f3(_0x52873c)
-          });
-          this[_0x122a08][_0x3fe1d8].render(_0x469daf);
-        } else {
-          _0x469daf.hideVe();
-          this[_0x122a08][_0x3fe1d8] = null;
-        }
-      };
-      this._addHookBase("class_ixPrimaryClass", _0x3f3f87);
-      this[_0x343f18][_0x3fe1d8] = {
-        'unhook': () => this._removeHookBase("class_ixPrimaryClass", _0x3f3f87)
-      };
-      _0x3f3f87();
     }
+
+    /**Try to render an element to display skill or tool proficiency choices that our class gives us.
+     * Use _class_renderClass_stgSkills or _class_renderClass_stgTools if you specifically know which one you want to use  */
+    _class_renderClass_stgSkillsTools({
+        $stg: parentElement,
+        ix: ix,
+        propIxClass: propIxClass,
+        propMetaHks: propMetaHks,
+        propCompsClass: propCompsClass,
+        propSystem: propSystem,
+        fnGetProfs: fnGetProfs,
+        headerText: headerText,
+        fnGetMapped: fnGetMapped
+        }) {
+        
+        //TEMPFIX
+        if(SETTINGS.USE_EXISTING){const existingMeta = this._class_getExistingClassMeta(ix);
+        if (existingMeta) { return; }}
+        
+        if (this[propMetaHks][ix]) { this[propMetaHks][ix].unhook(); }
+
+        const doRenderSkillsTools = () => {
+            parentElement.empty();
+            const cls = this.getClass_({ 'propIxClass': propIxClass });
+            const isPrimaryClass = this._state.class_ixPrimaryClass === ix;
+            //TEMPFIX //this._parent.featureSourceTracker_.unregister(this[propCompsClass][ix]);
+            const proficiencies = fnGetProfs({ 'cls': cls, 'isPrimaryClass': isPrimaryClass });
+
+            if (cls && proficiencies) {
+                parentElement.showVe().append("<hr class=\"hr-2\"><div class=\"bold mb-2\">" + headerText + "</div>");
+                const existing = null; //TEMPFIX //{ 'skillProficiencies': MiscUtil.get(this._actor, "_source", "system", propSystem) };
+                this[propCompsClass][ix] = new Charactermancer_OtherProficiencySelect({
+                    //TEMPFIX 'featureSourceTracker': this._parent.featureSourceTracker_,
+                    //TEMPFIX 'existing': Charactermancer_OtherProficiencySelect.getExisting(existing),
+                    //TEMPFIX 'existingFvtt': existing,
+                    'available': fnGetMapped(proficiencies)
+                });
+                this[propCompsClass][ix].render(parentElement);
+            }
+            else { parentElement.hideVe(); this[propCompsClass][ix] = null; }
+        };
+
+        this._addHookBase("class_ixPrimaryClass", doRenderSkillsTools);
+        this[propMetaHks][ix] = {
+            'unhook': () => this._removeHookBase("class_ixPrimaryClass", doRenderSkillsTools)
+        };
+
+        doRenderSkillsTools();
+    }
+    
     async _class_renderClass_pDispClass({
       ix: _0x3c9e06,
       $dispClass: _0x1bf26,
@@ -17602,6 +17583,7 @@ class Charactermancer_Class_StartingProficiencies extends BaseComponent {
         };
     }
 }
+//#endregion
 
 //#region Charactermancer Ability
 /**The panel that handles adjusting ability scores */
