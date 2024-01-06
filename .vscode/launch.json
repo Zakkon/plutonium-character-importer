@@ -8,7 +8,7 @@
             "type": "chrome",
             "request": "launch",
             "name": "Launch Chrome against local file",
-            "file": "${workspaceFolder}/web/character_builder.html"
+            "file": "${workspaceFolder}/web/mancer-inspired/mancer.html"
         }
     ]
 }
