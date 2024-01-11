@@ -3,7 +3,7 @@ CLASS
 - Make swapping between classes preserve level
 - Class table info
 - Race image import
-- Background roll tables
+- Fix Background roll tables, personality trait (2nd field) and make dice rollable
 - Starting equipment
 - Equipment shop
 - Spells
