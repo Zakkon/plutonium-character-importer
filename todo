@@ -8,3 +8,5 @@ CLASS
 - Equipment shop
 - Spells
 - Feats
+- lookup function handleInit() { and use that
+- fix starting equipment choices
