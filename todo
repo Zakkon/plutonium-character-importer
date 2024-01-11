@@ -1,7 +1,10 @@
 CLASS
 - Make subclass dropdown be locked until high enough level
-- Make subclass change name of the "gain subclass" feature (Primal path for Barbarians)
 - Make swapping between classes preserve level
 - Class table info
-- Class flavor text (aka "fluff"?)
-- Race flavor text
+- Race image import
+- Background roll tables
+- Starting equipment
+- Equipment shop
+- Spells
+- Feats
