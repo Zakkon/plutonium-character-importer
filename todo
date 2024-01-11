@@ -10,3 +10,4 @@ CLASS
 - Feats
 - lookup function handleInit() { and use that
 - fix starting equipment choices
+- spell menu reacts on class change, creating error
