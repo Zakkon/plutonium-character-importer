@@ -2,6 +2,6 @@ CLASS
 - Make subclass dropdown be locked until high enough level
 - Make subclass change name of the "gain subclass" feature (Primal path for Barbarians)
 - Make swapping between classes preserve level
-- Add choices that appear lower down once high enough level is chosen
-- Minimalize entire class choice page (useful when multiclassing)
-- Figure out how and from what pre-programmed database that Plutonium checks certain class features and sees that it's about making a choice
+- Class table info
+- Class flavor text (aka "fluff"?)
+- Race flavor text
