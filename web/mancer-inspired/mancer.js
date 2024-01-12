@@ -34187,7 +34187,6 @@ class Charactermancer_Spell_Level extends BaseComponent {
             //_parent is a Charactermancer_Spell object
             if (!this._parent.isAvailableClassSpell_(sp) && !this._parent.isAvailableSubclassSpell_(sp) && !this._parent.isAvailableExpandedSpell_(sp))
             {
-                console.warn("filtered away ", sp.name);
                 return false;
             }
 
@@ -34198,7 +34197,6 @@ class Charactermancer_Spell_Level extends BaseComponent {
             if ([ixLearned, ixPrepared, ixAlwaysPrepared, ixAlwaysKnownSpell].some(k=>this._state[k]))
             {return true;}
 
-            console.warn("asking pagefilter if display ", sp.name);
             return this._parent.pageFilter.toDisplay(f, sp);
         });
     }
