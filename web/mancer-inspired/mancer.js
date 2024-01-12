@@ -8,9 +8,19 @@ window.addEventListener('load', function () {
     //console.log(Vetools._getMaybeLocalUrl("data/class/index.json"));
     //test_loadJSON().then(() => {console.log("Done pinging");});
 
-    test_AddClassPage();
+    //Test using 5etools import
+    test_nativeImportContent();
+    
+    //test_AddClassPage();
 });
 
+async function test_nativeImportContent(){
+    const content = await SourceSelectorTest.getOutputEntities();
+    ContentGetter._cachedData = content;
+    await ContentGetter.cookClassFeatures(content); //unfortunately this function pulls from _cachedData, so we need to set it before that (i know, needs fixing)
+    
+    let window = new ParentWindow(ContentGetter._cachedData);
+}
 async function test_loadJSON(){
     const localClassIndexUrl = "data/class/index.json";
     const classIndex = await DataUtil.loadRawJSON(localClassIndexUrl);
@@ -32,8 +42,8 @@ async function test_loadJSON(){
 async function test_AddClassPage(){
 
     //Let's grab all the data we can
-    await loadContentData();
-
+    let allData = await loadContentData();
+    let window = new ParentWindow(allData);
     //Any content we pass on will be enabled by the filter by default
     //It will toggle all the sources as active
     //So we need to find a way to toggle all non-PHB sources as disabled, as a test
@@ -46,7 +56,7 @@ async function test_AddClassPage(){
 async function loadContentData(){
     let allData = await ContentGetter._getBase();
     await ContentGetter._cookData(allData);
-    let window = new ParentWindow(allData);
+    return allData;
 }
 class SETTINGS{
     static FILTERS = true;
@@ -6449,20 +6459,25 @@ UrlUtil.PAGE_TO_PROPS[UrlUtil.PG_RACES] = ["race", "subrace"];
 //#endregion
 
 //#region Extension Functions
-String.prototype.toAscii = String.prototype.toAscii || function() {
-    return this.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/Æ/g, "AE").replace(/æ/g, "ae");
-};
-String.prototype.toUrlified = String.prototype.toUrlified || function() {
-    return encodeURIComponent(this.toLowerCase()).toLowerCase();
+String.prototype.uppercaseFirst = String.prototype.uppercaseFirst || function() {
+    const str = this.toString();
+    if (str.length === 0)
+        return str;
+    if (str.length === 1)
+        return str.charAt(0).toUpperCase();
+    return str.charAt(0).toUpperCase() + str.slice(1);
 }
 ;
-String.prototype.qq = String.prototype.qq || function() {
-    return this.escapeQuotes();
+
+String.prototype.lowercaseFirst = String.prototype.lowercaseFirst || function() {
+    const str = this.toString();
+    if (str.length === 0)
+        return str;
+    if (str.length === 1)
+        return str.charAt(0).toLowerCase();
+    return str.charAt(0).toLowerCase() + str.slice(1);
 }
 ;
-String.prototype.escapeQuotes = String.prototype.escapeQuotes || function() {
-    return this.replace(/'/g, `&apos;`).replace(/"/g, `&quot;`).replace(/</g, `&lt;`).replace(/>/g, `&gt;`);
-};
 
 String.prototype.toTitleCase = String.prototype.toTitleCase || function() {
     let str = this.replace(/([^\W_]+[^-\u2014\s/]*) */g, m0=>m0.charAt(0).toUpperCase() + m0.substring(1).toLowerCase());
@@ -6488,19 +6503,187 @@ String.prototype.toTitleCase = String.prototype.toTitleCase || function() {
     str = str.split(/([;:?!.])/g).map(pt=>pt.replace(/^(\s*)([^\s])/, (...m)=>`${m[1]}${m[2].toUpperCase()}`)).join("");
 
     return str;
-};
-String.prototype.last = String.prototype.last || function() {return this[this.length - 1];};
-String.prototype.uppercaseFirst = String.prototype.uppercaseFirst || function() {
-    const str = this.toString();
-    if (str.length === 0)
-        return str;
-    if (str.length === 1)
-        return str.charAt(0).toUpperCase();
-    return str.charAt(0).toUpperCase() + str.slice(1);
-};
+}
+;
+
+String.prototype.toSentenceCase = String.prototype.toSentenceCase || function() {
+    const out = [];
+    const re = /([^.!?]+)([.!?]\s*|$)/gi;
+    let m;
+    do {
+        m = re.exec(this);
+        if (m) {
+            out.push(m[0].toLowerCase().uppercaseFirst());
+        }
+    } while (m);
+    return out.join("");
+}
+;
+
+String.prototype.toSpellCase = String.prototype.toSpellCase || function() {
+    return this.toLowerCase().replace(/(^|of )(bigby|otiluke|mordenkainen|evard|hadar|agathys|abi-dalzim|aganazzar|drawmij|leomund|maximilian|melf|nystul|otto|rary|snilloc|tasha|tenser|jim)('s|$| )/g, (...m)=>`${m[1]}${m[2].toTitleCase()}${m[3]}`);
+}
+;
+
+String.prototype.toCamelCase = String.prototype.toCamelCase || function() {
+    return this.split(" ").map((word,index)=>{
+        if (index === 0)
+            return word.toLowerCase();
+        return `${word.charAt(0).toUpperCase()}${word.slice(1).toLowerCase()}`;
+    }
+    ).join("");
+}
+;
+
+String.prototype.toPlural = String.prototype.toPlural || function() {
+    let plural;
+    if (StrUtil.IRREGULAR_PLURAL_WORDS[this.toLowerCase()])
+        plural = StrUtil.IRREGULAR_PLURAL_WORDS[this.toLowerCase()];
+    else if (/(s|x|z|ch|sh)$/i.test(this))
+        plural = `${this}es`;
+    else if (/[bcdfghjklmnpqrstvwxyz]y$/i.test(this))
+        plural = this.replace(/y$/i, "ies");
+    else
+        plural = `${this}s`;
+
+    if (this.toLowerCase() === this)
+        return plural;
+    if (this.toUpperCase() === this)
+        return plural.toUpperCase();
+    if (this.toTitleCase() === this)
+        return plural.toTitleCase();
+    return plural;
+}
+;
+
+String.prototype.escapeQuotes = String.prototype.escapeQuotes || function() {
+    return this.replace(/'/g, `&apos;`).replace(/"/g, `&quot;`).replace(/</g, `&lt;`).replace(/>/g, `&gt;`);
+}
+;
+
+String.prototype.qq = String.prototype.qq || function() {
+    return this.escapeQuotes();
+}
+;
+
+String.prototype.unescapeQuotes = String.prototype.unescapeQuotes || function() {
+    return this.replace(/&apos;/g, `'`).replace(/&quot;/g, `"`).replace(/&lt;/g, `<`).replace(/&gt;/g, `>`);
+}
+;
+
+String.prototype.uq = String.prototype.uq || function() {
+    return this.unescapeQuotes();
+}
+;
+
+String.prototype.encodeApos = String.prototype.encodeApos || function() {
+    return this.replace(/'/g, `%27`);
+}
+;
+
+String.prototype.distance = String.prototype.distance || function(target) {
+    let source = this;
+    let i;
+    let j;
+    if (!source)
+        return target ? target.length : 0;
+    else if (!target)
+        return source.length;
+
+    const m = source.length;
+    const n = target.length;
+    const INF = m + n;
+    const score = new Array(m + 2);
+    const sd = {};
+    for (i = 0; i < m + 2; i++)
+        score[i] = new Array(n + 2);
+    score[0][0] = INF;
+    for (i = 0; i <= m; i++) {
+        score[i + 1][1] = i;
+        score[i + 1][0] = INF;
+        sd[source[i]] = 0;
+    }
+    for (j = 0; j <= n; j++) {
+        score[1][j + 1] = j;
+        score[0][j + 1] = INF;
+        sd[target[j]] = 0;
+    }
+
+    for (i = 1; i <= m; i++) {
+        let DB = 0;
+        for (j = 1; j <= n; j++) {
+            const i1 = sd[target[j - 1]];
+            const j1 = DB;
+            if (source[i - 1] === target[j - 1]) {
+                score[i + 1][j + 1] = score[i][j];
+                DB = j;
+            } else {
+                score[i + 1][j + 1] = Math.min(score[i][j], Math.min(score[i + 1][j], score[i][j + 1])) + 1;
+            }
+            score[i + 1][j + 1] = Math.min(score[i + 1][j + 1], score[i1] ? score[i1][j1] + (i - i1 - 1) + 1 + (j - j1 - 1) : Infinity);
+        }
+        sd[source[i - 1]] = i;
+    }
+    return score[m + 1][n + 1];
+}
+;
+
 String.prototype.isNumeric = String.prototype.isNumeric || function() {
     return !isNaN(parseFloat(this)) && isFinite(this);
-};
+}
+;
+
+String.prototype.last = String.prototype.last || function() {
+    return this[this.length - 1];
+}
+;
+
+String.prototype.escapeRegexp = String.prototype.escapeRegexp || function() {
+    return this.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&");
+}
+;
+
+String.prototype.toUrlified = String.prototype.toUrlified || function() {
+    return encodeURIComponent(this.toLowerCase()).toLowerCase();
+}
+;
+
+String.prototype.toChunks = String.prototype.toChunks || function(size) {
+    const numChunks = Math.ceil(this.length / size);
+    const chunks = new Array(numChunks);
+    for (let i = 0, o = 0; i < numChunks; ++i,
+    o += size)
+        chunks[i] = this.substr(o, size);
+    return chunks;
+}
+;
+
+String.prototype.toAscii = String.prototype.toAscii || function() {
+    return this.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/Æ/g, "AE").replace(/æ/g, "ae");
+}
+;
+
+String.prototype.trimChar = String.prototype.trimChar || function(ch) {
+    let start = 0;
+    let end = this.length;
+    while (start < end && this[start] === ch)
+        ++start;
+    while (end > start && this[end - 1] === ch)
+        --end;
+    return (start > 0 || end < this.length) ? this.substring(start, end) : this;
+}
+;
+
+String.prototype.trimAnyChar = String.prototype.trimAnyChar || function(chars) {
+    let start = 0;
+    let end = this.length;
+    while (start < end && chars.indexOf(this[start]) >= 0)
+        ++start;
+    while (end > start && chars.indexOf(this[end - 1]) >= 0)
+        --end;
+    return (start > 0 || end < this.length) ? this.substring(start, end) : this;
+}
+;
 Array.prototype.joinConjunct || Object.defineProperty(Array.prototype, "joinConjunct", {
     enumerable: false,
     writable: true,
@@ -9276,8 +9459,7 @@ globalThis.Renderer = function() {
         return tempStack.join("");
     }
     ;
-}
-;
+};
 
 Renderer.generic = class {
     static getCompactRenderedString(ent, opts) {
@@ -11036,6 +11218,96 @@ Renderer.get = ()=>{
     if (!Renderer.defaultRenderer){Renderer.defaultRenderer = new Renderer();}
     return Renderer.defaultRenderer;
 };
+
+Renderer.applyProperties = function(entry, object) {
+    const propSplit = Renderer.splitByPropertyInjectors(entry);
+    const len = propSplit.length;
+    if (len === 1)
+        return entry;
+
+    let textStack = "";
+
+    for (let i = 0; i < len; ++i) {
+        const s = propSplit[i];
+        if (!s)
+            continue;
+
+        if (!s.startsWith("{=")) {
+            textStack += s;
+            continue;
+        }
+
+        if (s.startsWith("{=")) {
+            const [path,modifiers] = s.slice(2, -1).split("/");
+            let fromProp = object[path];
+
+            if (!modifiers) {
+                textStack += fromProp;
+                continue;
+            }
+
+            if (fromProp == null)
+                throw new Error(`Could not apply property in "${s}"; "${path}" value was null!`);
+
+            modifiers.split("").sort((a,b)=>Renderer.applyProperties._OP_ORDER.indexOf(a) - Renderer.applyProperties._OP_ORDER.indexOf(b));
+
+            for (const modifier of modifiers) {
+                switch (modifier) {
+                case "a":
+                    fromProp = Renderer.applyProperties._LEADING_AN.has(fromProp[0].toLowerCase()) ? "an" : "a";
+                    break;
+
+                case "l":
+                    fromProp = fromProp.toLowerCase();
+                    break;
+                case "t":
+                    fromProp = fromProp.toTitleCase();
+                    break;
+                case "u":
+                    fromProp = fromProp.toUpperCase();
+                    break;
+                case "v":
+                    fromProp = Parser.numberToVulgar(fromProp);
+                    break;
+                case "x":
+                    fromProp = Parser.numberToText(fromProp);
+                    break;
+                case "r":
+                    fromProp = Math.round(fromProp);
+                    break;
+                case "f":
+                    fromProp = Math.floor(fromProp);
+                    break;
+                case "c":
+                    fromProp = Math.ceil(fromProp);
+                    break;
+                default:
+                    throw new Error(`Unhandled property modifier "${modifier}"`);
+                }
+            }
+
+            textStack += fromProp;
+        }
+    }
+
+    return textStack;
+};
+Renderer.applyProperties._LEADING_AN = new Set(["a", "e", "i", "o", "u"]);
+Renderer.applyProperties._OP_ORDER = ["r", "f", "c", "v", "x", "l", "t", "u", "a", ];
+
+Renderer.applyAllProperties = function(entries, object=null) {
+    let lastObj = null;
+    const handlers = {
+        object: (obj)=>{
+            lastObj = obj;
+            return obj;
+        }
+        ,
+        string: (str)=>Renderer.applyProperties(str, object || lastObj),
+    };
+    return MiscUtil.getWalker().walk(entries, handlers);
+};
+
 Renderer.splitFirstSpace = function(string) {
     const firstIndex = string.indexOf(" ");
     return firstIndex === -1 ? [string, ""] : [string.substr(0, firstIndex), string.substr(firstIndex + 1)];
@@ -14908,6 +15180,1366 @@ Renderer.background = class {
 Renderer.backgroundFeature = class {
     static getCompactRenderedString(ent) {
         return Renderer.generic.getCompactRenderedString(ent);
+    }
+};
+
+Renderer.item = class {
+    static _sortProperties(a, b) {
+        return SortUtil.ascSort(Renderer.item.getProperty(a, {
+            isIgnoreMissing: true
+        })?.name || "", Renderer.item.getProperty(b, {
+            isIgnoreMissing: true
+        })?.name || "");
+    }
+
+    static _getPropertiesText(item, {renderer=null}={}) {
+        renderer = renderer || Renderer.get();
+
+        if (!item.property) {
+            const parts = [];
+            if (item.dmg2)
+                parts.push(`alt. ${Renderer.item._renderDamage(item.dmg2, {
+                    renderer
+                })}`);
+            if (item.range)
+                parts.push(`range ${item.range} ft.`);
+            return `${item.dmg1 && parts.length ? " - " : ""}${parts.join(", ")}`;
+        }
+
+        let renderedDmg2 = false;
+
+        const renderedProperties = item.property.sort(Renderer.item._sortProperties).map(p=>{
+            const pFull = Renderer.item.getProperty(p);
+
+            if (pFull.template) {
+                const toRender = Renderer.utils.applyTemplate(item, pFull.template, {
+                    fnPreApply: (fullMatch,variablePath)=>{
+                        if (variablePath === "item.dmg2")
+                            renderedDmg2 = true;
+                    }
+                    ,
+                    mapCustom: {
+                        "prop_name": pFull.name
+                    },
+                }, );
+
+                return renderer.render(toRender);
+            } else
+                return pFull.name;
+        }
+        );
+
+        if (!renderedDmg2 && item.dmg2)
+            renderedProperties.unshift(`alt. ${Renderer.item._renderDamage(item.dmg2, {
+                renderer
+            })}`);
+
+        return `${item.dmg1 && renderedProperties.length ? " - " : ""}${renderedProperties.join(", ")}`;
+    }
+
+    static _getTaggedDamage(dmg, {renderer=null}={}) {
+        if (!dmg)
+            return "";
+
+        renderer = renderer || Renderer.get();
+
+        Renderer.stripTags(dmg.trim());
+
+        return renderer.render(`{@damage ${dmg}}`);
+    }
+
+    static _renderDamage(dmg, {renderer=null}={}) {
+        renderer = renderer || Renderer.get();
+        return renderer.render(Renderer.item._getTaggedDamage(dmg, {
+            renderer
+        }));
+    }
+
+    static getDamageAndPropertiesText(item, {renderer=null}={}) {
+        renderer = renderer || Renderer.get();
+
+        const damagePartsPre = [];
+        const damageParts = [];
+
+        if (item.mastery)
+            damagePartsPre.push(`Mastery: ${item.mastery.map(it=>renderer.render(`{@itemMastery ${it}}`)).join(", ")}`);
+
+        if (item.ac != null) {
+            const prefix = item.type === "S" ? "+" : "";
+            const suffix = (item.type === "LA" || item.bardingType === "LA") || ((item.type === "MA" || item.bardingType === "MA") && item.dexterityMax === null) ? " + Dex" : (item.type === "MA" || item.bardingType === "MA") ? ` + Dex (max ${item.dexterityMax ?? 2})` : "";
+            damageParts.push(`AC ${prefix}${item.ac}${suffix}`);
+        }
+        if (item.acSpecial != null)
+            damageParts.push(item.ac != null ? item.acSpecial : `AC ${item.acSpecial}`);
+
+        if (item.dmg1)
+            damageParts.push(Renderer.item._renderDamage(item.dmg1, {
+                renderer
+            }));
+
+        if (item.speed != null)
+            damageParts.push(`Speed: ${item.speed}`);
+        if (item.carryingCapacity)
+            damageParts.push(`Carrying Capacity: ${item.carryingCapacity} lb.`);
+
+        if (item.vehSpeed || item.capCargo || item.capPassenger || item.crew || item.crewMin || item.crewMax || item.vehAc || item.vehHp || item.vehDmgThresh || item.travelCost || item.shippingCost) {
+            const vehPartUpper = item.vehSpeed ? `Speed: ${Parser.numberToVulgar(item.vehSpeed)} mph` : null;
+
+            const vehPartMiddle = item.capCargo || item.capPassenger ? `Carrying Capacity: ${[item.capCargo ? `${Parser.numberToFractional(item.capCargo)} ton${item.capCargo === 0 || item.capCargo > 1 ? "s" : ""} cargo` : null, item.capPassenger ? `${item.capPassenger} passenger${item.capPassenger === 1 ? "" : "s"}` : null].filter(Boolean).join(", ")}` : null;
+
+            const {travelCostFull, shippingCostFull} = Parser.itemVehicleCostsToFull(item);
+
+            const vehPartLower = [item.crew ? `Crew ${item.crew}` : null, item.crewMin && item.crewMax ? `Crew ${item.crewMin}-${item.crewMax}` : null, item.vehAc ? `AC ${item.vehAc}` : null, item.vehHp ? `HP ${item.vehHp}${item.vehDmgThresh ? `, Damage Threshold ${item.vehDmgThresh}` : ""}` : null, ].filter(Boolean).join(", ");
+
+            damageParts.push([vehPartUpper, vehPartMiddle,
+            travelCostFull ? `Personal Travel Cost: ${travelCostFull} per mile per passenger` : null, shippingCostFull ? `Shipping Cost: ${shippingCostFull} per 100 pounds per mile` : null,
+            vehPartLower, ].filter(Boolean).join(renderer.getLineBreak()));
+        }
+
+        const damage = [damagePartsPre.join(", "), damageParts.join(", "), ].filter(Boolean).join(renderer.getLineBreak());
+        const damageType = item.dmgType ? Parser.dmgTypeToFull(item.dmgType) : "";
+        const propertiesTxt = Renderer.item._getPropertiesText(item, {
+            renderer
+        });
+
+        return [damage, damageType, propertiesTxt];
+    }
+
+    static getTypeRarityAndAttunementText(item) {
+        const typeRarity = [item._typeHtml === "other" ? "" : item._typeHtml, (item.rarity && Renderer.item.doRenderRarity(item.rarity) ? item.rarity : ""), ].filter(Boolean).join(", ");
+
+        return [item.reqAttune ? `${typeRarity} ${item._attunement}` : typeRarity, item._subTypeHtml || "", item.tier ? `${item.tier} tier` : "", ];
+    }
+
+    static getAttunementAndAttunementCatText(item, prop="reqAttune") {
+        let attunement = null;
+        let attunementCat = VeCt.STR_NO_ATTUNEMENT;
+        if (item[prop] != null && item[prop] !== false) {
+            if (item[prop] === true) {
+                attunementCat = "Requires Attunement";
+                attunement = "(requires attunement)";
+            } else if (item[prop] === "optional") {
+                attunementCat = "Attunement Optional";
+                attunement = "(attunement optional)";
+            } else if (item[prop].toLowerCase().startsWith("by")) {
+                attunementCat = "Requires Attunement By...";
+                attunement = `(requires attunement ${Renderer.get().render(item[prop])})`;
+            } else {
+                attunementCat = "Requires Attunement";
+                attunement = `(requires attunement ${Renderer.get().render(item[prop])})`;
+            }
+        }
+        return [attunement, attunementCat];
+    }
+
+    static getHtmlAndTextTypes(item) {
+        const typeHtml = [];
+        const typeListText = [];
+        const subTypeHtml = [];
+
+        let showingBase = false;
+        if (item.wondrous) {
+            typeHtml.push(`wondrous item${item.tattoo ? ` (tattoo)` : ""}`);
+            typeListText.push("wondrous item");
+        }
+        if (item.tattoo) {
+            typeListText.push("tattoo");
+        }
+        if (item.staff) {
+            typeHtml.push("staff");
+            typeListText.push("staff");
+        }
+        if (item.ammo) {
+            typeHtml.push(`ammunition`);
+            typeListText.push("ammunition");
+        }
+        if (item.firearm) {
+            subTypeHtml.push("firearm");
+            typeListText.push("firearm");
+        }
+        if (item.age) {
+            subTypeHtml.push(item.age);
+            typeListText.push(item.age);
+        }
+        if (item.weaponCategory) {
+            typeHtml.push(`weapon${item.baseItem ? ` (${Renderer.get().render(`{@item ${item.baseItem}}`)})` : ""}`);
+            subTypeHtml.push(`${item.weaponCategory} weapon`);
+            typeListText.push(`${item.weaponCategory} weapon`);
+            showingBase = true;
+        }
+        if (item.staff && (item.type !== "M" && item.typeAlt !== "M")) {
+            subTypeHtml.push("melee weapon");
+            typeListText.push("melee weapon");
+        }
+        if (item.type)
+            Renderer.item._getHtmlAndTextTypes_type({
+                type: item.type,
+                typeHtml,
+                typeListText,
+                subTypeHtml,
+                showingBase,
+                item
+            });
+        if (item.typeAlt)
+            Renderer.item._getHtmlAndTextTypes_type({
+                type: item.typeAlt,
+                typeHtml,
+                typeListText,
+                subTypeHtml,
+                showingBase,
+                item
+            });
+        if (item.poison) {
+            typeHtml.push(`poison${item.poisonTypes ? ` (${item.poisonTypes.joinConjunct(", ", " or ")})` : ""}`);
+            typeListText.push("poison");
+        }
+        return [typeListText, typeHtml.join(", "), subTypeHtml.join(", ")];
+    }
+
+    static _getHtmlAndTextTypes_type({type, typeHtml, typeListText, subTypeHtml, showingBase, item}) {
+        const fullType = Renderer.item.getItemTypeName(type);
+
+        const isSub = (typeListText.some(it=>it.includes("weapon")) && fullType.includes("weapon")) || (typeListText.some(it=>it.includes("armor")) && fullType.includes("armor"));
+
+        if (!showingBase && !!item.baseItem)
+            (isSub ? subTypeHtml : typeHtml).push(`${fullType} (${Renderer.get().render(`{@item ${item.baseItem}}`)})`);
+        else if (type === "S")
+            (isSub ? subTypeHtml : typeHtml).push(Renderer.get().render(`armor ({@item shield|phb})`));
+        else
+            (isSub ? subTypeHtml : typeHtml).push(fullType);
+
+        typeListText.push(fullType);
+    }
+
+    static _GET_RENDERED_ENTRIES_WALKER = null;
+
+    static getRenderedEntries(item, {isCompact=false, wrappedTypeAllowlist=null}={}) {
+        const renderer = Renderer.get();
+
+        Renderer.item._GET_RENDERED_ENTRIES_WALKER = Renderer.item._GET_RENDERED_ENTRIES_WALKER || MiscUtil.getWalker({
+            keyBlocklist: new Set([...MiscUtil.GENERIC_WALKER_ENTRIES_KEY_BLOCKLIST, "data", ]),
+        });
+
+        const handlersName = {
+            string: (str)=>Renderer.item._getRenderedEntries_handlerConvertNamesToItalics.bind(Renderer.item, item, item.name)(str),
+        };
+
+        const handlersVariantName = item._variantName == null ? null : {
+            string: (str)=>Renderer.item._getRenderedEntries_handlerConvertNamesToItalics.bind(Renderer.item, item, item._variantName)(str),
+        };
+
+        const renderStack = [];
+        if (item._fullEntries || item.entries?.length) {
+            const entry = MiscUtil.copyFast({
+                type: "entries",
+                entries: item._fullEntries || item.entries
+            });
+            let procEntry = Renderer.item._GET_RENDERED_ENTRIES_WALKER.walk(entry, handlersName);
+            if (handlersVariantName)
+                procEntry = Renderer.item._GET_RENDERED_ENTRIES_WALKER.walk(entry, handlersVariantName);
+            if (wrappedTypeAllowlist)
+                procEntry.entries = procEntry.entries.filter(it=>!it?.data?.[VeCt.ENTDATA_ITEM_MERGED_ENTRY_TAG] || wrappedTypeAllowlist.has(it?.data?.[VeCt.ENTDATA_ITEM_MERGED_ENTRY_TAG]));
+            renderer.recursiveRender(procEntry, renderStack, {
+                depth: 1
+            });
+        }
+
+        if (item._fullAdditionalEntries || item.additionalEntries) {
+            const additionEntries = MiscUtil.copyFast({
+                type: "entries",
+                entries: item._fullAdditionalEntries || item.additionalEntries
+            });
+            let procAdditionEntries = Renderer.item._GET_RENDERED_ENTRIES_WALKER.walk(additionEntries, handlersName);
+            if (handlersVariantName)
+                procAdditionEntries = Renderer.item._GET_RENDERED_ENTRIES_WALKER.walk(additionEntries, handlersVariantName);
+            if (wrappedTypeAllowlist)
+                procAdditionEntries.entries = procAdditionEntries.entries.filter(it=>!it?.data?.[VeCt.ENTDATA_ITEM_MERGED_ENTRY_TAG] || wrappedTypeAllowlist.has(it?.data?.[VeCt.ENTDATA_ITEM_MERGED_ENTRY_TAG]));
+            renderer.recursiveRender(procAdditionEntries, renderStack, {
+                depth: 1
+            });
+        }
+
+        if (!isCompact && item.lootTables) {
+            renderStack.push(`<div><span class="bold">Found On: </span>${item.lootTables.sort(SortUtil.ascSortLower).map(tbl=>renderer.render(`{@table ${tbl}}`)).join(", ")}</div>`);
+        }
+
+        return renderStack.join("").trim();
+    }
+
+    static _getRenderedEntries_handlerConvertNamesToItalics(item, baseName, str) {
+        if (item._fIsMundane)
+            return str;
+
+        const stack = [];
+        let depth = 0;
+
+        const tgtLen = baseName.length;
+        const tgtName = item.sentient ? baseName : baseName.toLowerCase();
+
+        const tgtNamePlural = tgtName.toPlural();
+        const tgtLenPlural = tgtNamePlural.length;
+
+        const tgtNameNoBraces = tgtName.replace(/ \(.*$/, "");
+        const tgtLenNoBraces = tgtNameNoBraces.length;
+
+        const len = str.length;
+        for (let i = 0; i < len; ++i) {
+            const c = str[i];
+
+            switch (c) {
+            case "{":
+                {
+                    if (str[i + 1] === "@")
+                        depth++;
+                    stack.push(c);
+                    break;
+                }
+            case "}":
+                {
+                    if (depth)
+                        depth--;
+                    stack.push(c);
+                    break;
+                }
+            default:
+                stack.push(c);
+                break;
+            }
+
+            if (depth)
+                continue;
+
+            if (stack.slice(-tgtLen).join("")[item.sentient ? "toString" : "toLowerCase"]() === tgtName) {
+                stack.splice(stack.length - tgtLen, tgtLen, `{@i ${stack.slice(-tgtLen).join("")}}`);
+            } else if (stack.slice(-tgtLenPlural).join("")[item.sentient ? "toString" : "toLowerCase"]() === tgtNamePlural) {
+                stack.splice(stack.length - tgtLenPlural, tgtLenPlural, `{@i ${stack.slice(-tgtLenPlural).join("")}}`);
+            } else if (stack.slice(-tgtLenNoBraces).join("")[item.sentient ? "toString" : "toLowerCase"]() === tgtNameNoBraces) {
+                stack.splice(stack.length - tgtLenNoBraces, tgtLenNoBraces, `{@i ${stack.slice(-tgtLenNoBraces).join("")}}`);
+            }
+        }
+
+        return stack.join("");
+    }
+
+    static getCompactRenderedString(item, opts) {
+        opts = opts || {};
+
+        const [damage,damageType,propertiesTxt] = Renderer.item.getDamageAndPropertiesText(item);
+        const [typeRarityText,subTypeText,tierText] = Renderer.item.getTypeRarityAndAttunementText(item);
+
+        return `
+		${Renderer.utils.getExcludedTr({
+            entity: item,
+            dataProp: "item",
+            page: UrlUtil.PG_ITEMS
+        })}
+		${Renderer.utils.getNameTr(item, {
+            page: UrlUtil.PG_ITEMS,
+            isEmbeddedEntity: opts.isEmbeddedEntity
+        })}
+		<tr><td class="rd-item__type-rarity-attunement" colspan="6">${Renderer.item.getTypeRarityAndAttunementHtml(typeRarityText, subTypeText, tierText)}</td></tr>
+		<tr>
+			<td colspan="2">${[Parser.itemValueToFullMultiCurrency(item), Parser.itemWeightToFull(item)].filter(Boolean).join(", ").uppercaseFirst()}</td>
+			<td class="text-right" colspan="4">${damage} ${damageType} ${propertiesTxt}</td>
+		</tr>
+		${Renderer.item.hasEntries(item) ? `${Renderer.utils.getDividerTr()}<tr class="text"><td colspan="6" class="text">${Renderer.item.getRenderedEntries(item, {
+            isCompact: true
+        })}</td></tr>` : ""}`;
+    }
+
+    static hasEntries(item) {
+        return item._fullAdditionalEntries?.length || item._fullEntries?.length || item.entries?.length;
+    }
+
+    static getTypeRarityAndAttunementHtml(typeRarityText, subTypeText, tierText) {
+        return `<div class="ve-flex-col">
+			${typeRarityText || tierText ? `<div class="split ${subTypeText ? "mb-1" : ""}">
+				<div class="italic">${(typeRarityText || "").uppercaseFirst()}</div>
+				<div class="no-wrap ${tierText ? `ml-2` : ""}">${(tierText || "").uppercaseFirst()}</div>
+			</div>` : ""}
+			${subTypeText ? `<div class="italic">${subTypeText.uppercaseFirst()}</div>` : ""}
+		</div>`;
+    }
+
+    static _hiddenRarity = new Set(["none", "unknown", "unknown (magic)", "varies"]);
+    static doRenderRarity(rarity) {
+        return !Renderer.item._hiddenRarity.has(rarity);
+    }
+
+    static _propertyMap = {};
+    static _addProperty(prt) {
+        if (Renderer.item._propertyMap[prt.abbreviation])
+            return;
+        const cpy = MiscUtil.copyFast(prt);
+        Renderer.item._propertyMap[prt.abbreviation] = prt.name ? cpy : {
+            ...cpy,
+            name: (prt.entries || prt.entriesTemplate)[0].name.toLowerCase(),
+        };
+    }
+
+    static getProperty(abbv, {isIgnoreMissing=false}={}) {
+        if (!isIgnoreMissing && !Renderer.item._propertyMap[abbv])
+            throw new Error(`Item property ${abbv} not found. You probably meant to load the property reference first.`);
+        return Renderer.item._propertyMap[abbv];
+    }
+
+    static _typeMap = {};
+    static _addType(typ) {
+        if (Renderer.item._typeMap[typ.abbreviation]?.entries || Renderer.item._typeMap[typ.abbreviation]?.entriesTemplate)
+            return;
+        const cpy = MiscUtil.copyFast(typ);
+
+        Object.entries(Renderer.item._typeMap[typ.abbreviation] || {}).forEach(([k,v])=>{
+            if (cpy[k])
+                return;
+            cpy[k] = v;
+        }
+        );
+
+        cpy.name = cpy.name || (cpy.entries || cpy.entriesTemplate)[0].name.toLowerCase();
+
+        Renderer.item._typeMap[typ.abbreviation] = cpy;
+    }
+
+    static getType(abbv) {
+        if (!Renderer.item._typeMap[abbv])
+            throw new Error(`Item type ${abbv} not found. You probably meant to load the type reference first.`);
+        return Renderer.item._typeMap[abbv];
+    }
+
+    static entryMap = {};
+    static _addEntry(ent) {
+        if (Renderer.item.entryMap[ent.source]?.[ent.name])
+            return;
+        MiscUtil.set(Renderer.item.entryMap, ent.source, ent.name, ent);
+    }
+
+    static _additionalEntriesMap = {};
+    static _addAdditionalEntries(ent) {
+        if (Renderer.item._additionalEntriesMap[ent.appliesTo])
+            return;
+        Renderer.item._additionalEntriesMap[ent.appliesTo] = MiscUtil.copyFast(ent.entries);
+    }
+
+    static _masteryMap = {};
+    static _addMastery(ent) {
+        const lookupSource = ent.source.toLowerCase();
+        const lookupName = ent.name.toLowerCase();
+        if (Renderer.item._masteryMap[lookupSource]?.[lookupName])
+            return;
+        MiscUtil.set(Renderer.item._masteryMap, lookupSource, lookupName, ent);
+    }
+
+    static _getMastery(uid) {
+        const {name, source} = DataUtil.proxy.unpackUid("itemMastery", uid, "itemMastery", {
+            isLower: true
+        });
+        const out = MiscUtil.get(Renderer.item._masteryMap, source, name);
+        if (!out)
+            throw new Error(`Item mastry ${uid} not found. You probably meant to load the mastery reference first.`);
+        return out;
+    }
+
+    static async _pAddPrereleaseBrewPropertiesAndTypes() {
+        if (typeof PrereleaseUtil !== "undefined")
+            Renderer.item.addPrereleaseBrewPropertiesAndTypesFrom({
+                data: await PrereleaseUtil.pGetBrewProcessed()
+            });
+        if (typeof BrewUtil2 !== "undefined")
+            Renderer.item.addPrereleaseBrewPropertiesAndTypesFrom({
+                data: await BrewUtil2.pGetBrewProcessed()
+            });
+    }
+
+    static addPrereleaseBrewPropertiesAndTypesFrom({data}) {
+        (data.itemProperty || []).forEach(it=>Renderer.item._addProperty(it));
+        (data.itemType || []).forEach(it=>Renderer.item._addType(it));
+        (data.itemEntry || []).forEach(it=>Renderer.item._addEntry(it));
+        (data.itemTypeAdditionalEntries || []).forEach(it=>Renderer.item._addAdditionalEntries(it));
+        (data.itemMastery || []).forEach(it=>Renderer.item._addMastery(it));
+    }
+
+    static _addBasePropertiesAndTypes(baseItemData) {
+        Object.entries(Parser.ITEM_TYPE_JSON_TO_ABV).forEach(([abv,name])=>Renderer.item._addType({
+            abbreviation: abv,
+            name
+        }));
+
+        (baseItemData.itemProperty || []).forEach(it=>Renderer.item._addProperty(it));
+        (baseItemData.itemType || []).forEach(it=>Renderer.item._addType(it));
+        (baseItemData.itemEntry || []).forEach(it=>Renderer.item._addEntry(it));
+        (baseItemData.itemTypeAdditionalEntries || []).forEach(it=>Renderer.item._addAdditionalEntries(it));
+        (baseItemData.itemMastery || []).forEach(it=>Renderer.item._addMastery(it));
+
+        baseItemData.baseitem.forEach(it=>it._isBaseItem = true);
+    }
+
+    static async _pGetSiteUnresolvedRefItems_pLoadItems() {
+        const itemData = await DataUtil.loadJSON(`${Renderer.get().baseUrl}data/items.json`);
+        const items = itemData.item;
+        itemData.itemGroup.forEach(it=>it._isItemGroup = true);
+        return [...items, ...itemData.itemGroup];
+    }
+
+    static async pGetSiteUnresolvedRefItems() {
+        const itemList = await Renderer.item._pGetSiteUnresolvedRefItems_pLoadItems();
+        const baseItemsJson = await DataUtil.loadJSON(`${Renderer.get().baseUrl}data/items-base.json`);
+        const baseItems = await Renderer.item._pGetAndProcBaseItems(baseItemsJson);
+        const {genericVariants, linkedLootTables} = await Renderer.item._pGetCacheSiteGenericVariants();
+        const specificVariants = Renderer.item._createSpecificVariants(baseItems, genericVariants, {
+            linkedLootTables
+        });
+        const allItems = [...itemList, ...baseItems, ...genericVariants, ...specificVariants];
+        Renderer.item._enhanceItems(allItems);
+
+        return {
+            item: allItems,
+            itemEntry: baseItemsJson.itemEntry,
+        };
+    }
+
+    static _pGettingSiteGenericVariants = null;
+    static async _pGetCacheSiteGenericVariants() {
+        Renderer.item._pGettingSiteGenericVariants = Renderer.item._pGettingSiteGenericVariants || (async()=>{
+            const [genericVariants,linkedLootTables] = Renderer.item._getAndProcGenericVariants(await DataUtil.loadJSON(`${Renderer.get().baseUrl}data/magicvariants.json`));
+            return {
+                genericVariants,
+                linkedLootTables
+            };
+        }
+        )();
+        return Renderer.item._pGettingSiteGenericVariants;
+    }
+
+    static async pBuildList() {
+        return DataLoader.pCacheAndGetAllSite(UrlUtil.PG_ITEMS);
+    }
+
+    static async _pGetAndProcBaseItems(baseItemData) {
+        Renderer.item._addBasePropertiesAndTypes(baseItemData);
+        await Renderer.item._pAddPrereleaseBrewPropertiesAndTypes();
+        return baseItemData.baseitem;
+    }
+
+    static _getAndProcGenericVariants(variantData) {
+        variantData.magicvariant.forEach(Renderer.item._genericVariants_addInheritedPropertiesToSelf);
+        return [variantData.magicvariant, variantData.linkedLootTables];
+    }
+
+    static _initFullEntries(item) {
+        Renderer.utils.initFullEntries_(item);
+    }
+
+    static _initFullAdditionalEntries(item) {
+        Renderer.utils.initFullEntries_(item, {
+            propEntries: "additionalEntries",
+            propFullEntries: "_fullAdditionalEntries"
+        });
+    }
+
+    static _createSpecificVariants(baseItems, genericVariants, opts) {
+        opts = opts || {};
+
+        const genericAndSpecificVariants = [];
+        baseItems.forEach((curBaseItem)=>{
+            curBaseItem._category = "Basic";
+            if (curBaseItem.entries == null)
+                curBaseItem.entries = [];
+
+            if (curBaseItem.packContents)
+                return;
+            genericVariants.forEach((curGenericVariant)=>{
+                if (!Renderer.item._createSpecificVariants_hasRequiredProperty(curBaseItem, curGenericVariant))
+                    return;
+                if (Renderer.item._createSpecificVariants_hasExcludedProperty(curBaseItem, curGenericVariant))
+                    return;
+
+                genericAndSpecificVariants.push(Renderer.item._createSpecificVariants_createSpecificVariant(curBaseItem, curGenericVariant, opts));
+            }
+            );
+        }
+        );
+        return genericAndSpecificVariants;
+    }
+
+    static _createSpecificVariants_hasRequiredProperty(baseItem, genericVariant) {
+        return genericVariant.requires.some(req=>Renderer.item._createSpecificVariants_isRequiresExcludesMatch(baseItem, req, "every"));
+    }
+
+    static _createSpecificVariants_hasExcludedProperty(baseItem, genericVariant) {
+        const curExcludes = genericVariant.excludes || {};
+        return Renderer.item._createSpecificVariants_isRequiresExcludesMatch(baseItem, genericVariant.excludes, "some");
+    }
+
+    static _createSpecificVariants_isRequiresExcludesMatch(candidate, requirements, method) {
+        if (candidate == null || requirements == null)
+            return false;
+
+        return Object.entries(requirements)[method](([reqKey,reqVal])=>{
+            if (reqVal instanceof Array) {
+                return candidate[reqKey]instanceof Array ? candidate[reqKey].some(it=>reqVal.includes(it)) : reqVal.includes(candidate[reqKey]);
+            }
+
+            if (reqVal != null && typeof reqVal === "object") {
+                return Renderer.item._createSpecificVariants_isRequiresExcludesMatch(candidate[reqKey], reqVal, method);
+            }
+
+            return candidate[reqKey]instanceof Array ? candidate[reqKey].some(it=>reqVal === it) : reqVal === candidate[reqKey];
+        }
+        );
+    }
+
+    static _createSpecificVariants_createSpecificVariant(baseItem, genericVariant, opts) {
+        const inherits = genericVariant.inherits;
+        const specificVariant = MiscUtil.copyFast(baseItem);
+
+        specificVariant.__prop = "item";
+
+        delete specificVariant._isBaseItem;
+
+        specificVariant._isEnhanced = false;
+        delete specificVariant._fullEntries;
+
+        specificVariant._baseName = baseItem.name;
+        specificVariant._baseSrd = baseItem.srd;
+        specificVariant._baseBasicRules = baseItem.basicRules;
+        if (baseItem.source !== inherits.source)
+            specificVariant._baseSource = baseItem.source;
+
+        specificVariant._variantName = genericVariant.name;
+
+        delete specificVariant.value;
+
+        delete specificVariant.srd;
+        delete specificVariant.basicRules;
+        delete specificVariant.page;
+
+        delete specificVariant.hasFluff;
+        delete specificVariant.hasFluffImages;
+
+        specificVariant._category = "Specific Variant";
+        Object.entries(inherits).forEach(([inheritedProperty,val])=>{
+            switch (inheritedProperty) {
+            case "namePrefix":
+                specificVariant.name = `${val}${specificVariant.name}`;
+                break;
+            case "nameSuffix":
+                specificVariant.name = `${specificVariant.name}${val}`;
+                break;
+            case "entries":
+                {
+                    Renderer.item._initFullEntries(specificVariant);
+
+                    const appliedPropertyEntries = Renderer.applyAllProperties(val, Renderer.item._getInjectableProps(baseItem, inherits));
+                    appliedPropertyEntries.forEach((ent,i)=>specificVariant._fullEntries.splice(i, 0, ent));
+                    break;
+                }
+            case "vulnerable":
+            case "resist":
+            case "immune":
+                {
+                    break;
+                }
+            case "conditionImmune":
+                {
+                    specificVariant[inheritedProperty] = [...specificVariant[inheritedProperty] || [], ...val].unique();
+                    break;
+                }
+            case "nameRemove":
+                {
+                    specificVariant.name = specificVariant.name.replace(new RegExp(val.escapeRegexp(),"g"), "");
+
+                    break;
+                }
+            case "weightExpression":
+            case "valueExpression":
+                {
+                    const exp = Renderer.item._createSpecificVariants_evaluateExpression(baseItem, specificVariant, inherits, inheritedProperty);
+
+                    const result = Renderer.dice.parseRandomise2(exp);
+                    if (result != null) {
+                        switch (inheritedProperty) {
+                        case "weightExpression":
+                            specificVariant.weight = result;
+                            break;
+                        case "valueExpression":
+                            specificVariant.value = result;
+                            break;
+                        }
+                    }
+
+                    break;
+                }
+            case "barding":
+                {
+                    specificVariant.bardingType = baseItem.type;
+                    break;
+                }
+            case "propertyAdd":
+                {
+                    specificVariant.property = [...(specificVariant.property || []), ...val.filter(it=>!specificVariant.property || !specificVariant.property.includes(it)), ];
+                    break;
+                }
+            case "propertyRemove":
+                {
+                    if (specificVariant.property) {
+                        specificVariant.property = specificVariant.property.filter(it=>!val.includes(it));
+                        if (!specificVariant.property.length)
+                            delete specificVariant.property;
+                    }
+                    break;
+                }
+            default:
+                specificVariant[inheritedProperty] = val;
+            }
+        }
+        );
+
+        Renderer.item._createSpecificVariants_mergeVulnerableResistImmune({
+            specificVariant,
+            inherits
+        });
+
+        genericVariant.variants = genericVariant.variants || [];
+        if (!genericVariant.variants.some(it=>it.base?.name === baseItem.name && it.base?.source === baseItem.source))
+            genericVariant.variants.push({
+                base: baseItem,
+                specificVariant
+            });
+
+        specificVariant.genericVariant = {
+            name: genericVariant.name,
+            source: genericVariant.source,
+        };
+
+        if (opts.linkedLootTables && opts.linkedLootTables[specificVariant.source] && opts.linkedLootTables[specificVariant.source][specificVariant.name]) {
+            (specificVariant.lootTables = specificVariant.lootTables || []).push(...opts.linkedLootTables[specificVariant.source][specificVariant.name]);
+        }
+
+        if (baseItem.source !== Parser.SRC_PHB && baseItem.source !== Parser.SRC_DMG) {
+            Renderer.item._initFullEntries(specificVariant);
+            specificVariant._fullEntries.unshift({
+                type: "wrapper",
+                wrapped: `{@note The {@item ${baseItem.name}|${baseItem.source}|base item} can be found in ${Parser.sourceJsonToFull(baseItem.source)}${baseItem.page ? `, page ${baseItem.page}` : ""}.}`,
+                data: {
+                    [VeCt.ENTDATA_ITEM_MERGED_ENTRY_TAG]: "note",
+                },
+            });
+        }
+
+        return specificVariant;
+    }
+
+    static _createSpecificVariants_evaluateExpression(baseItem, specificVariant, inherits, inheritedProperty) {
+        return inherits[inheritedProperty].replace(/\[\[([^\]]+)]]/g, (...m)=>{
+            const propPath = m[1].split(".");
+            return propPath[0] === "item" ? MiscUtil.get(specificVariant, ...propPath.slice(1)) : propPath[0] === "baseItem" ? MiscUtil.get(baseItem, ...propPath.slice(1)) : MiscUtil.get(specificVariant, ...propPath);
+        }
+        );
+    }
+
+    static _PROPS_VULN_RES_IMMUNE = ["vulnerable", "resist", "immune", ];
+    static _createSpecificVariants_mergeVulnerableResistImmune({specificVariant, inherits}) {
+        const fromBase = {};
+        Renderer.item._PROPS_VULN_RES_IMMUNE.filter(prop=>specificVariant[prop]).forEach(prop=>fromBase[prop] = [...specificVariant[prop]]);
+
+        Renderer.item._PROPS_VULN_RES_IMMUNE.forEach(prop=>{
+            const val = inherits[prop];
+
+            if (val === undefined)
+                return;
+
+            if (val == null)
+                return delete fromBase[prop];
+
+            const valSet = new Set();
+            val.forEach(it=>{
+                if (typeof it === "string")
+                    valSet.add(it);
+                if (!it?.[prop]?.length)
+                    return;
+                it?.[prop].forEach(itSub=>{
+                    if (typeof itSub === "string")
+                        valSet.add(itSub);
+                }
+                );
+            }
+            );
+
+            Renderer.item._PROPS_VULN_RES_IMMUNE.filter(it=>it !== prop).forEach(propOther=>{
+                if (!fromBase[propOther])
+                    return;
+
+                fromBase[propOther] = fromBase[propOther].filter(it=>{
+                    if (typeof it === "string")
+                        return !valSet.has(it);
+
+                    if (it?.[propOther]?.length) {
+                        it[propOther] = it[propOther].filter(itSub=>{
+                            if (typeof itSub === "string")
+                                return !valSet.has(itSub);
+                            return true;
+                        }
+                        );
+                    }
+
+                    return true;
+                }
+                );
+
+                if (!fromBase[propOther].length)
+                    delete fromBase[propOther];
+            }
+            );
+        }
+        );
+
+        Renderer.item._PROPS_VULN_RES_IMMUNE.forEach(prop=>{
+            if (fromBase[prop] || inherits[prop])
+                specificVariant[prop] = [...(fromBase[prop] || []), ...(inherits[prop] || [])].unique();
+            else
+                delete specificVariant[prop];
+        }
+        );
+    }
+
+    static _enhanceItems(allItems) {
+        allItems.forEach((item)=>Renderer.item.enhanceItem(item));
+        return allItems;
+    }
+
+    static async pGetGenericAndSpecificVariants(genericVariants, opts) {
+        opts = opts || {};
+
+        let baseItems;
+        if (opts.baseItems) {
+            baseItems = opts.baseItems;
+        } else {
+            const baseItemData = await DataUtil.loadJSON(`${Renderer.get().baseUrl}data/items-base.json`);
+            Renderer.item._addBasePropertiesAndTypes(baseItemData);
+            baseItems = [...baseItemData.baseitem, ...(opts.additionalBaseItems || [])];
+        }
+
+        await Renderer.item._pAddPrereleaseBrewPropertiesAndTypes();
+        genericVariants.forEach(Renderer.item._genericVariants_addInheritedPropertiesToSelf);
+        const specificVariants = Renderer.item._createSpecificVariants(baseItems, genericVariants);
+        const outSpecificVariants = Renderer.item._enhanceItems(specificVariants);
+
+        if (opts.isSpecificVariantsOnly)
+            return outSpecificVariants;
+
+        const outGenericVariants = Renderer.item._enhanceItems(genericVariants);
+        return [...outGenericVariants, ...outSpecificVariants];
+    }
+
+    static _getInjectableProps(baseItem, inherits) {
+        return {
+            baseName: baseItem.name,
+            dmgType: baseItem.dmgType ? Parser.dmgTypeToFull(baseItem.dmgType) : null,
+            bonusAc: inherits.bonusAc,
+            bonusWeapon: inherits.bonusWeapon,
+            bonusWeaponAttack: inherits.bonusWeaponAttack,
+            bonusWeaponDamage: inherits.bonusWeaponDamage,
+            bonusWeaponCritDamage: inherits.bonusWeaponCritDamage,
+            bonusSpellAttack: inherits.bonusSpellAttack,
+            bonusSpellSaveDc: inherits.bonusSpellSaveDc,
+            bonusSavingThrow: inherits.bonusSavingThrow,
+        };
+    }
+
+    static _INHERITED_PROPS_BLOCKLIST = new Set(["entries", "rarity",
+    "namePrefix", "nameSuffix", ]);
+    static _genericVariants_addInheritedPropertiesToSelf(genericVariant) {
+        if (genericVariant._isInherited)
+            return;
+        genericVariant._isInherited = true;
+
+        for (const prop in genericVariant.inherits) {
+            if (Renderer.item._INHERITED_PROPS_BLOCKLIST.has(prop))
+                continue;
+
+            const val = genericVariant.inherits[prop];
+
+            if (val == null)
+                delete genericVariant[prop];
+            else if (genericVariant[prop]) {
+                if (genericVariant[prop]instanceof Array && val instanceof Array)
+                    genericVariant[prop] = MiscUtil.copyFast(genericVariant[prop]).concat(val);
+                else
+                    genericVariant[prop] = val;
+            } else
+                genericVariant[prop] = genericVariant.inherits[prop];
+        }
+
+        if (!genericVariant.entries && genericVariant.inherits.entries) {
+            genericVariant.entries = MiscUtil.copyFast(Renderer.applyAllProperties(genericVariant.inherits.entries, genericVariant.inherits));
+        }
+
+        if (genericVariant.inherits.rarity == null)
+            delete genericVariant.rarity;
+        else if (genericVariant.inherits.rarity === "varies") {} else
+            genericVariant.rarity = genericVariant.inherits.rarity;
+
+        if (genericVariant.requires.armor)
+            genericVariant.armor = genericVariant.requires.armor;
+    }
+
+    static getItemTypeName(t) {
+        return Renderer.item.getType(t).name?.toLowerCase() || t;
+    }
+
+    static enhanceItem(item) {
+        if (item._isEnhanced)
+            return;
+        item._isEnhanced = true;
+        if (item.noDisplay)
+            return;
+        if (item.type === "GV")
+            item._category = "Generic Variant";
+        if (item._category == null)
+            item._category = "Other";
+        if (item.entries == null)
+            item.entries = [];
+        if (item.type && (Renderer.item.getType(item.type)?.entries || Renderer.item.getType(item.type)?.entriesTemplate)) {
+            Renderer.item._initFullEntries(item);
+
+            const propetyEntries = Renderer.item._enhanceItem_getItemPropertyTypeEntries({
+                item,
+                ent: Renderer.item.getType(item.type)
+            });
+            propetyEntries.forEach(e=>item._fullEntries.push({
+                type: "wrapper",
+                wrapped: e,
+                data: {
+                    [VeCt.ENTDATA_ITEM_MERGED_ENTRY_TAG]: "type"
+                }
+            }));
+        }
+        if (item.property) {
+            item.property.forEach(p=>{
+                const entProperty = Renderer.item.getProperty(p);
+                if (!entProperty.entries && !entProperty.entriesTemplate)
+                    return;
+
+                Renderer.item._initFullEntries(item);
+
+                const propetyEntries = Renderer.item._enhanceItem_getItemPropertyTypeEntries({
+                    item,
+                    ent: entProperty
+                });
+                propetyEntries.forEach(e=>item._fullEntries.push({
+                    type: "wrapper",
+                    wrapped: e,
+                    data: {
+                        [VeCt.ENTDATA_ITEM_MERGED_ENTRY_TAG]: "property"
+                    }
+                }));
+            }
+            );
+        }
+        if (item.type === "LA" || item.type === "MA" || item.type === "HA") {
+            if (item.stealth) {
+                Renderer.item._initFullEntries(item);
+                item._fullEntries.push({
+                    type: "wrapper",
+                    wrapped: "The wearer has disadvantage on Dexterity ({@skill Stealth}) checks.",
+                    data: {
+                        [VeCt.ENTDATA_ITEM_MERGED_ENTRY_TAG]: "type"
+                    }
+                });
+            }
+            if (item.type === "HA" && item.strength) {
+                Renderer.item._initFullEntries(item);
+                item._fullEntries.push({
+                    type: "wrapper",
+                    wrapped: `If the wearer has a Strength score lower than ${item.strength}, their speed is reduced by 10 feet.`,
+                    data: {
+                        [VeCt.ENTDATA_ITEM_MERGED_ENTRY_TAG]: "type"
+                    }
+                });
+            }
+        }
+        if (item.type === "SCF") {
+            if (item._isItemGroup) {
+                if (item.scfType === "arcane" && item.source !== Parser.SRC_ERLW) {
+                    Renderer.item._initFullEntries(item);
+                    item._fullEntries.push({
+                        type: "wrapper",
+                        wrapped: "An arcane focus is a special item\u2014an orb, a crystal, a rod, a specially constructed staff, a wand-like length of wood, or some similar item\u2014designed to channel the power of arcane spells. A sorcerer, warlock, or wizard can use such an item as a spellcasting focus.",
+                        data: {
+                            [VeCt.ENTDATA_ITEM_MERGED_ENTRY_TAG]: "type.SCF"
+                        }
+                    });
+                }
+                if (item.scfType === "druid") {
+                    Renderer.item._initFullEntries(item);
+                    item._fullEntries.push({
+                        type: "wrapper",
+                        wrapped: "A druidic focus might be a sprig of mistletoe or holly, a wand or scepter made of yew or another special wood, a staff drawn whole out of a living tree, or a totem object incorporating feathers, fur, bones, and teeth from sacred animals. A druid can use such an object as a spellcasting focus.",
+                        data: {
+                            [VeCt.ENTDATA_ITEM_MERGED_ENTRY_TAG]: "type.SCF"
+                        }
+                    });
+                }
+                if (item.scfType === "holy") {
+                    Renderer.item._initFullEntries(item);
+                    item._fullEntries.push({
+                        type: "wrapper",
+                        wrapped: "A holy symbol is a representation of a god or pantheon. It might be an amulet depicting a symbol representing a deity, the same symbol carefully engraved or inlaid as an emblem on a shield, or a tiny box holding a fragment of a sacred relic. A cleric or paladin can use a holy symbol as a spellcasting focus. To use the symbol in this way, the caster must hold it in hand, wear it visibly, or bear it on a shield.",
+                        data: {
+                            [VeCt.ENTDATA_ITEM_MERGED_ENTRY_TAG]: "type.SCF"
+                        }
+                    });
+                }
+            } else {
+                if (item.scfType === "arcane") {
+                    Renderer.item._initFullEntries(item);
+                    item._fullEntries.push({
+                        type: "wrapper",
+                        wrapped: "An arcane focus is a special item designed to channel the power of arcane spells. A sorcerer, warlock, or wizard can use such an item as a spellcasting focus.",
+                        data: {
+                            [VeCt.ENTDATA_ITEM_MERGED_ENTRY_TAG]: "type.SCF"
+                        }
+                    });
+                }
+                if (item.scfType === "druid") {
+                    Renderer.item._initFullEntries(item);
+                    item._fullEntries.push({
+                        type: "wrapper",
+                        wrapped: "A druid can use this object as a spellcasting focus.",
+                        data: {
+                            [VeCt.ENTDATA_ITEM_MERGED_ENTRY_TAG]: "type.SCF"
+                        }
+                    });
+                }
+                if (item.scfType === "holy") {
+                    Renderer.item._initFullEntries(item);
+
+                    item._fullEntries.push({
+                        type: "wrapper",
+                        wrapped: "A holy symbol is a representation of a god or pantheon.",
+                        data: {
+                            [VeCt.ENTDATA_ITEM_MERGED_ENTRY_TAG]: "type.SCF"
+                        }
+                    });
+                    item._fullEntries.push({
+                        type: "wrapper",
+                        wrapped: "A cleric or paladin can use a holy symbol as a spellcasting focus. To use the symbol in this way, the caster must hold it in hand, wear it visibly, or bear it on a shield.",
+                        data: {
+                            [VeCt.ENTDATA_ITEM_MERGED_ENTRY_TAG]: "type.SCF"
+                        }
+                    });
+                }
+            }
+        }
+
+        (item.mastery || []).forEach(uid=>{
+            const mastery = Renderer.item._getMastery(uid);
+
+            if (!mastery)
+                throw new Error(`Item mastery ${uid} not found. You probably meant to load the property/type reference first; see \`Renderer.item.pPopulatePropertyAndTypeReference()\`.`);
+            if (!mastery.entries && !mastery.entriesTemplate)
+                return;
+
+            Renderer.item._initFullEntries(item);
+
+            item._fullEntries.push({
+                type: "wrapper",
+                wrapped: {
+                    type: "entries",
+                    name: `Mastery: ${mastery.name}`,
+                    source: mastery.source,
+                    page: mastery.page,
+                    entries: Renderer.item._enhanceItem_getItemPropertyTypeEntries({
+                        item,
+                        ent: mastery
+                    }),
+                },
+                data: {
+                    [VeCt.ENTDATA_ITEM_MERGED_ENTRY_TAG]: "mastery",
+                },
+            });
+        }
+        );
+
+        if (item.type === "T" || item.type === "AT" || item.type === "INS" || item.type === "GS") {
+            Renderer.item._initFullAdditionalEntries(item);
+            item._fullAdditionalEntries.push({
+                type: "wrapper",
+                wrapped: {
+                    type: "hr"
+                },
+                data: {
+                    [VeCt.ENTDATA_ITEM_MERGED_ENTRY_TAG]: "type"
+                }
+            });
+            item._fullAdditionalEntries.push({
+                type: "wrapper",
+                wrapped: `{@note See the {@variantrule Tool Proficiencies|XGE} entry for more information.}`,
+                data: {
+                    [VeCt.ENTDATA_ITEM_MERGED_ENTRY_TAG]: "type"
+                }
+            });
+        }
+
+        if (item.type === "INS" || item.type === "GS")
+            item.additionalSources = item.additionalSources || [];
+        if (item.type === "INS") {
+            if (!item.additionalSources.find(it=>it.source === "XGE" && it.page === 83))
+                item.additionalSources.push({
+                    "source": "XGE",
+                    "page": 83
+                });
+        } else if (item.type === "GS") {
+            if (!item.additionalSources.find(it=>it.source === "XGE" && it.page === 81))
+                item.additionalSources.push({
+                    "source": "XGE",
+                    "page": 81
+                });
+        }
+
+        if (item.type && Renderer.item._additionalEntriesMap[item.type]) {
+            Renderer.item._initFullAdditionalEntries(item);
+            const additional = Renderer.item._additionalEntriesMap[item.type];
+            item._fullAdditionalEntries.push({
+                type: "wrapper",
+                wrapped: {
+                    type: "entries",
+                    entries: additional
+                },
+                data: {
+                    [VeCt.ENTDATA_ITEM_MERGED_ENTRY_TAG]: "type"
+                }
+            });
+        }
+
+        const [typeListText,typeHtml,subTypeHtml] = Renderer.item.getHtmlAndTextTypes(item);
+        item._typeListText = typeListText;
+        item._typeHtml = typeHtml;
+        item._subTypeHtml = subTypeHtml;
+
+        const [attune,attuneCat] = Renderer.item.getAttunementAndAttunementCatText(item);
+        item._attunement = attune;
+        item._attunementCategory = attuneCat;
+
+        if (item.reqAttuneAlt) {
+            const [attuneAlt,attuneCatAlt] = Renderer.item.getAttunementAndAttunementCatText(item, "reqAttuneAlt");
+            item._attunementCategory = [attuneCat, attuneCatAlt];
+        }
+
+        if (item._isItemGroup) {
+            Renderer.item._initFullEntries(item);
+            item._fullEntries.push({
+                type: "wrapper",
+                wrapped: "Multiple variations of this item exist, as listed below:",
+                data: {
+                    [VeCt.ENTDATA_ITEM_MERGED_ENTRY_TAG]: "magicvariant"
+                }
+            });
+            item._fullEntries.push({
+                type: "wrapper",
+                wrapped: {
+                    type: "list",
+                    items: item.items.map(it=>typeof it === "string" ? `{@item ${it}}` : `{@item ${it.name}|${it.source}}`),
+                },
+                data: {
+                    [VeCt.ENTDATA_ITEM_MERGED_ENTRY_TAG]: "magicvariant"
+                },
+            });
+        }
+
+        if (item.variants && item.variants.length) {
+            item.variants.sort((a,b)=>SortUtil.ascSortLower(a.base.name, b.base.name) || SortUtil.ascSortLower(a.base.source, b.base.source));
+
+            Renderer.item._initFullEntries(item);
+            item._fullEntries.push({
+                type: "wrapper",
+                wrapped: {
+                    type: "entries",
+                    name: "Base items",
+                    entries: ["This item variant can be applied to the following base items:", {
+                        type: "list",
+                        items: item.variants.map(({base, specificVariant})=>{
+                            return `{@item ${base.name}|${base.source}} ({@item ${specificVariant.name}|${specificVariant.source}})`;
+                        }
+                        ),
+                    }, ],
+                },
+                data: {
+                    [VeCt.ENTDATA_ITEM_MERGED_ENTRY_TAG]: "magicvariant"
+                },
+            });
+        }
+    }
+
+    static _enhanceItem_getItemPropertyTypeEntries({item, ent}) {
+        if (!ent.entriesTemplate)
+            return MiscUtil.copyFast(ent.entries);
+        return MiscUtil.getWalker({
+            keyBlocklist: MiscUtil.GENERIC_WALKER_ENTRIES_KEY_BLOCKLIST,
+        }).walk(MiscUtil.copyFast(ent.entriesTemplate), {
+            string: (str)=>{
+                return Renderer.utils.applyTemplate(item, str, );
+            }
+            ,
+        }, );
+    }
+
+    static unenhanceItem(item) {
+        if (!item._isEnhanced)
+            return;
+        delete item._isEnhanced;
+        delete item._fullEntries;
+    }
+
+    static async pGetSiteUnresolvedRefItemsFromPrereleaseBrew({brewUtil, brew=null}) {
+        if (brewUtil == null && brew == null)
+            return [];
+
+        brew = brew || await brewUtil.pGetBrewProcessed();
+
+        (brew.itemProperty || []).forEach(p=>Renderer.item._addProperty(p));
+        (brew.itemType || []).forEach(t=>Renderer.item._addType(t));
+        (brew.itemEntry || []).forEach(it=>Renderer.item._addEntry(it));
+        (brew.itemTypeAdditionalEntries || []).forEach(it=>Renderer.item._addAdditionalEntries(it));
+
+        let items = [...(brew.baseitem || []), ...(brew.item || [])];
+
+        if (brew.itemGroup) {
+            const itemGroups = MiscUtil.copyFast(brew.itemGroup);
+            itemGroups.forEach(it=>it._isItemGroup = true);
+            items = [...items, ...itemGroups];
+        }
+
+        Renderer.item._enhanceItems(items);
+
+        let isReEnhanceVariants = false;
+
+        if (brew.baseitem && brew.baseitem.length) {
+            isReEnhanceVariants = true;
+
+            const {genericVariants} = await Renderer.item._pGetCacheSiteGenericVariants();
+
+            const variants = await Renderer.item.pGetGenericAndSpecificVariants(genericVariants, {
+                baseItems: brew.baseitem || [],
+                isSpecificVariantsOnly: true
+            }, );
+            items = [...items, ...variants];
+        }
+
+        if (brew.magicvariant && brew.magicvariant.length) {
+            isReEnhanceVariants = true;
+
+            const variants = await Renderer.item.pGetGenericAndSpecificVariants(brew.magicvariant, {
+                additionalBaseItems: brew.baseitem || []
+            }, );
+            items = [...items, ...variants];
+        }
+
+        if (isReEnhanceVariants) {
+            const {genericVariants} = await Renderer.item._pGetCacheSiteGenericVariants();
+            genericVariants.forEach(item=>{
+                Renderer.item.unenhanceItem(item);
+                Renderer.item.enhanceItem(item);
+            }
+            );
+        }
+
+        return items;
+    }
+
+    static async pGetItemsFromPrerelease() {
+        return DataLoader.pCacheAndGetAllPrerelease(UrlUtil.PG_ITEMS);
+    }
+
+    static async pGetItemsFromBrew() {
+        return DataLoader.pCacheAndGetAllBrew(UrlUtil.PG_ITEMS);
+    }
+
+    static _pPopulatePropertyAndTypeReference = null;
+    static pPopulatePropertyAndTypeReference() {
+        return Renderer.item._pPopulatePropertyAndTypeReference || (async()=>{
+            const data = await DataUtil.loadJSON(`${Renderer.get().baseUrl}data/items-base.json`);
+
+            Object.entries(Parser.ITEM_TYPE_JSON_TO_ABV).forEach(([abv,name])=>Renderer.item._addType({
+                abbreviation: abv,
+                name
+            }));
+            data.itemProperty.forEach(p=>Renderer.item._addProperty(p));
+            data.itemType.forEach(t=>Renderer.item._addType(t));
+            data.itemEntry.forEach(it=>Renderer.item._addEntry(it));
+            data.itemTypeAdditionalEntries.forEach(e=>Renderer.item._addAdditionalEntries(e));
+
+            await Renderer.item._pAddPrereleaseBrewPropertiesAndTypes();
+        }
+        )();
+    }
+
+    static async getAllIndexableItems(rawVariants, rawBaseItems) {
+        const basicItems = await Renderer.item._pGetAndProcBaseItems(rawBaseItems);
+        const [genericVariants,linkedLootTables] = await Renderer.item._getAndProcGenericVariants(rawVariants);
+        const specificVariants = Renderer.item._createSpecificVariants(basicItems, genericVariants, {
+            linkedLootTables
+        });
+
+        [...genericVariants, ...specificVariants].forEach(item=>{
+            if (item.variants)
+                delete item.variants;
+        }
+        );
+
+        return specificVariants;
+    }
+
+    static isMundane(item) {
+        return item.rarity === "none" || item.rarity === "unknown" || item._category === "Basic";
+    }
+
+    static isExcluded(item, {hash=null}={}) {
+        const name = item.name;
+        const source = item.source || item.inherits?.source;
+
+        hash = hash || UrlUtil.URL_TO_HASH_BUILDER[UrlUtil.PG_ITEMS]({
+            name,
+            source
+        });
+
+        if (ExcludeUtil.isExcluded(hash, "item", source))
+            return true;
+
+        if (item._isBaseItem)
+            return ExcludeUtil.isExcluded(hash, "baseitem", source);
+        if (item._isItemGroup)
+            return ExcludeUtil.isExcluded(hash, "itemGroup", source);
+        if (item._variantName) {
+            if (ExcludeUtil.isExcluded(hash, "_specificVariant", source))
+                return true;
+
+            const baseHash = UrlUtil.URL_TO_HASH_BUILDER[UrlUtil.PG_ITEMS]({
+                name: item._baseName,
+                source: item._baseSource || source
+            });
+            if (ExcludeUtil.isExcluded(baseHash, "baseitem", item._baseSource || source))
+                return true;
+
+            const variantHash = UrlUtil.URL_TO_HASH_BUILDER[UrlUtil.PG_ITEMS]({
+                name: item._variantName,
+                source: source
+            });
+            return ExcludeUtil.isExcluded(variantHash, "magicvariant", source);
+        }
+        if (item.type === "GV")
+            return ExcludeUtil.isExcluded(hash, "magicvariant", source);
+
+        return false;
+    }
+
+    static pGetFluff(item) {
+        return Renderer.utils.pGetFluff({
+            entity: item,
+            fnGetFluffData: DataUtil.itemFluff.loadJSON.bind(DataUtil.itemFluff),
+            fluffProp: "itemFluff",
+        });
     }
 };
 
@@ -38183,6 +39815,761 @@ class ContentGetter {
         return filtered[0];
     }
 }
+
+class SourceSelectorTest {
+    static async getOutputEntities() {
+
+        const officialSources = new UtilDataSource.DataSourceSpecial("SRD", this._pLoadVetoolsSource.bind(this), {
+            'cacheKey': '5etools-charactermancer',
+            'filterTypes': [UtilDataSource.SOURCE_TYP_OFFICIAL_ALL],
+            'isDefault': true,
+            //'pPostLoad': this._pPostLoad.bind(this, {'actor': _0x2344b6 })
+        });
+        const sources = [officialSources];
+
+        //Should contain all spells, classes, etc from every source we provide
+        const allContentMeta = await UtilDataSource.pGetAllContent({
+			sources,
+			/* uploadedFileMetas: this.uploadedFileMetas,
+			customUrls: this.getCustomUrls(),
+			isBackground,
+
+			page: this._page,
+
+			isDedupable: this._isDedupable,
+			fnGetDedupedData: this._fnGetDedupedData,
+
+			fnGetBlocklistFilteredData: this._fnGetBlocklistFilteredData,
+
+			isAutoSelectAll, */
+		});
+
+        const out = allContentMeta.dedupedAllContentMerged;
+        //spells have their classes set already, thankfully
+        //however class feature's loadeds are not set
+        console.log("loaded content", out);
+        //TEMPFIX
+       /*  Renderer.spell.populatePrereleaseLookup(await PrereleaseUtil.pGetBrewProcessed(), {isForce: true});
+		Renderer.spell.populateBrewLookup(await BrewUtil2.pGetBrewProcessed(), {isForce: true});
+
+		(out.spell || []).forEach(sp => { Renderer.spell.uninitBrewSources(sp); Renderer.spell.initBrewSources(sp); }); */
+
+        return out;
+    }
+    static async _pLoadVetoolsSource() {
+        const combinedSource = {};
+        const [classResult, raceResult, backgroundResult, itemResults, spellResults, featResults, optionalFeatureResults]
+        = await Promise.all([Vetools.pGetClasses(), Vetools.pGetRaces(), DataUtil.loadJSON(Vetools.DATA_URL_BACKGROUNDS),
+            Vetools.pGetItems(), Vetools.pGetAllSpells(), DataUtil.loadJSON(Vetools.DATA_URL_FEATS), DataUtil.loadJSON(Vetools.DATA_URL_OPTIONALFEATURES)]);
+        Object.assign(combinedSource, classResult);
+        combinedSource.race = raceResult.race;
+        combinedSource.background = backgroundResult.background;
+        combinedSource.item = itemResults.item;
+        combinedSource.spell = spellResults.spell;
+        combinedSource.feat = featResults.feat;
+        combinedSource.optionalfeature = optionalFeatureResults.optionalfeature;
+        return combinedSource;
+    }
+      /* static async _pPostLoad(_0x4e0586) {
+        if (isBrewOrPrerelease) {
+          const {
+            isPrerelease: _0xd968a5,
+            isBrew: _0xbba490
+          } = UtilDataSource.getSourceType(_0x4e0586, {
+            'isErrorOnMultiple': true
+          });
+          _0xd968a5;
+          isBrew = _0xbba490;
+        }
+        _0x4e0586 = await UtilDataSource.pPostLoadGeneric({
+          'isBrew': isBrew,
+          'isPrerelease': _0xd968a5
+        }, _0x4e0586);
+        if (_0x4e0586["class"] || _0x4e0586.subclass) {
+          const {
+            DataConverterClassSubclassFeature: _0x1311c6
+          } = await Promise.resolve().then(function () {
+            return DataConverterClassSubclassFeature$1;
+          });
+          const _0x2f74ed = await _0x1311c6.pGetClassSubclassFeatureIgnoredLookup({
+            'data': _0x4e0586
+          });
+          const _0x15dc0a = await PageFilterClassesFoundry.pPostLoad({
+            'class': _0x4e0586["class"],
+            'subclass': _0x4e0586.subclass,
+            'classFeature': _0x4e0586.classFeature,
+            'subclassFeature': _0x4e0586.subclassFeature
+          }, {
+            'actor': _0x5d48db,
+            'isIgnoredLookup': _0x2f74ed
+          });
+          Object.assign(_0x4e0586, _0x15dc0a);
+          if (_0x4e0586["class"]) {
+            _0x4e0586["class"].forEach(_0x4b57f1 => PageFilterClasses.mutateForFilters(_0x4b57f1));
+          }
+        }
+        if (_0x4e0586.feat) {
+          _0x4e0586.feat = MiscUtil.copy(_0x4e0586.feat);
+        }
+        if (_0x4e0586.optionalfeature) {
+          _0x4e0586.optionalfeature = MiscUtil.copy(_0x4e0586.optionalfeature);
+        }
+        return _0x4e0586;
+      } */
+}
+
+class UtilDataSource {
+
+    static sortListItems(a, b, o) {
+        const ixTypeA = Math.min(...a.values.filterTypes.map(it=>UtilDataSource.SOURCE_TYPE_ORDER.indexOf(it)));
+        const ixTypeB = Math.min(...b.values.filterTypes.map(it=>UtilDataSource.SOURCE_TYPE_ORDER.indexOf(it)));
+
+        return SortUtil.ascSort(ixTypeA, ixTypeB) || SortUtil.compareListNames(a, b);
+    }
+
+    static _PROPS_NO_BLOCKLIST = new Set(["itemProperty", "itemType", "spellList"]);
+    static _PROP_RE_FOUNDRY = /^foundry[A-Z]/;
+
+    static getMergedData(data, {isFilterBlocklisted=true}={}) {
+        const mergedData = {};
+
+        data.forEach(sourceData=>{
+            Object.entries(sourceData).forEach(([prop,arr])=>{
+                if (!arr || !(arr instanceof Array))
+                    return;
+                if (mergedData[prop])
+                    mergedData[prop] = [...mergedData[prop], ...MiscUtil.copy(arr)];
+                else
+                    mergedData[prop] = MiscUtil.copy(arr);
+            }
+            );
+        });
+
+        if (isFilterBlocklisted) {
+            Object.entries(mergedData).forEach(([prop,arr])=>{
+                if (!arr || !(arr instanceof Array))
+                    return;
+                mergedData[prop] = mergedData[prop].filter(it=>{
+                    if (SourceUtil.getEntitySource(it) === VeCt.STR_GENERIC)
+                        return false;
+
+                    if (it.__prop && this._PROPS_NO_BLOCKLIST.has(it.__prop))
+                        return true;
+                    if (it.__prop && this._PROP_RE_FOUNDRY.test(it.__prop))
+                        return false;
+
+                    if (!SourceUtil.getEntitySource(it)) {
+                        console.warn(`Entity did not have a "source"! This should never occur.`);
+                        return true;
+                    }
+                    if (!it.__prop) {
+                        console.warn(`Entity did not have a "__prop"! This should never occur.`);
+                        return true;
+                    }
+                    if (!UrlUtil.URL_TO_HASH_BUILDER[it.__prop]) {
+                        console.warn(`No hash builder found for "__prop" "${it.__prop}"! This should never occur.`);
+                        return true;
+                    }
+
+                    switch (it.__prop) {
+                    case "class":
+                        {
+                            if (!it.subclasses?.length)
+                                break;
+
+                            it.subclasses = it.subclasses.filter(sc=>{
+                                if (sc.source === VeCt.STR_GENERIC)
+                                    return false;
+
+                                return !ExcludeUtil.isExcluded(UrlUtil.URL_TO_HASH_BUILDER["subclass"](sc), "subclass", sc.source, {
+                                    isNoCount: true
+                                }, );
+                            }
+                            );
+
+                            break;
+                        }
+
+                    case "item":
+                    case "baseitem":
+                    case "itemGroup":
+                    case "magicvariant":
+                    case "_specificVariant":
+                        {
+                            return !Renderer.item.isExcluded(it);
+                        }
+
+                    case "race":
+                        {
+                            if (this._isExcludedRaceSubrace(it))
+                                return false;
+                        }
+                    }
+
+                    return !ExcludeUtil.isExcluded(UrlUtil.URL_TO_HASH_BUILDER[it.__prop](it), it.__prop, SourceUtil.getEntitySource(it), {
+                        isNoCount: true
+                    }, );
+                }
+                );
+            }
+            );
+        }
+
+        return mergedData;
+    }
+
+    static async pHandleBackgroundLoad({pLoad, isBackground=false, cntSources=null}) {
+        const pTimeout = isBackground ? MiscUtil.pDelay(500, VeCt.SYM_UTIL_TIMEOUT) : null;
+
+        const promises = [pLoad, pTimeout].filter(Boolean);
+
+        const winner = await Promise.race(promises);
+        if (winner === VeCt.SYM_UTIL_TIMEOUT)
+            ui.notifications.info(`Please wait while ${cntSources != null ? `${cntSources} source${cntSources === 1 ? " is" : "s are"}` : "data is being"} loaded...`);
+        return pLoad;
+    }
+
+    static _IGNORED_KEYS = new Set(["_meta", "$schema", ]);
+
+    static async pGetAllContent({sources, uploadedFileMetas, customUrls, isBackground=false, userData, cacheKeys=null,
+        page, isDedupable=false, fnGetDedupedData=null, fnGetBlocklistFilteredData=null, isAutoSelectAll=false, }, ) {
+        const allContent = [];
+
+        if (isAutoSelectAll && this.isTooManySources({ cntSources: sources.length })) {
+            const ptHelp = `This may take a (very) long time! If this seems like too much, ${game.user.isGM ? "your GM" : "you"} may have to adjust ${game.user.isGM ? "your" : "the"} "Data Sources" Config options/${game.user.isGM ? "your" : "the"} "World Data Source Selector" list to limit the number of sources selected by default.`;
+
+            console.warn(...LGT, `${sources.length} source${sources.length === 1 ? "" : "s"} are being loaded! ${ptHelp}`);
+
+            if (!(await InputUiUtil.pGetUserBoolean({
+                title: "Too Many Sources",
+                htmlDescription: `You are about to load ${sources.length} source${sources.length === 1 ? "" 
+                : "s"}. ${ptHelp}<br>Would you like to load ${sources.length} source${sources.length === 1 ? "" : "s"}?`,
+                textNo: "Cancel",
+                textYes: "Continue",
+            })))
+                return null;
+        }
+
+        const pLoad = sources.pMap(async source=>{
+            await source.pLoadAndAddToAllContent({ uploadedFileMetas, customUrls, allContent, cacheKeys });
+        });
+
+        await UtilDataSource.pHandleBackgroundLoad({
+            pLoad,
+            isBackground,
+            cntSources: sources.length
+        });
+
+        const allContentMerged = {};
+
+        if (allContent.length === 1)
+            Object.assign(allContentMerged, allContent[0]);
+        else {
+            allContent.forEach(obj=>{
+                Object.entries(obj).forEach(([k,v])=>{
+                    if (v == null)
+                        return;
+                    if (this._IGNORED_KEYS.has(k))
+                        return;
+
+                    if (!(v instanceof Array))
+                        console.warn(`Could not merge "${typeof v}" for key "${k}"!`);
+
+                    allContentMerged[k] = allContentMerged[k] || [];
+                    allContentMerged[k] = [...allContentMerged[k], ...v];
+                }
+                );
+            });
+        }
+
+        let dedupedAllContentMerged = fnGetDedupedData ? fnGetDedupedData({
+            allContentMerged,
+            isDedupable
+        }) : this._getDedupedAllContentMerged({
+            allContentMerged,
+            isDedupable
+        });
+
+        dedupedAllContentMerged = fnGetBlocklistFilteredData ? fnGetBlocklistFilteredData({
+            dedupedAllContentMerged,
+            page
+        }) : this._getBlocklistFilteredData({
+            dedupedAllContentMerged,
+            page
+        });
+
+        if (Config.get("import", "isShowVariantsInLists")) {
+            Object.entries(dedupedAllContentMerged).forEach(([k,arr])=>{
+                if (!(arr instanceof Array))
+                    return;
+                dedupedAllContentMerged[k] = arr.map(it=>[it, ...DataUtil.proxy.getVersions(it.__prop, it)]).flat();
+            }
+            );
+        }
+
+        Object.entries(dedupedAllContentMerged).forEach(([k,arr])=>{
+            if (!(arr instanceof Array))
+                return;
+            if (!arr.length)
+                delete dedupedAllContentMerged[k];
+        }
+        );
+
+        return {
+            dedupedAllContentMerged,
+            cacheKeys,
+            userData
+        };
+    }
+
+    static isTooManySources({cntSources}) {
+        return Config.get("dataSources", "tooManySourcesWarningThreshold") != null && cntSources >= Config.get("dataSources", "tooManySourcesWarningThreshold");
+    }
+
+    static _getBlocklistFilteredData({dedupedAllContentMerged, page}) {
+        if (!UrlUtil.URL_TO_HASH_BUILDER[page])
+            return dedupedAllContentMerged;
+        dedupedAllContentMerged = {
+            ...dedupedAllContentMerged
+        };
+        Object.entries(dedupedAllContentMerged).forEach(([k,arr])=>{
+            if (!(arr instanceof Array))
+                return;
+            dedupedAllContentMerged[k] = arr.filter(it=>{
+                if (it.source === VeCt.STR_GENERIC)
+                    return false;
+
+                if (!SourceUtil.getEntitySource(it)) {
+                    console.warn(`Entity did not have a "source"! This should never occur.`);
+                    return true;
+                }
+                if (!it.__prop) {
+                    console.warn(`Entity did not have a "__prop"! This should never occur.`);
+                    return true;
+                }
+
+                switch (it.__prop) {
+                case "item":
+                case "baseitem":
+                case "itemGroup":
+                case "magicvariant":
+                case "_specificVariant":
+                    {
+                        return !Renderer.item.isExcluded(it);
+                    }
+
+                case "race":
+                    {
+                        if (this._isExcludedRaceSubrace(it))
+                            return false;
+                    }
+                }
+
+                return !ExcludeUtil.isExcluded((UrlUtil.URL_TO_HASH_BUILDER[it.__prop] || UrlUtil.URL_TO_HASH_BUILDER[page])(it), it.__prop, SourceUtil.getEntitySource(it), {
+                    isNoCount: true
+                }, );
+            }
+            );
+        }
+        );
+        return dedupedAllContentMerged;
+    }
+
+    static _isExcludedRaceSubrace(it) {
+        if (it.__prop !== "race")
+            return false;
+        return it._subraceName && ExcludeUtil.isExcluded(UrlUtil.URL_TO_HASH_BUILDER["subrace"]({
+            name: it._subraceName,
+            source: it.source,
+            raceName: it._baseName,
+            raceSource: it._baseSource
+        }), "subrace", SourceUtil.getEntitySource(it), {
+            isNoCount: true
+        }, );
+    }
+
+    static _getDedupedAllContentMerged({allContentMerged, page, isDedupable=false}) {
+        if (!isDedupable)
+            return allContentMerged;
+        return this._getDedupedData({
+            allContentMerged,
+            page
+        });
+    }
+
+    static _getDedupedData({allContentMerged, page}) {
+        if (!UrlUtil.URL_TO_HASH_BUILDER[page])
+            return allContentMerged;
+
+        const contentHashes = new Set();
+        Object.entries(allContentMerged).forEach(([k,arr])=>{
+            if (!(arr instanceof Array))
+                return;
+            allContentMerged[k] = arr.filter(it=>{
+                const fnGetHash = UrlUtil.URL_TO_HASH_BUILDER[page];
+                if (!fnGetHash)
+                    return true;
+                const hash = fnGetHash(it);
+                if (contentHashes.has(hash))
+                    return false;
+                contentHashes.add(hash);
+                return true;
+            }
+            );
+        }
+        );
+
+        return allContentMerged;
+    }
+
+    static async pPostLoadGeneric({isPrerelease, isBrew}, out) {
+        out = {
+            ...out
+        };
+
+        if ((isBrew || isPrerelease) && (out.race || out.subrace)) {
+            const nxt = await Charactermancer_Race_Util.pPostLoadPrereleaseBrew(out);
+            Object.assign(out, nxt || {});
+        }
+
+        if ((isBrew || isPrerelease) && (out.item || out.baseitem || out.magicvariant || out.itemGroup)) {
+            if (isBrew)
+                out.item = await Vetools.pGetBrewItems(out);
+            else if (isPrerelease)
+                out.item = await Vetools.pGetPrereleaseItems(out);
+
+            delete out.baseitem;
+            delete out.magicvariant;
+            delete out.itemProperty;
+            delete out.itemType;
+            delete out.itemGroup;
+        }
+
+        return out;
+    }
+
+    static getSourceFilterTypes(src) {
+        return SourceUtil.isPrereleaseSource(src) ? [UtilDataSource.SOURCE_TYP_PRERELEASE] : SourceUtil.isNonstandardSource(src) ? [UtilDataSource.SOURCE_TYP_EXTRAS] : [UtilDataSource.SOURCE_TYP_OFFICIAL_SINGLE];
+    }
+
+    static getSourcesCustomUrl(nxtOpts={}) {
+        return [new UtilDataSource.DataSourceUrl("Custom URL","",{
+            ...nxtOpts,
+            filterTypes: [UtilDataSource.SOURCE_TYP_CUSTOM],
+            isAutoDetectPrereleaseBrew: true,
+        },), ];
+    }
+
+    static getSourcesUploadFile(nxtOpts={}) {
+        return [new UtilDataSource.DataSourceFile("Upload File",{
+            ...nxtOpts,
+            filterTypes: [UtilDataSource.SOURCE_TYP_CUSTOM],
+            isAutoDetectPrereleaseBrew: true,
+        },), ];
+    }
+
+    static async pGetSourcesPrerelease(dirsPrerelease, nxtOpts={}) {
+        return this._pGetSourcesPrereleaseBrew({
+            brewUtil: PrereleaseUtil,
+            localSources: await Vetools.pGetLocalPrereleaseSources(...dirsPrerelease),
+            sources: await Vetools.pGetPrereleaseSources(...dirsPrerelease),
+            filterTypesLocal: [UtilDataSource.SOURCE_TYP_PRERELEASE, UtilDataSource.SOURCE_TYP_PRERELEASE_LOCAL],
+            filterTypes: [UtilDataSource.SOURCE_TYP_PRERELEASE],
+            nxtOpts,
+        });
+    }
+
+    static async pGetSourcesBrew(dirsHomebrew, nxtOpts={}) {
+        return this._pGetSourcesPrereleaseBrew({
+            brewUtil: BrewUtil2,
+            localSources: await Vetools.pGetLocalBrewSources(...dirsHomebrew),
+            sources: await Vetools.pGetBrewSources(...dirsHomebrew),
+            filterTypesLocal: [UtilDataSource.SOURCE_TYP_BREW, UtilDataSource.SOURCE_TYP_BREW_LOCAL],
+            filterTypes: [UtilDataSource.SOURCE_TYP_BREW],
+            nxtOpts,
+        });
+    }
+
+    static async _pGetSourcesPrereleaseBrew({localSources, sources, nxtOpts, brewUtil, filterTypesLocal, filterTypes}) {
+        return [...localSources.map(({name, url, abbreviations})=>new UtilDataSource.DataSourceUrl(name,url,{
+            ...nxtOpts,
+            filterTypes: [...filterTypesLocal],
+            abbreviations,
+            brewUtil,
+            isExistingPrereleaseBrew: true,
+        },)), ...sources.map(({name, url, abbreviations})=>new UtilDataSource.DataSourceUrl(name,url,{
+            ...nxtOpts,
+            filterTypes: [...filterTypes],
+            abbreviations,
+            brewUtil,
+        },)), ];
+    }
+
+    static getSourceType(json, {isErrorOnMultiple=false}={}) {
+        const isPrereleasePerSource = (json._meta?.sources || []).map(it=>SourceUtil.isPrereleaseSource(it.json || ""));
+        const isPrerelease = isPrereleasePerSource.every(it=>it);
+        const isBrew = isPrereleasePerSource.every(it=>!it);
+
+        if (isPrerelease && isBrew && isErrorOnMultiple)
+            throw new Error(`Could not determine if data contained homebrew or if data contained prerelease content! Please ensure all homebrew/prerelease files have a valid "_meta.sources", and that no file contains both homebrew and prerelease sources.`);
+
+        return {
+            isPrerelease,
+            isBrew
+        };
+    }
+}
+UtilDataSource.SOURCE_TYP_OFFICIAL_BASE = "Official";
+UtilDataSource.SOURCE_TYP_OFFICIAL_ALL = `${UtilDataSource.SOURCE_TYP_OFFICIAL_BASE} (All)`;
+UtilDataSource.SOURCE_TYP_OFFICIAL_SINGLE = `${UtilDataSource.SOURCE_TYP_OFFICIAL_BASE} (Single Source)`;
+UtilDataSource.SOURCE_TYP_CUSTOM = "Custom/User";
+UtilDataSource.SOURCE_TYP_EXTRAS = "Extras";
+UtilDataSource.SOURCE_TYP_PRERELEASE = "Prerelease";
+UtilDataSource.SOURCE_TYP_PRERELEASE_LOCAL = "Local Prerelease";
+UtilDataSource.SOURCE_TYP_BREW = "Homebrew";
+UtilDataSource.SOURCE_TYP_BREW_LOCAL = "Local Homebrew";
+UtilDataSource.SOURCE_TYP_UNKNOWN = "Unknown";
+
+UtilDataSource.SOURCE_TYPE_ORDER = [UtilDataSource.SOURCE_TYP_OFFICIAL_ALL, UtilDataSource.SOURCE_TYP_CUSTOM, UtilDataSource.SOURCE_TYP_OFFICIAL_SINGLE, UtilDataSource.SOURCE_TYP_EXTRAS, UtilDataSource.SOURCE_TYP_PRERELEASE_LOCAL, UtilDataSource.SOURCE_TYP_PRERELEASE, UtilDataSource.SOURCE_TYP_BREW_LOCAL, UtilDataSource.SOURCE_TYP_BREW, UtilDataSource.SOURCE_TYP_UNKNOWN, ];
+
+UtilDataSource.SOURCE_TYPE_ORDER__FILTER = [UtilDataSource.SOURCE_TYP_OFFICIAL_ALL, UtilDataSource.SOURCE_TYP_OFFICIAL_SINGLE, UtilDataSource.SOURCE_TYP_EXTRAS, UtilDataSource.SOURCE_TYP_PRERELEASE_LOCAL, UtilDataSource.SOURCE_TYP_PRERELEASE, UtilDataSource.SOURCE_TYP_BREW_LOCAL, UtilDataSource.SOURCE_TYP_BREW, UtilDataSource.SOURCE_TYP_CUSTOM, UtilDataSource.SOURCE_TYP_UNKNOWN, ];
+
+UtilDataSource.DataSourceBase = class {
+    constructor(name, opts) {
+        this.name = name;
+
+        this._pPostLoad = opts.pPostLoad;
+        this._brewUtil = opts.brewUtil;
+        this._isAutoDetectPrereleaseBrew = !!opts.isAutoDetectPrereleaseBrew;
+        this._isExistingPrereleaseBrew = !!opts.isExistingPrereleaseBrew;
+        this.filterTypes = opts.filterTypes || [UtilDataSource.SOURCE_TYP_UNKNOWN];
+        this.isDefault = !!opts.isDefault;
+        this.abbreviations = opts.abbreviations;
+        this.isWorldSelectable = !!opts.isWorldSelectable;
+    }
+
+    get identifier() {
+        throw new Error(`Unimplemented!`);
+    }
+    get identifierWorld() {
+        return this.isDefault ? "5etools" : this.identifier;
+    }
+
+    isCacheable() {
+        throw new Error("Unimplemented!");
+    }
+    async pGetOutputs({uploadedFileMetas, customUrls}) {
+        throw new Error("Unimplemented!");
+    }
+
+    async _pGetBrewUtil(...args) {
+        if (this._brewUtil)
+            return this._brewUtil;
+        if (!this._isAutoDetectPrereleaseBrew)
+            return null;
+        return this._pGetBrewUtilAutodetected(...args);
+    }
+
+    async _pGetBrewUtilAutodetected(...args) {
+        throw new Error("Unimplemented!");
+    }
+
+    async pLoadAndAddToAllContent({uploadedFileMetas, customUrls, allContent, cacheKeys=null}) {
+        const meta = await this.pGetOutputs({
+            uploadedFileMetas,
+            customUrls
+        });
+        allContent.push(...meta.contents);
+        if (cacheKeys && this.isCacheable())
+            cacheKeys.push(...meta.cacheKeys);
+    }
+};
+
+UtilDataSource.DataSourceUrl = class extends UtilDataSource.DataSourceBase {
+    constructor(name, url, opts) {
+        opts = opts || {};
+
+        super(name, {
+            isWorldSelectable: !!url,
+            ...opts
+        });
+
+        this.url = url;
+        this.source = opts.source;
+        this.userData = opts.userData;
+    }
+
+    get identifier() {
+        return this.url === "" ? `VE_SOURCE_CUSTOM_URL` : this.url;
+    }
+    get identifierWorld() {
+        return this.source ?? super.identifierWorld;
+    }
+
+    isCacheable() {
+        return true;
+    }
+
+    async pGetOutputs({uploadedFileMetas, customUrls}) {
+        if (this.url === "") {
+            customUrls = customUrls || [];
+
+            let loadedDatas;
+            try {
+                loadedDatas = await Promise.all(customUrls.map(async url=>{
+                    const brewUtil = await this._pGetBrewUtil(url);
+                    if (brewUtil && !this._isExistingPrereleaseBrew)
+                        await brewUtil.pAddBrewFromUrl(url);
+
+                    const data = await DataUtil.loadJSON(url);
+                    return this._pPostLoad ? this._pPostLoad(data, this.userData) : data;
+                }
+                ));
+            } catch (e) {
+                ui.notifications.error(`Failed to load one or more URLs! ${VeCt.STR_SEE_CONSOLE}`);
+                throw e;
+            }
+
+            return {
+                cacheKeys: customUrls,
+                contents: loadedDatas,
+            };
+        }
+
+        let data;
+        try {
+            const brewUtil = await this._pGetBrewUtil(this.url);
+            if (brewUtil && !this._isExistingPrereleaseBrew)
+                await brewUtil.pAddBrewFromUrl(this.url);
+
+            data = await DataUtil.loadJSON(this.url);
+            if (this._pPostLoad)
+                data = await this._pPostLoad(data, this.userData);
+        } catch (e) {
+            const msg = `Failed to load URL "${this.url}"!`;
+            ui.notifications.error(`${msg} ${VeCt.STR_SEE_CONSOLE}`);
+            console.error(msg);
+            throw e;
+        }
+        return {
+            cacheKeys: [this.url],
+            contents: [data],
+        };
+    }
+
+    async _pGetBrewUtilAutodetected(url) {
+        const json = await DataUtil.loadJSON(url);
+        const {isPrerelease, isBrew} = UtilDataSource.getSourceType(json, {
+            isErrorOnMultiple: true
+        });
+        if (isPrerelease)
+            return PrereleaseUtil;
+        if (isBrew)
+            return BrewUtil2;
+        return null;
+    }
+};
+
+UtilDataSource.DataSourceFile = class extends UtilDataSource.DataSourceBase {
+    constructor(name, opts) {
+        opts = opts || {};
+
+        super(name, {
+            isWorldSelectable: false,
+            ...opts
+        });
+
+        this.isFile = true;
+    }
+
+    get identifier() {
+        return `VE_SOURCE_CUSTOM_FILE`;
+    }
+
+    isCacheable() {
+        return false;
+    }
+
+    async pGetOutputs({uploadedFileMetas, customUrls}) {
+        uploadedFileMetas = uploadedFileMetas || [];
+
+        const allContent = await uploadedFileMetas.pMap(async fileMeta=>{
+            if (!fileMeta)
+                return null;
+
+            const brewUtil = await this._pGetBrewUtil(fileMeta.contents);
+            if (brewUtil && !this._isExistingPrereleaseBrew)
+                await brewUtil.pAddBrewsFromFiles([{
+                    json: fileMeta.contents,
+                    name: fileMeta.name
+                }]);
+
+            const contents = await DataUtil.pDoMetaMerge(CryptUtil.uid(), MiscUtil.copyFast(fileMeta.contents));
+
+            return this._pPostLoad ? this._pPostLoad(contents, this.userData) : contents;
+        }
+        );
+
+        return {
+            contents: allContent.filter(it=>it != null),
+        };
+    }
+
+    async _pGetBrewUtilAutodetected(json) {
+        const {isPrerelease, isBrew} = UtilDataSource.getSourceType(json, {
+            isErrorOnMultiple: true
+        });
+        if (isPrerelease)
+            return PrereleaseUtil;
+        if (isBrew)
+            return BrewUtil2;
+        return null;
+    }
+};
+
+UtilDataSource.DataSourceSpecial = class extends UtilDataSource.DataSourceBase {
+    constructor(name, pGet, opts) {
+        opts = opts || {};
+
+        super(name, { isWorldSelectable: true, ...opts });
+        this.special = { pGet };
+        if (!opts.cacheKey) { throw new Error(`No cache key specified!`); }
+        this.cacheKey = opts.cacheKey;
+    }
+
+    get identifier() {
+        return this.cacheKey;
+    }
+
+    isCacheable() {
+        return true;
+    }
+
+    async pGetOutputs({uploadedFileMetas, customUrls}) {
+        let loadedData;
+        try {
+            const json = await Vetools.pLoadImporterSourceSpecial(this);
+            loadedData = json;
+            if (this._pPostLoad)
+                loadedData = await this._pPostLoad(loadedData, json, this.userData);
+        } catch (e) {
+            //ui.notifications
+            console.error(`Failed to load pre-defined source "${this.cacheKey}"! ${VeCt.STR_SEE_CONSOLE}`);
+            throw e;
+        }
+        return {
+            cacheKeys: [this.cacheKey],
+            contents: [loadedData],
+        };
+    }
+
+    async _pGetBrewUtilAutodetected() {
+        throw new Error("Unimplemented!");
+    }
+};
+
+//#endregion
+
 //#endregion
 
 //#endregion
@@ -53108,7 +55495,6 @@ class Vetools {
 
     static async pGetAllSpells({isFilterNonStandard=false, additionalSourcesPrerelease=[], additionalSourcesBrew=[], isIncludeLoadedBrew=false, isIncludeLoadedPrerelease=false, isApplyBlocklist=false, }={}, ) {
         let spells = MiscUtil.copyFast(await DataUtil.spell.pLoadAll());
-
         if (isFilterNonStandard)
             spells = spells.filter(sp=>!SourceUtil.isNonstandardSource(sp.source));
 
