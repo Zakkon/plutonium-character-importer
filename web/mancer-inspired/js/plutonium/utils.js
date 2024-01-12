@@ -3690,13 +3690,14 @@ class ComponentUiUtil {
                 pickComp.getPod().set(inputClean, true);
             }
             );
-        } else {
+        }
+        else {
             const menu = ContextUtil.getMenu(opts.values.map(it=>new ContextUtil.Action(opts.fnDisplay ? opts.fnDisplay(it) : it,()=>pickComp.getPod().set(it, true),)));
 
             $btnAdd = $(`<button class="btn btn-xxs btn-default ui-pick__btn-add">+</button>`).click(evt=>ContextUtil.pOpenMenu(evt, menu));
         }
 
-        const pickComp = BaseComponent$1.fromObject(initialVals);
+        const pickComp = BaseComponent.fromObject(initialVals);
         pickComp.render = function($parent) {
             $parent.empty();
 
@@ -3709,8 +3710,7 @@ class ComponentUiUtil {
                 $$`<div class="ve-flex mx-1 mb-1 ui-pick__disp-pill max-w-100 min-w-0"><div class="px-1 ui-pick__disp-text ve-flex-v-center text-clip-ellipsis" title="${txt.qq()}">${txt}</div>${$btnRemove}</div>`.appendTo($parent);
             }
             );
-        }
-        ;
+        };
 
         const $wrpPills = $(`<div class="ve-flex ve-flex-wrap max-w-100 min-w-0"></div>`);
         const $wrp = $$`<div class="ve-flex-v-center w-100">${$btnAdd}${$wrpPills}</div>`;
@@ -3908,7 +3908,7 @@ class ComponentUiUtil {
 
         let $iptSearch;
         if (opts.isSearchable) {
-            const compSub = BaseComponent$1.fromObject({
+            const compSub = BaseComponent.fromObject({
                 search: ""
             });
             $iptSearch = ComponentUiUtil.$getIptStr(compSub, "search");
@@ -4048,7 +4048,7 @@ ComponentUiUtil.RangeSlider = class {
         };
         if (!this._isSingle)
             compCpyState[this._propCurMax] = this._comp._state[this._propCurMax];
-        this._compCpy = BaseComponent$1.fromObject(compCpyState);
+        this._compCpy = BaseComponent.fromObject(compCpyState);
 
         this._comp._addHook("state", this._propMin, ()=>this._compCpy._state[this._propMin] = this._comp._state[this._propMin]);
         this._comp._addHook("state", this._propCurMin, ()=>this._compCpy._state[this._propCurMin] = this._comp._state[this._propCurMin]);

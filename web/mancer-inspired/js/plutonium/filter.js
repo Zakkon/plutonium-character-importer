@@ -7070,7 +7070,7 @@ let PageFilterFeats$1 = class PageFilterFeats extends PageFilter {
 //#endregion
 
 //#region PageFilterEquipment
-let PageFilterEquipment$1 = class PageFilterEquipment extends PageFilter {
+class PageFilterEquipment extends PageFilter {
     static _MISC_FILTER_ITEMS = ["Item Group", "Bundle", "SRD", "Basic Rules", "Has Images", "Has Info", "Reprinted", ];
 
     static _RE_FOUNDRY_ATTR = /(?:[-+*/]\s*)?@[a-z0-9.]+/gi;
@@ -7144,11 +7144,11 @@ let PageFilterEquipment$1 = class PageFilterEquipment extends PageFilter {
         this._damageDiceFilter = new Filter({
             header: "Weapon Damage Dice",
             items: ["1", "1d4", "1d6", "1d8", "1d10", "1d12", "2d6"],
-            itemSortFn: (a,b)=>PageFilterEquipment$1._sortDamageDice(a, b)
+            itemSortFn: (a,b)=>PageFilterEquipment._sortDamageDice(a, b)
         });
         this._miscFilter = new Filter({
             header: "Miscellaneous",
-            items: [...PageFilterEquipment$1._MISC_FILTER_ITEMS, ...Object.values(Parser.ITEM_MISC_TAG_TO_FULL)],
+            items: [...PageFilterEquipment._MISC_FILTER_ITEMS, ...Object.values(Parser.ITEM_MISC_TAG_TO_FULL)],
             isMiscFilter: true,
         });
         this._poisonTypeFilter = new Filter({
@@ -7266,7 +7266,7 @@ let PageFilterEquipment$1 = class PageFilterEquipment extends PageFilter {
 //#endregion
 
 //#region PageFilterItems
-let PageFilterItems$1 = class PageFilterItems extends PageFilterEquipment$1 {
+let PageFilterItems$1 = class PageFilterItems extends PageFilterEquipment {
     static _DEFAULT_HIDDEN_TYPES = new Set(["treasure", "futuristic", "modern", "renaissance"]);
     static _FILTER_BASE_ITEMS_ATTUNEMENT = ["Requires Attunement", "Requires Attunement By...", "Attunement Optional", VeCt.STR_NO_ATTUNEMENT];
 
@@ -7418,7 +7418,7 @@ let PageFilterItems$1 = class PageFilterItems extends PageFilterEquipment$1 {
         });
         this._miscFilter = new Filter({
             header: "Miscellaneous",
-            items: ["Ability Score Adjustment", "Charges", "Cursed", "Grants Language", "Grants Proficiency", "Magic", "Mundane", "Sentient", "Speed Adjustment", ...PageFilterEquipment$1._MISC_FILTER_ITEMS],
+            items: ["Ability Score Adjustment", "Charges", "Cursed", "Grants Language", "Grants Proficiency", "Magic", "Mundane", "Sentient", "Speed Adjustment", ...PageFilterEquipment._MISC_FILTER_ITEMS],
             isMiscFilter: true
         });
         this._baseSourceFilter = new SourceFilter({
@@ -9090,7 +9090,7 @@ class ModalFilterSpells extends ModalFilter {
     }
 }
 
-/* Charactermancer_StartingEquipment.ModalFilterEquipment = class extends ModalFilter {
+class ModalFilterEquipment extends ModalFilter {
     static _$getFilterColumnHeaders(btnMeta) {
         return super._$getFilterColumnHeaders(btnMeta).map($btn=>$btn.addClass(`btn-5et`));
     }
@@ -9223,7 +9223,7 @@ class ModalFilterSpells extends ModalFilter {
         this._pageFilter.filterBox.render();
         this._list.update();
     }
-}; */
+};
 
 
 

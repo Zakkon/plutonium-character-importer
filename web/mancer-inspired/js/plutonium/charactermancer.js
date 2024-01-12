@@ -7985,11 +7985,9 @@ class ActorCharactermancerEquipment extends ActorCharactermancerBaseComponent {
         await this._compEquipmentStartingDefault.pRender(wrpTab);
     }
     async pRenderShop() {
-    const wrpTab = this._tabShop?.$wrpTab;
-    if (!wrpTab) {
-        return;
-    }
-    await this._compEquipmentShopGold.pRender(wrpTab);
+        const wrpTab = this._tabShop?.$wrpTab;
+        if (!wrpTab) { return; }
+        await this._compEquipmentShopGold.pRender(wrpTab);
     }
 
     get compEquipmentCurrency() {
@@ -8062,8 +8060,7 @@ class Charactermancer_StartingEquipment // extends Application
             this._pUserInput = new Promise((resolve,reject)=>{
                 this._resolve = resolve;
                 this._reject = reject;
-            }
-            );
+            });
         }
 
         this._mode = null;
@@ -8217,8 +8214,6 @@ class Charactermancer_StartingEquipment // extends Application
 
         return { compCurrency, compDefault, compGold, };
     }
-
-    
 
     async _pResolveAndClose(resolveAs) {
         this._resolve(resolveAs);
@@ -9079,30 +9074,6 @@ Charactermancer_StartingEquipment.ComponentGold = class extends Charactermancer_
         this._modalFilter = null;
     }
 
-    get isAvailable() {
-        return true;
-    }
-
-    async pGetFormData() {
-        const equipmentItemEntries = [];
-
-        const itemDatas = await this._pGetItemEntries();
-        if (itemDatas) {
-            equipmentItemEntries.push(...itemDatas);
-        }
-
-        const isValid = await this._isValid_gold();
-        const messageInvalid = isValid ? null : `You have spent more gold than you possess. Are you sure you want to go into debt?`;
-
-        return {
-            isFormComplete: isValid,
-            messageInvalid,
-            data: {
-                equipmentItemEntries,
-            },
-        };
-    }
-
     async pRender($wrpTab) {
         const $wrpTabInner = $(`<div class="ve-flex-col w-100 h-100 min-h-0"><div class="ve-flex-vh-center w-100 h-100 italic">Loading...</div></div>`).appendTo($wrpTab);
         await this._render_pGoldAlternative($wrpTabInner);
@@ -9112,9 +9083,8 @@ Charactermancer_StartingEquipment.ComponentGold = class extends Charactermancer_
     async _render_pGoldAlternative($wrpTabGoldAlternative) {
         await Renderer.item.pPopulatePropertyAndTypeReference();
 
-        const {ImportListItem} = await Promise.resolve().then(function() {
-            return ImportListItem;
-        });
+        //TEMPFIX
+       /*  const {ImportListItem} = await Promise.resolve().then(function() { return ImportListItem;});
         const importListItemSources = await (new ImportListItem()).pGetSources();
         const appSourceSelector = new AppSourceSelectorMulti({
             title: `Select Item Sources`,
@@ -9123,7 +9093,7 @@ Charactermancer_StartingEquipment.ComponentGold = class extends Charactermancer_
             sourcesToDisplay: importListItemSources,
             page: UrlUtil.PG_ITEMS,
             isDedupable: true,
-        });
+        }); */
 
         const $btnChooseSources = this._isPredefinedItemDatas ? null : $(`<button class="btn btn-xs btn-default btn-5et">Choose Item Sources</button>`).click(async()=>{
             const choices = await appSourceSelector.pWaitForUserInput();
@@ -9185,7 +9155,8 @@ Charactermancer_StartingEquipment.ComponentGold = class extends Charactermancer_
             $wrpRollOrManual
         });
 
-        const isStandaloneGmInstance = game.user.isGM && this._compCurrency.isStandalone;
+        //TEMPFIX
+        const isStandaloneGmInstance = /* game.user.isGM && */ this._compCurrency.isStandalone;
         const $btnEditPriceMultiplier = !isStandaloneGmInstance ? null : $(`<button class="btn btn-xs btn-default btn-5et">Edit Config</button>`).on("click", evt=>Config.pOpen({
             evt,
             initialVisibleGroup: "equipmentShop"
@@ -9194,7 +9165,7 @@ Charactermancer_StartingEquipment.ComponentGold = class extends Charactermancer_
 			${$btnEditPriceMultiplier}
 		</div>`;
 
-        this._modalFilter = new Charactermancer_StartingEquipment.ModalFilterEquipment(this);
+        this._modalFilter = new ModalFilterEquipment(this);
 
         const $wrpItemList = $(`<div class="ve-flex-col w-50 h-100 min-h-0"><div class="ve-flex-vh-center italic w-100 h-100">Loading...</div></div>`);
 
@@ -9387,6 +9358,34 @@ Charactermancer_StartingEquipment.ComponentGold = class extends Charactermancer_
 			</div>
 		</div>`;
     }
+
+    get isAvailable() {
+        return true;
+    }
+
+    async pGetFormData() {
+        const equipmentItemEntries = [];
+
+        const itemDatas = await this._pGetItemEntries();
+        if (itemDatas) {
+            equipmentItemEntries.push(...itemDatas);
+        }
+
+        const isValid = await this._isValid_gold();
+        const messageInvalid = isValid ? null : `You have spent more gold than you possess. Are you sure you want to go into debt?`;
+
+        return {
+            isFormComplete: isValid,
+            messageInvalid,
+            data: {
+                equipmentItemEntries,
+            },
+        };
+    }
+
+   
+
+    
 
     _isValid_gold() {
         return this._compCurrency.getRemainingCp() >= 0;

@@ -144,13 +144,14 @@ class ParentWindow {
     tabBackground;
     tabSpells;
     tabEquipment;
+    tabShop;
     tabFeats;
     tabSheet;
     compClass;
     compRace;
     compAbility;
     compBackground;
-    compStartingEquipment;
+    compEquipment;
     compSpell;
     compFeat;
     compSheet;
@@ -172,6 +173,8 @@ class ParentWindow {
         this.tabBackground = new WindowTab($tabBackground);
         const $tabEquipment = $(`<div class="ui-tab__wrp-tab-body ve-flex-col ui-tab__wrp-tab-body--border"></div>`).appendTo(_root);
         this.tabEquipment = new WindowTab($tabEquipment);
+        const $tabShop = $(`<div class="ui-tab__wrp-tab-body ve-flex-col ui-tab__wrp-tab-body--border"></div>`).appendTo(_root);
+        this.tabShop = new WindowTab($tabShop);
         const $tabSpells = $(`<div class="ui-tab__wrp-tab-body ve-flex-col ui-tab__wrp-tab-body--border"></div>`).appendTo(_root);
         this.tabSpells = new WindowTab($tabSpells);
         const $tabFeats = $(`<div class="ui-tab__wrp-tab-body ve-flex-col ui-tab__wrp-tab-body--border"></div>`).appendTo(_root);
@@ -189,7 +192,7 @@ class ParentWindow {
         this.compRace = new ActorCharactermancerRace(this);
         this.compAbility = new ActorCharactermancerAbility(this);
         this.compBackground = new ActorCharactermancerBackground(this);
-        this.compStartingEquipment = new ActorCharactermancerEquipment(this);
+        this.compEquipment = new ActorCharactermancerEquipment(this);
         this.compSpell = new ActorCharactermancerSpell(this);
         this.compFeat = new ActorCharactermancerFeat(this);
         this.compSheet = new ActorCharactermancerSheet(this);
@@ -233,10 +236,9 @@ class ParentWindow {
         const startEqBtn = $(`<button class="btn btn-default ui-tab__btn-tab-head btn-sm">Starting Equipment</button>`).click(()=>{
             this.e_switchTab("startingEquipment");
         }).appendTo(tabHolder);
-        /*
         const eqShopBtn = $(`<button class="btn btn-default ui-tab__btn-tab-head btn-sm">Equipment Shop</button>`).click(()=>{
-
-        }).appendTo(tabHolder);*/
+            this.e_switchTab("shop");
+        }).appendTo(tabHolder);
         const spellsBtn = $(`<button class="btn btn-default ui-tab__btn-tab-head btn-sm">Spells</button>`).click(()=>{
             this.e_switchTab("spells");
         }).appendTo(tabHolder);
@@ -265,7 +267,8 @@ class ParentWindow {
         this.compRace.render();
         this.compAbility.render();
         this.compBackground.render();
-        this.compStartingEquipment.pRenderStarting();
+        this.compEquipment.pRenderStarting();
+        this.compEquipment.pRenderShop();
         this.compSpell.pRender();
         this.compFeat.render();
         this.compSheet.render();
@@ -282,6 +285,7 @@ class ParentWindow {
         this.setActive(this.tabAbilities.$wrpTab, false);
         this.setActive(this.tabBackground.$wrpTab, false);
         this.setActive(this.tabEquipment.$wrpTab, false);
+        this.setActive(this.tabShop.$wrpTab, false);
         this.setActive(this.tabSpells.$wrpTab, false);
         this.setActive(this.tabFeats.$wrpTab, false);
         this.setActive(this.tabSheet.$wrpTab, false);
@@ -292,9 +296,10 @@ class ParentWindow {
             case "abilities": newActivePanel = this.tabAbilities; tabIx = 2; break;
             case "background": newActivePanel = this.tabBackground; tabIx = 3; break;
             case "startingEquipment": newActivePanel = this.tabEquipment; tabIx = 4; break;
-            case "spells": newActivePanel = this.tabSpells; tabIx = 5; break;
-            case "feats": newActivePanel = this.tabFeats; tabIx = 6; break;
-            case "sheet": newActivePanel = this.tabSheet; tabIx = 7; break;
+            case "shop": newActivePanel = this.tabShop; tabIx = 5; break;
+            case "spells": newActivePanel = this.tabSpells; tabIx = 6; break;
+            case "feats": newActivePanel = this.tabFeats; tabIx = 7; break;
+            case "sheet": newActivePanel = this.tabSheet; tabIx = 8; break;
         }
         const pressedBtn = this.tabButtonParent.children().eq(tabIx);
         pressedBtn.addClass("active");
