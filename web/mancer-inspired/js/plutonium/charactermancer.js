@@ -7935,7 +7935,7 @@ Charactermancer_Background_Features._MODE_TO_FULL = {
 
 //#endregion
 
-//#region Charactermancer Starting Equipment
+//#region Charactermancer Equipment
 class ActorCharactermancerEquipment extends ActorCharactermancerBaseComponent {
     constructor(parentInfo) {
       parentInfo = parentInfo || {};
@@ -9470,6 +9470,42 @@ Charactermancer_StartingEquipment.ComponentGold = class extends Charactermancer_
             itemDatas: [],
         };
     }
+};
+Charactermancer_StartingEquipment._EQUIPMENT_SET_NAMES = {
+    weaponAny: "Weapon",
+    weaponSimple: "Simple Weapon",
+    weaponSimpleMelee: "Simple Melee Weapon",
+    weaponSimpleRanged: "Simple Ranged Weapon",
+    weaponMartial: "Martial Weapon",
+    weaponMartialMelee: "Martial Melee Weapon",
+    weaponMartialRanged: "Martial Ranged Weapon",
+    instrumentMusical: "Musical Instrument",
+    armorLight: "Light Armor",
+    armorMedium: "Medium Armor",
+    armorHeavy: "Heavy Armor",
+    weaponMelee: "Melee Weapon",
+    weaponRanged: "Ranged Weapon",
+    focusSpellcasting: "Spellcasting Focus",
+    setGaming: "Gaming Set",
+    toolArtisan: "Artisan's Tool",
+};
+Charactermancer_StartingEquipment._EQUIPMENT_SETS = {
+    weapon: [...UtilDataConverter.WEAPONS_SIMPLE, ...UtilDataConverter.WEAPONS_MARTIAL, ],
+    weaponSimple: [...UtilDataConverter.WEAPONS_SIMPLE, ],
+    weaponSimpleMelee: ["club|phb", "dagger|phb", "greatclub|phb", "handaxe|phb", "javelin|phb", "light hammer|phb", "mace|phb", "quarterstaff|phb", "sickle|phb", "spear|phb", ],
+    weaponSimpleRanged: ["light crossbow|phb", "shortbow|phb", ],
+    weaponMartial: [...UtilDataConverter.WEAPONS_MARTIAL, ],
+    weaponMartialMelee: ["battleaxe|phb", "flail|phb", "glaive|phb", "greataxe|phb", "greatsword|phb", "halberd|phb", "lance|phb", "longsword|phb", "maul|phb", "morningstar|phb", "pike|phb", "rapier|phb", "scimitar|phb", "shortsword|phb", "trident|phb", "war pick|phb", "warhammer|phb", "whip|phb", ],
+    weaponMartialRanged: ["blowgun|phb", "hand crossbow|phb", "heavy crossbow|phb", "longbow|phb", ],
+    instrumentMusical: ["bagpipes|phb", "drum|phb", "dulcimer|phb", "flute|phb", "horn|phb", "lute|phb", "lyre|phb", "pan flute|phb", "shawm|phb", "viol|phb", ],
+    armorLight: ["leather armor|phb", "padded armor|phb", "studded leather armor|phb", ],
+    armorMedium: ["hide armor|phb", "chain shirt|phb", "scale mail|phb", "breastplate|phb", "half plate armor|phb", ],
+    armorHeavy: ["ring mail|phb", "chain mail|phb", "splint armor|phb", "plate armor|phb", ],
+    weaponMelee: ["battleaxe|phb", "club|phb", "dagger|phb", "flail|phb", "glaive|phb", "greataxe|phb", "greatclub|phb", "greatsword|phb", "halberd|phb", "handaxe|phb", "javelin|phb", "lance|phb", "light hammer|phb", "longsword|phb", "mace|phb", "maul|phb", "morningstar|phb", "pike|phb", "quarterstaff|phb", "rapier|phb", "scimitar|phb", "shortsword|phb", "sickle|phb", "spear|phb", "staff|phb", "trident|phb", "war pick|phb", "warhammer|phb", "whip|phb", ],
+    weaponRanged: ["blowgun|phb", "dart|phb", "hand crossbow|phb", "heavy crossbow|phb", "light crossbow|phb", "longbow|phb", "net|phb", "shortbow|phb", "sling|phb", ],
+    focusSpellcasting: ["crystal|phb", "orb|phb", "rod|phb", "staff|phb", "wand|phb", ],
+    setGaming: ["dice set|phb", "dragonchess set|phb", "playing card set|phb", "three-dragon ante set|phb", ],
+    toolArtisan: ["alchemist's supplies|phb", "brewer's supplies|phb", "calligrapher's supplies|phb", "carpenter's tools|phb", "cartographer's tools|phb", "cobbler's tools|phb", "cook's utensils|phb", "glassblower's tools|phb", "jeweler's tools|phb", "leatherworker's tools|phb", "mason's tools|phb", "painter's supplies|phb", "potter's tools|phb", "smith's tools|phb", "tinker's tools|phb", "weaver's tools|phb", "woodcarver's tools|phb", ],
 };
 
 

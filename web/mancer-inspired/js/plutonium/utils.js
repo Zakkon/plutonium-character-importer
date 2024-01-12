@@ -11233,3 +11233,340 @@ globalThis.CryptUtil = {
 //#endregion
 
 //#region CurrencyUtil
+globalThis.CurrencyUtil = class {
+    static doSimplifyCoins(obj, opts) {
+        opts = opts || {};
+
+        const conversionTable = opts.currencyConversionTable || Parser.getCurrencyConversionTable(opts.currencyConversionId);
+        if (!conversionTable.length)
+            return obj;
+
+        const normalized = conversionTable.map(it=>{
+            return {
+                ...it,
+                normalizedMult: 1 / it.mult,
+            };
+        }
+        ).sort((a,b)=>SortUtil.ascSort(a.normalizedMult, b.normalizedMult));
+
+        for (let i = 0; i < normalized.length - 1; ++i) {
+            const coinCur = normalized[i].coin;
+            const coinNxt = normalized[i + 1].coin;
+            const coinRatio = normalized[i + 1].normalizedMult / normalized[i].normalizedMult;
+
+            if (obj[coinCur] && Math.abs(obj[coinCur]) >= coinRatio) {
+                const nxtVal = obj[coinCur] >= 0 ? Math.floor(obj[coinCur] / coinRatio) : Math.ceil(obj[coinCur] / coinRatio);
+                obj[coinCur] = obj[coinCur] % coinRatio;
+                obj[coinNxt] = (obj[coinNxt] || 0) + nxtVal;
+            }
+        }
+
+        if (opts.originalCurrency) {
+            const normalizedHighToLow = MiscUtil.copyFast(normalized).reverse();
+
+            normalizedHighToLow.forEach((coinMeta,i)=>{
+                const valOld = opts.originalCurrency[coinMeta.coin] || 0;
+                const valNew = obj[coinMeta.coin] || 0;
+
+                const prevCoinMeta = normalizedHighToLow[i - 1];
+                const nxtCoinMeta = normalizedHighToLow[i + 1];
+
+                if (!prevCoinMeta) {
+                    if (nxtCoinMeta) {
+                        const diff = valNew - valOld;
+                        if (diff > 0) {
+                            obj[coinMeta.coin] = valOld;
+                            const coinRatio = coinMeta.normalizedMult / nxtCoinMeta.normalizedMult;
+                            obj[nxtCoinMeta.coin] = (obj[nxtCoinMeta.coin] || 0) + (diff * coinRatio);
+                        }
+                    }
+                } else {
+                    if (nxtCoinMeta) {
+                        const diffPrevCoin = (opts.originalCurrency[prevCoinMeta.coin] || 0) - (obj[prevCoinMeta.coin] || 0);
+                        const coinRatio = prevCoinMeta.normalizedMult / coinMeta.normalizedMult;
+                        const capFromOld = valOld + (diffPrevCoin > 0 ? diffPrevCoin * coinRatio : 0);
+                        const diff = valNew - capFromOld;
+                        if (diff > 0) {
+                            obj[coinMeta.coin] = capFromOld;
+                            const coinRatio = coinMeta.normalizedMult / nxtCoinMeta.normalizedMult;
+                            obj[nxtCoinMeta.coin] = (obj[nxtCoinMeta.coin] || 0) + (diff * coinRatio);
+                        }
+                    }
+                }
+            }
+            );
+        }
+
+        normalized.filter(coinMeta=>obj[coinMeta.coin] === 0 || obj[coinMeta.coin] == null).forEach(coinMeta=>{
+            obj[coinMeta.coin] = null;
+            delete obj[coinMeta.coin];
+        }
+        );
+
+        if (opts.isPopulateAllValues)
+            normalized.forEach(coinMeta=>obj[coinMeta.coin] = obj[coinMeta.coin] || 0);
+
+        return obj;
+    }
+
+    static getAsCopper(obj) {
+        return Parser.FULL_CURRENCY_CONVERSION_TABLE.map(currencyMeta=>(obj[currencyMeta.coin] || 0) * (1 / currencyMeta.mult)).reduce((a,b)=>a + b, 0);
+    }
+
+    static getAsSingleCurrency(obj) {
+        const simplified = CurrencyUtil.doSimplifyCoins({
+            ...obj
+        });
+
+        if (Object.keys(simplified).length === 1)
+            return simplified;
+
+        const out = {};
+
+        const targetDemonination = Parser.FULL_CURRENCY_CONVERSION_TABLE.find(it=>simplified[it.coin]);
+
+        out[targetDemonination.coin] = simplified[targetDemonination.coin];
+        delete simplified[targetDemonination.coin];
+
+        Object.entries(simplified).forEach(([coin,amt])=>{
+            const denom = Parser.FULL_CURRENCY_CONVERSION_TABLE.find(it=>it.coin === coin);
+            out[targetDemonination.coin] = (out[targetDemonination.coin] || 0) + (amt / denom.mult) * targetDemonination.mult;
+        }
+        );
+
+        return out;
+    }
+
+    static getCombinedCurrency(currencyA, currencyB) {
+        const out = {};
+
+        [currencyA, currencyB].forEach(currency=>{
+            Object.entries(currency).forEach(([coin,cnt])=>{
+                if (cnt == null)
+                    return;
+                if (isNaN(cnt))
+                    throw new Error(`Unexpected non-numerical value "${JSON.stringify(cnt)}" for currency key "${coin}"`);
+
+                out[coin] = (out[coin] || 0) + cnt;
+            }
+            );
+        }
+        );
+
+        return out;
+    }
+};
+//#endregion
+
+//#region Hist
+let Hist = class Hist {
+    static hashChange({isForceLoad, isBlankFilterLoad=false}={}) {
+        if (Hist.isHistorySuppressed) {
+            Hist.setSuppressHistory(false);
+            return;
+        }
+
+        const [link,...sub] = Hist.getHashParts();
+
+        if (link !== Hist.lastLoadedLink || sub.length === 0 || isForceLoad) {
+            Hist.lastLoadedLink = link;
+            if (link === HASH_BLANK) {
+                isBlankFilterLoad = true;
+            } else {
+                const listItem = Hist.getActiveListItem(link);
+
+                if (listItem == null) {
+                    if (typeof pHandleUnknownHash === "function" && window.location.hash.length && Hist._lastUnknownLink !== link) {
+                        Hist._lastUnknownLink = link;
+                        pHandleUnknownHash(link, sub);
+                        return;
+                    } else {
+                        Hist._freshLoad();
+                        return;
+                    }
+                }
+
+                const toLoad = listItem.ix;
+                if (toLoad === undefined)
+                    Hist._freshLoad();
+                else {
+                    Hist.lastLoadedId = listItem.ix;
+                    loadHash(listItem.ix);
+                    document.title = `${listItem.name ? `${listItem.name} - ` : ""}5etools`;
+                }
+            }
+        }
+
+        if (typeof loadSubHash === "function" && (sub.length > 0 || isForceLoad))
+            loadSubHash(sub);
+        if (isBlankFilterLoad)
+            Hist._freshLoad();
+    }
+
+    static init(initialLoadComplete) {
+        window.onhashchange = ()=>Hist.hashChange({
+            isForceLoad: true
+        });
+        if (window.location.hash.length) {
+            Hist.hashChange();
+        } else {
+            Hist._freshLoad();
+        }
+        if (initialLoadComplete)
+            Hist.initialLoad = false;
+    }
+
+    static setSuppressHistory(val) {
+        Hist.isHistorySuppressed = val;
+    }
+
+    static _listPage = null;
+
+    static setListPage(listPage) {
+        this._listPage = listPage;
+    }
+
+    static getSelectedListItem() {
+        const [link] = Hist.getHashParts();
+        return Hist.getActiveListItem(link);
+    }
+
+    static getSelectedListElementWithLocation() {
+        const [link] = Hist.getHashParts();
+        return Hist.getActiveListItem(link, true);
+    }
+
+    static getHashParts() {
+        return Hist.util.getHashParts(window.location.hash);
+    }
+
+    static getActiveListItem(link, getIndex) {
+        const primaryLists = this._listPage.primaryLists;
+        if (primaryLists && primaryLists.length) {
+            for (let x = 0; x < primaryLists.length; ++x) {
+                const list = primaryLists[x];
+
+                const foundItemIx = list.items.findIndex(it=>it.values.hash === link);
+                if (~foundItemIx) {
+                    if (getIndex)
+                        return {
+                            item: list.items[foundItemIx],
+                            x: x,
+                            y: foundItemIx,
+                            list
+                        };
+                    return list.items[foundItemIx];
+                }
+            }
+        }
+    }
+
+    static _freshLoad() {
+        setTimeout(()=>{
+            const goTo = $("#listcontainer").find(".list a").attr("href");
+            if (goTo) {
+                const parts = location.hash.split(HASH_PART_SEP);
+                const fullHash = `${goTo}${parts.length > 1 ? `${HASH_PART_SEP}${parts.slice(1).join(HASH_PART_SEP)}` : ""}`;
+                location.replace(fullHash);
+            }
+        }
+        , 1);
+    }
+
+    static cleanSetHash(toSet) {
+        window.location.hash = Hist.util.getCleanHash(toSet);
+    }
+
+    static getHashSource() {
+        const [link] = Hist.getHashParts();
+        return link ? link.split(HASH_LIST_SEP).last() : null;
+    }
+
+    static getSubHash(key) {
+        return Hist.util.getSubHash(window.location.hash, key);
+    }
+
+    static setSubhash(key, val) {
+        const nxtHash = Hist.util.setSubhash(window.location.hash, key, val);
+        Hist.cleanSetHash(nxtHash);
+    }
+
+    static setMainHash(hash) {
+        const subHashPart = Hist.util.getHashParts(window.location.hash, key, val).slice(1).join(HASH_PART_SEP);
+        Hist.cleanSetHash([hash, subHashPart].filter(Boolean).join(HASH_PART_SEP));
+    }
+
+    static replaceHistoryHash(hash) {
+        window.history.replaceState({}, document.title, `${location.origin}${location.pathname}${hash ? `#${hash}` : ""}`, );
+    }
+}
+;
+Hist.lastLoadedLink = null;
+Hist._lastUnknownLink = null;
+Hist.lastLoadedId = null;
+Hist.initialLoad = true;
+Hist.isHistorySuppressed = false;
+
+Hist.util = class {
+    static getCleanHash(hash) {
+        return hash.replace(/,+/g, ",").replace(/,$/, "").toLowerCase();
+    }
+
+    static _SYMS_NO_ENCODE = [/(,)/g, /(:)/g, /(=)/g];
+
+    static getHashParts(location, {isReturnEncoded=false}={}) {
+        if (location[0] === "#")
+            location = location.slice(1);
+
+        if (location === "google_vignette")
+            location = "";
+
+        if (isReturnEncoded) {
+            return location.split(HASH_PART_SEP);
+        }
+
+        let pts = [location];
+        this._SYMS_NO_ENCODE.forEach(re=>{
+            pts = pts.map(pt=>pt.split(re)).flat();
+        }
+        );
+        pts = pts.map(pt=>{
+            if (this._SYMS_NO_ENCODE.some(re=>re.test(pt)))
+                return pt;
+            return decodeURIComponent(pt).toUrlified();
+        }
+        );
+        location = pts.join("");
+
+        return location.split(HASH_PART_SEP);
+    }
+
+    static getSubHash(location, key) {
+        const [link,...sub] = Hist.util.getHashParts(location);
+        const hKey = `${key}${HASH_SUB_KV_SEP}`;
+        const part = sub.find(it=>it.startsWith(hKey));
+        if (part)
+            return part.slice(hKey.length);
+        return null;
+    }
+
+    static setSubhash(location, key, val) {
+        if (key.endsWith(HASH_SUB_KV_SEP))
+            key = key.slice(0, -1);
+
+        const [link,...sub] = Hist.util.getHashParts(location);
+        if (!link)
+            return "";
+
+        const hKey = `${key}${HASH_SUB_KV_SEP}`;
+        const out = [link];
+        if (sub.length)
+            sub.filter(it=>!it.startsWith(hKey)).forEach(it=>out.push(it));
+        if (val != null)
+            out.push(`${hKey}${val}`);
+
+        return Hist.util.getCleanHash(out.join(HASH_PART_SEP));
+    }
+};
+
+//#endregion
