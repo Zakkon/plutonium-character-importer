@@ -11,3 +11,4 @@ CLASS
 - lookup function handleInit() { and use that
 - fix starting equipment choices
 - spell menu reacts on class change, creating error
+- Make contentgetter not pull tons of useless properties when loading from json files

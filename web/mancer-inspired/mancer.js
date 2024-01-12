@@ -1949,16 +1949,10 @@ Parser.DURATION_AMOUNT_TYPES = ["turn", "round", "minute", "hour", "day", "week"
 
 Parser.spClassesToFull = function(sp, {isTextOnly=false, subclassLookup={}}={}) {
     const fromSubclassList = Renderer.spell.getCombinedClasses(sp, "fromSubclass");
-    const fromSubclasses = Parser.spSubclassesToFull(fromSubclassList, {
-        isTextOnly,
-        subclassLookup
-    });
+    const fromSubclasses = Parser.spSubclassesToFull(fromSubclassList, { isTextOnly, subclassLookup });
     const fromClassList = Renderer.spell.getCombinedClasses(sp, "fromClassList");
-    return `${Parser.spMainClassesToFull(fromClassList, {
-        isTextOnly
-    })}${fromSubclasses ? `, ${fromSubclasses}` : ""}`;
-}
-;
+    return `${Parser.spMainClassesToFull(fromClassList, { isTextOnly })}${fromSubclasses ? `, ${fromSubclasses}` : ""}`;
+};
 
 Parser.spMainClassesToFull = function(fromClassList, {isTextOnly=false}={}) {
     return fromClassList.map(c=>({
@@ -15437,26 +15431,24 @@ Renderer.spell = class {
     }
 
     static getCombinedClasses(sp, prop) {
+        if((sp.classes == null || sp.classes.length < 1)){ console.error("Spell " + sp.name + " does not have any classes defined. Is data/spells/sources.json used? (it contains class information for all spells)", sp);}
         return [...((sp.classes || {})[prop] || []), ...((sp._tmpClasses || {})[prop] || []), ].filter(it=>{
-            if (!ExcludeUtil.isInitialised)
+
+            if (!ExcludeUtil.isInitialised){
                 return true;
+            }
 
             switch (prop) {
             case "fromClassList":
             case "fromClassListVariant":
                 {
+                    console.log("GET COMBINED CLASSES");
                     const hash = UrlUtil.URL_TO_HASH_BUILDER[UrlUtil.PG_CLASSES](it);
-                    if (ExcludeUtil.isExcluded(hash, "class", it.source, {
-                        isNoCount: true
-                    }))
-                        return false;
+                    console.log("GETCOMBINEDCLASSES", it, hash);
+                    if (ExcludeUtil.isExcluded(hash, "class", it.source, {isNoCount: true})){return false;}
 
-                    if (prop !== "fromClassListVariant")
-                        return true;
-                    if (it.definedInSource)
-                        return !ExcludeUtil.isExcluded("*", "classFeature", it.definedInSource, {
-                            isNoCount: true
-                        });
+                    if (prop !== "fromClassListVariant"){return true;}
+                    if (it.definedInSource) {return !ExcludeUtil.isExcluded("*", "classFeature", it.definedInSource, {isNoCount: true});}
 
                     return true;
                 }
@@ -31854,8 +31846,6 @@ class Charactermancer_Spell extends BaseComponent {
         return (this._state.fixedLearnedProgression || []).sum();
     }
 
-    
-
     _handleAlwaysPreparedSpells() {
         this._compsLevel.forEach(it=>it.handleAlwaysPreparedSpells_());
     }
@@ -31883,20 +31873,26 @@ class Charactermancer_Spell extends BaseComponent {
         return this._existingSpellLookup[spell.level]?.[lookupSource]?.[lookupName] || this._existingSpellLookup[spell.level]?.[lookupSourceAlt]?.[lookupName];
     }
 
+    /**
+     * Returns true if this class has the spell available
+     * @param {*} sp 
+     * @returns 
+     */
     isAvailableClassSpell_(sp) {
-        if (!this._className || !this._classSource)
-            return false;
+        if (!this._className || !this._classSource) { return false; }
 
-        const fromClassList = Renderer.spell.getCombinedClasses(sp, "fromClassList");
-        const fromClassListVariant = Renderer.spell.getCombinedClasses(sp, "fromClassListVariant").filter(it=>this._state.isIncludeUaEtcSpellLists ? true : !SourceUtil.isNonstandardSource(it.definedInSource));
+        const fromClassList = Renderer.spell.getCombinedClasses(sp, "fromClassList"); //This line is probably the problem, we always get an empty array back
+        const fromClassListVariant = Renderer.spell.getCombinedClasses(sp, "fromClassListVariant").filter(it=>this._state.isIncludeUaEtcSpellLists ? true 
+            : !SourceUtil.isNonstandardSource(it.definedInSource));
 
         const {className, classSource} = this.constructor._getMappedClassDetails({
             className: this._className,
             classSource: this._classSource
         });
 
-        if (!fromClassList.some(it=>it.name === className && it.source === classSource) && !fromClassListVariant.some(it=>it.name === className && it.source === classSource) && !this._hasBrewClassSpell(sp, fromClassList, fromClassListVariant))
-            return false;
+        if (!fromClassList.some(it=>it.name === className && it.source === classSource)
+        && !fromClassListVariant.some(it=>it.name === className && it.source === classSource)
+        && !this._hasBrewClassSpell(sp, fromClassList, fromClassListVariant)) { return false; }
 
         return true;
     }
@@ -32215,7 +32211,13 @@ class Charactermancer_Spell_Level extends BaseComponent {
         //This is only shown when we can't find any spells to offer
         this._$dispNoRows = $(`<div class="ve-flex-vh-center italic ve-muted ve-small mt-1">No matching spells</div>`).hideVe(); //Hide by default
         const doUpdateDispNoRows = ()=>{
-            if(this._spellLevel == 0){console.log("visible items", this._list.visibleItems); if(this._list.visibleItems.length<1){console.error("bad");}}
+            if(this._spellLevel == 0){
+                console.log("visible items", this._list.visibleItems);
+                if(this._list.visibleItems.length<1){console.error("bad");}
+                console.log("searcheditems", this._list._searchedItems);
+                //why is visible items not searched items?
+                //Something is making them not be visible
+            }
             this._$dispNoRows.toggleVe(!this._list.visibleItems.length && $btnToggle.text() !== "[+]");
         };
 
@@ -32232,12 +32234,12 @@ class Charactermancer_Spell_Level extends BaseComponent {
 
         this._list = new List({
             $wrpList: this._$wrpRows,
-            fnSort: PageFilterSpells.sortSpells,
+            fnSort: PageFilterSpells.sortSpells, //this function is important
             fnSearch: (li,searchTerm)=>{
+                return true; //DEBUG
                 const {ixLearned, ixPrepared, ixAlwaysPrepared, ixAlwaysKnownSpell} = this.constructor._getProps(li.ix);
-
                 if ([ixLearned, ixPrepared, ixAlwaysPrepared, ixAlwaysKnownSpell].some(k=>this._state[k])) { return true; }
-
+                if(!searchTerm || !searchTerm.length){return true;} //TEMPFIX DEBUG maybe this helps?
                 return li.searchText.includes(searchTerm);
             },
         });
@@ -32274,6 +32276,7 @@ class Charactermancer_Spell_Level extends BaseComponent {
         }
 
         this._list.init();
+
 
         const hkSpellLevel = ()=>{
             const isWithinRange = this._isWithinLevelRange();
@@ -32544,23 +32547,28 @@ class Charactermancer_Spell_Level extends BaseComponent {
     }
 
     handleFilterChange(f) {
-        if (!this._list)
-            return;
+        if (!this._list){return;}
 
         this._list.filter(it=>{
             const sp = this._spellDatas[it.ix];
 
+            //_parent is a Charactermancer_Spell object
             if (!this._parent.isAvailableClassSpell_(sp) && !this._parent.isAvailableSubclassSpell_(sp) && !this._parent.isAvailableExpandedSpell_(sp))
+            {
+                console.warn("filtered away ", sp.name);
                 return false;
+            }
+
+
 
             const {ixLearned, ixPrepared, ixAlwaysPrepared, ixAlwaysKnownSpell} = this.constructor._getProps(it.ix);
 
             if ([ixLearned, ixPrepared, ixAlwaysPrepared, ixAlwaysKnownSpell].some(k=>this._state[k]))
-                return true;
+            {return true;}
 
+            console.warn("asking pagefilter if display ", sp.name);
             return this._parent.pageFilter.toDisplay(f, sp);
-        }
-        );
+        });
     }
 
     handleSearch(searchTerm) {
@@ -37921,6 +37929,11 @@ class ContentGetter {
     }
     static async _cookData(data){
         console.log("data", data);
+        await ContentGetter.cookClassFeatures(data);
+        await ContentGetter.cookSpellClasses(data);
+    }
+    /**Slightly parses the class features a bit to prepare them with loadeds, a property needed to convert them to option sets later. */
+    static async cookClassFeatures(data){
         //Prep class feature info
         const isIgnoredLookup = {
             "elemental disciplines|monk||four elements||3":true,
@@ -37931,6 +37944,7 @@ class ContentGetter {
         };
         
         const opts = {actor: null, isIgnoredLookup: isIgnoredLookup};
+        
         for(let j = 0; j < data.class.length; ++j)
         {
             let cls = data.class[j];
@@ -37955,29 +37969,13 @@ class ContentGetter {
         } */
         }
     }
-    /**Slightly parses the class features a bit to prepare them with loadeds, a property needed to convert them to option sets later. */
-    static async cookClassFeatures(cls){
-        const isIgnoredLookup = {
-            "elemental disciplines|monk||four elements||3":true,
-            "fighting style|bard||swords|xge|3":true,
-            "infusions known|artificer|tce|2":true,
-            "maneuver options|fighter||battle master||3|tce":true,
-            "maneuvers|fighter||battle master||3":true
-        };
-        const opts = {isIgnoredLookup: isIgnoredLookup};
-
-        //We just need the UID of the classFeatures stored directly in the class
-        for(let i = 0; i < cls.classFeatures.length; ++i){
-            let f = cls.classFeatures[i];
-            if (typeof f !== "object") {cls.classFeatures[i] = {classFeature: f};}
+    static async cookSpellClasses(data){
+        const _SPELL_SOURCE_LOOKUP = await HelperFunctions.loadJSONFile(`data/generated/gendata-spell-source-lookup.json`);
+        DataUtil.spell._SPELL_SOURCE_LOOKUP = _SPELL_SOURCE_LOOKUP;
+        for(let i = 0; i < data.spell.length; ++i){
+            data.spell[i] = DataUtil.spell._mutEntity(data.spell[i]);
         }
-    
-        //Now we need to flesh out some more data about the class features, using just the UID we can get a lot of such info.
-        await (cls.classFeatures || []).pSerialAwaitMap(cf => ContentGetter.pInitClassFeatureLoadeds({...opts, classFeature: cf, className: cls.name}));
-
-        if (cls.classFeatures) {cls.classFeatures = cls.classFeatures.filter(it => !it.isIgnored);}
-
-        return cls.classFeatures;
+        console.log(data.spell[0]);
     }
 
     static SRC_PHB = "PHB";
@@ -50970,34 +50968,13 @@ globalThis.DataUtil = {
                 propSources: "classVariant",
                 propClasses: "fromClassListVariant"
             });
-            this._mutSpell_subclass({
-                sp,
-                spSources
-            });
-            this._mutSpell_race({
-                sp,
-                spSources
-            });
-            this._mutSpell_optionalfeature({
-                sp,
-                spSources
-            });
-            this._mutSpell_background({
-                sp,
-                spSources
-            });
-            this._mutSpell_feat({
-                sp,
-                spSources
-            });
-            this._mutSpell_charoption({
-                sp,
-                spSources
-            });
-            this._mutSpell_reward({
-                sp,
-                spSources
-            });
+            this._mutSpell_subclass({ sp, spSources });
+            this._mutSpell_race({ sp, spSources });
+            this._mutSpell_optionalfeature({ sp, spSources });
+            this._mutSpell_background({ sp, spSources });
+            this._mutSpell_feat({ sp, spSources });
+            this._mutSpell_charoption({ sp, spSources });
+            this._mutSpell_reward({ sp, spSources });
 
             sp._isMutEntity = true;
 
@@ -73999,9 +73976,7 @@ class ModalFilterSpells extends ModalFilter {
             level: spell.level,
             time,
             school: Parser.spSchoolAbvToFull(spell.school),
-            classes: Parser.spClassesToFull(spell, {
-                isTextOnly: true
-            }),
+            classes: Parser.spClassesToFull(spell, {isTextOnly: true}),
             concentration,
             normalisedTime: spell._normalisedTime,
             normalisedRange: spell._normalisedRange,
