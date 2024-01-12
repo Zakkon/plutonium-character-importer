@@ -14471,6 +14471,119 @@ Renderer.race = class {
     }
 };
 
+Renderer.feat = class {
+    static _mergeAbilityIncrease_getListItemText(abilityObj) {
+        return Renderer.feat._mergeAbilityIncrease_getText(abilityObj);
+    }
+
+    static _mergeAbilityIncrease_getListItemItem(abilityObj) {
+        return {
+            type: "item",
+            name: "Ability Score Increase.",
+            entry: Renderer.feat._mergeAbilityIncrease_getText(abilityObj),
+        };
+    }
+
+    static _mergeAbilityIncrease_getText(abilityObj) {
+        const maxScore = abilityObj.max ?? 20;
+
+        if (!abilityObj.choose) {
+            return Object.keys(abilityObj).filter(k=>k !== "max").map(ab=>`Increase your ${Parser.attAbvToFull(ab)} score by ${abilityObj[ab]}, to a maximum of ${maxScore}.`).join(" ");
+        }
+
+        if (abilityObj.choose.from.length === 6) {
+            return abilityObj.choose.entry ? Renderer.get().render(abilityObj.choose.entry) : `Increase one ability score of your choice by ${abilityObj.choose.amount ?? 1}, to a maximum of ${maxScore}.`;
+        }
+
+        const abbChoicesText = abilityObj.choose.from.map(it=>Parser.attAbvToFull(it)).joinConjunct(", ", " or ");
+        return `Increase your ${abbChoicesText} by ${abilityObj.choose.amount ?? 1}, to a maximum of ${maxScore}.`;
+    }
+
+    static initFullEntries(feat) {
+        if (!feat.ability || feat._fullEntries || !feat.ability.length)
+            return;
+
+        const abilsToDisplay = feat.ability.filter(it=>!it.hidden);
+        if (!abilsToDisplay.length)
+            return;
+
+        Renderer.utils.initFullEntries_(feat);
+
+        const targetList = feat._fullEntries.find(e=>e.type === "list");
+
+        if (targetList && targetList.items.every(it=>it.type === "item")) {
+            abilsToDisplay.forEach(abilObj=>targetList.items.unshift(Renderer.feat._mergeAbilityIncrease_getListItemItem(abilObj)));
+            return;
+        }
+
+        if (targetList) {
+            abilsToDisplay.forEach(abilObj=>targetList.items.unshift(Renderer.feat._mergeAbilityIncrease_getListItemText(abilObj)));
+            return;
+        }
+
+        abilsToDisplay.forEach(abilObj=>feat._fullEntries.unshift(Renderer.feat._mergeAbilityIncrease_getListItemText(abilObj)));
+
+        setTimeout(()=>{
+            throw new Error(`Could not find object of type "list" in "entries" for feat "${feat.name}" from source "${feat.source}" when merging ability scores! Reformat the feat to include a "list"-type entry.`);
+        }
+        , 1);
+    }
+
+    static getFeatRendereableEntriesMeta(ent) {
+        Renderer.feat.initFullEntries(ent);
+        return {
+            entryMain: {
+                entries: ent._fullEntries || ent.entries
+            },
+        };
+    }
+
+    static getJoinedCategoryPrerequisites(category, rdPrereqs) {
+        const ptCategory = category ? `${category.toTitleCase()} Feat` : "";
+
+        return ptCategory && rdPrereqs ? `${ptCategory} (${rdPrereqs})` : (ptCategory || rdPrereqs);
+    }
+
+    static getCompactRenderedString(feat, opts) {
+        opts = opts || {};
+
+        const renderer = Renderer.get().setFirstSection(true);
+        const renderStack = [];
+
+        const ptCategoryPrerequisite = Renderer.feat.getJoinedCategoryPrerequisites(feat.category, Renderer.utils.prerequisite.getHtml(feat.prerequisite), );
+        const ptRepeatable = Renderer.utils.getRepeatableHtml(feat);
+
+        renderStack.push(`
+			${Renderer.utils.getExcludedTr({
+            entity: feat,
+            dataProp: "feat",
+            page: UrlUtil.PG_FEATS
+        })}
+			${opts.isSkipNameRow ? "" : Renderer.utils.getNameTr(feat, {
+            page: UrlUtil.PG_FEATS
+        })}
+			<tr class="text"><td colspan="6" class="text">
+			${ptCategoryPrerequisite ? `<p>${ptCategoryPrerequisite}</p>` : ""}
+			${ptRepeatable ? `<p>${ptRepeatable}</p>` : ""}
+		`);
+        renderer.recursiveRender(Renderer.feat.getFeatRendereableEntriesMeta(feat)?.entryMain, renderStack, {
+            depth: 2
+        });
+        renderStack.push(`</td></tr>`);
+
+        return renderStack.join("");
+    }
+
+    static pGetFluff(feat) {
+        return Renderer.utils.pGetFluff({
+            entity: feat,
+            fnGetFluffData: DataUtil.featFluff.loadJSON.bind(DataUtil.featFluff),
+            fluffProp: "featFluff",
+        });
+    }
+}
+;
+
 Renderer.getEntryDice = function(entry, name, opts={}) {
     const toDisplay = Renderer.getEntryDiceDisplayText(entry);
 
@@ -24894,6 +25007,8 @@ class Charactermancer_Class_StartingProficiencies extends BaseComponent {
         };
     }
 }
+
+
 //#endregion
 
 //#region Charactermancer Ability
@@ -24922,7 +25037,7 @@ class ActorCharactermancerAbility extends ActorCharactermancerBaseComponent {
             'feats': this._data.feat,
             'modalFilterRaces': this._parent.compRace.modalFilterRaces,
             'modalFilterBackgrounds': this._parent.compBackground.modalFilterBackgrounds,
-            /*'modalFilterFeats': this._parent.compFeat.modalFilterFeats, */
+            'modalFilterFeats': this._parent.compFeat.modalFilterFeats,
             /* 'existingScores': this._getExistingScores() */
         });
 
@@ -24936,12 +25051,13 @@ class ActorCharactermancerAbility extends ActorCharactermancerBaseComponent {
         this._compStatgen.render(parentDiv);
         const e_recountASI = () => {
             let asiCount = 0;
+            //Go through each class open on the class component
             for (let ix = 0; ix < this._parent.compClass.state.class_ixMax + 1; ++ix) {
-                const {
-                    propIxClass: propIxClass,
-                    propCntAsi: propCntAsi
-                } = ActorCharactermancerBaseComponent.class_getProps(ix);
-                const cls = this._parent.compClass.getClass_({ 'propIxClass': propIxClass });
+                //Get the index the component uses for the class, and get the ASI count that this class has unlocked
+                const { propIxClass: propIxClass, propCntAsi: propCntAsi } =
+                    ActorCharactermancerBaseComponent.class_getProps(ix);
+                //Get the class
+                const cls = this._parent.compClass.getClass_({ propIxClass: propIxClass });
                 if (!cls) { continue; }
                 asiCount += Number(this._parent.compClass.state[propCntAsi]) || 0;
             }
@@ -24952,9 +25068,10 @@ class ActorCharactermancerAbility extends ActorCharactermancerBaseComponent {
         this._parent.compClass.addHookBase('class_totalLevels', e_recountASI);
         e_recountASI();
 
-        /* const _0x4ae28f = () => this._parent.compFeat.setAdditionalFeatStateFromStatgen_();
-        this._compStatgen.addHookPulseAsi(_0x4ae28f);
-        this._parent.compFeat.setAdditionalFeatStateFromStatgen_(); */
+        const onAsiPulse = () => this._parent.compFeat.setAdditionalFeatStateFromStatgen_();
+        this._compStatgen.addHookPulseAsi(onAsiPulse);
+
+        this._parent.compFeat.setAdditionalFeatStateFromStatgen_();
 
         //If we change our race or background, call these events to change it elsewhere too
         const onRaceChangedHere = () => this._parent.compRace.state.race_ixRace = this._compStatgen.ixRace;
@@ -24974,8 +25091,8 @@ class ActorCharactermancerAbility extends ActorCharactermancerBaseComponent {
     }
 
     get compStatgen() { return this._compStatgen; }
-    addHookAbilityScores(..._0x42aa73) {
-      return this._compStatgen.addHookAbilityScores(..._0x42aa73);
+    addHookAbilityScores(...hook) {
+      return this._compStatgen.addHookAbilityScores(...hook);
     }
     getMode(...ix) { //i think this is ix anyway. or is this for merging?
       return this._compStatgen.getMode(...ix);
@@ -25045,11 +25162,11 @@ class StatGenUi extends BaseComponent {
             isRadio: true,
             allData: this._backgrounds
         });
-        /*this._modalFilterFeats = opts.modalFilterFeats || new ModalFilterFeats({
+        this._modalFilterFeats = opts.modalFilterFeats || new ModalFilterFeats({
             namespace: "statgen.feats",
             isRadio: true,
             allData: this._feats
-        }); */
+        });
 
         this._isLevelUp = !!opts.existingScores;
         this._existingScores = opts.existingScores;
@@ -25314,13 +25431,7 @@ class StatGenUi extends BaseComponent {
         const {$wrpOuter: $wrpBackgroundOuter, $stgSel: $stgBackgroundSel, $dispPreview: $dispPreviewBackground, $hrPreview: $hrPreviewBackground, } = this._renderLevelOneBackground.render();
 
 
-        //const $wrpAsi = this._render_$getWrpAsi();
-
-        //TEMPFIX
-        /* const $wrpRaceOuter = $(`<div></div>`);  const $wrpBackgroundOuter = $(`<div></div>`);  const $stgRaceSel = $(`<div></div>`);  const $stgBackgroundSel = $(`<div></div>`);
-        const $dispPreviewBackground = $(`<div></div>`); const $dispPreviewRace = $(`<div></div>`);
-        const $hrPreviewRaceTashas = $(`<div></div>`); const $hrPreviewBackground = $(`<div></div>`); const $dispTashas = $(`<div></div>`); */
-        const $wrpAsi = $(`<div></div>`);
+        const $wrpAsi = this._render_$getWrpAsi();
 
         $stgNone = $$`<div class="ve-flex-col w-100 h-100">
 			<div class="ve-flex-v-center"><i>Please select a mode.</i></div>
@@ -26964,17 +27075,13 @@ StatGenUi.MODE_NONE = "none";
 StatGenUi.MODES = ["rolled", "array", "pointbuy", "manual", ];
 StatGenUi.MODES_FVTT = [StatGenUi.MODE_NONE, ...StatGenUi.MODES, ];
 StatGenUi._MAX_CUSTOM_FEATS = 20;
+
 StatGenUi.CompAsi = class extends BaseComponent {
     constructor({parent}) {
         super();
         this._parent = parent;
 
-        this._metasAsi = {
-            ability: [],
-            race: [],
-            background: [],
-            custom: []
-        };
+        this._metasAsi = { ability: [], race: [], background: [], custom: [] };
 
         this._doPulseThrottled = MiscUtil.throttle(this._doPulse_.bind(this), 50);
     }
@@ -27155,7 +27262,7 @@ StatGenUi.CompAsi = class extends BaseComponent {
 
             const ent = this._parent[namespace];
             if ((ent?.feats?.length || 0) > 1) {
-                const {$sel: $selGroup, unhook: unhookIxGroup} = UtilAdditionalFeats$1.getSelIxSetMeta({
+                const {$sel: $selGroup, unhook: unhookIxGroup} = UtilAdditionalFeats.getSelIxSetMeta({
                     comp: this._parent,
                     prop: propIxSel,
                     available: ent.feats
@@ -27182,7 +27289,7 @@ StatGenUi.CompAsi = class extends BaseComponent {
 
                 const featSet = ent?.feats?.[this._parent.state[propIxSel]];
 
-                const uidsStatic = UtilAdditionalFeats$1.getUidsStatic(featSet);
+                const uidsStatic = UtilAdditionalFeats.getUidsStatic(featSet);
 
                 const $rows = [];
 
@@ -27548,7 +27655,7 @@ StatGenUi.CompAsi = class extends BaseComponent {
             return;
         }
 
-        const uidsStatic = UtilAdditionalFeats$1.getUidsStatic(featSet);
+        const uidsStatic = UtilAdditionalFeats.getUidsStatic(featSet);
 
         uidsStatic.map((uid,ix)=>{
             const {propIxFeatAbility, propFeatAbilityChooseFrom} = this._parent.getPropsAdditionalFeatsFeatSet_(namespace, "static", ix);
@@ -27773,6 +27880,117 @@ class StatGenUiCharactermancer extends StatGenUi {
       }));
     }
 }
+
+class UtilAdditionalFeats {
+    static isNoChoice(available) {
+        if (!available?.length)
+            return true;
+        if (available.length > 1)
+            return false;
+        return !available[0].any;
+    }
+
+    static getUidsStatic(availableSet) {
+        return Object.entries(availableSet || {}).filter(([k,v])=>k !== "any" && v).sort(([kA],[kB])=>SortUtil.ascSortLower(kA, kB)).map(([k])=>k);
+    }
+
+    static getSelIxSetMeta({comp, prop, available}) {
+        return ComponentUiUtil.$getSelEnum(comp, prop, {
+            values: available.map((_,i)=>i),
+            fnDisplay: ix=>{
+                const featSet = available[ix];
+
+                const out = [];
+
+                if (featSet.any) {
+                    out.push(`Choose any${featSet.any > 1 ? ` ${Parser.numberToText(featSet.any)}` : ""}`);
+                }
+
+                this.getUidsStatic(featSet).forEach(uid=>{
+                    const {name} = DataUtil.proxy.unpackUid("feat", uid, "feat", {
+                        isLower: true
+                    });
+                    out.push(name.toTitleCase());
+                }
+                );
+
+                return out.filter(Boolean).join("; ");
+            }
+            ,
+            asMeta: true,
+        }, );
+    }
+}
+
+/* StatGenUi.RenderableCollectionPbRules = class extends RenderableCollectionGenericRows {
+    constructor(statGenUi, $wrp) {
+        super(statGenUi, "pb_rules", $wrp);
+    }
+
+    getNewRender(rule, i) {
+        const parentComp = this._comp;
+
+        const comp = this._utils.getNewRenderComp(rule, i);
+
+        const $dispCost = $(`<div class="ve-flex-vh-center"></div>`);
+        const hkCost = ()=>$dispCost.text(comp._state.cost);
+        comp._addHookBase("cost", hkCost);
+        hkCost();
+
+        const $iptCost = ComponentUiUtil.$getIptInt(comp, "cost", 0, {
+            html: `<input class="form-control input-xs form-control--minimal ve-text-center">`,
+            fallbackOnNaN: 0
+        });
+
+        const hkIsCustom = ()=>{
+            $dispCost.toggleVe(!parentComp.state.pb_isCustom);
+            $iptCost.toggleVe(parentComp.state.pb_isCustom);
+        }
+        ;
+        parentComp._addHookBase("pb_isCustom", hkIsCustom);
+        hkIsCustom();
+
+        const $btnDelete = $(`<button class="btn btn-xxs btn-danger" title="Delete"><span class="glyphicon glyphicon-trash"></span></button>`).click(()=>{
+            if (parentComp.state.pb_rules.length === 1)
+                return;
+            parentComp.state.pb_rules = parentComp.state.pb_rules.filter(it=>it !== rule);
+        }
+        );
+
+        const $wrpRow = $$`<div class="ve-flex py-1 stripe-even statgen-pb__row-cost">
+			<div class="statgen-pb__col-cost ve-flex-vh-center">${comp._state.score}</div>
+			<div class="statgen-pb__col-cost ve-flex-vh-center">${Parser.getAbilityModifier(comp._state.score)}</div>
+			<div class="statgen-pb__col-cost ve-flex-vh-center px-3">
+				${$dispCost}
+				${$iptCost}
+			</div>
+			<div class="statgen-pb__col-cost-delete">${$btnDelete}</div>
+		</div>`.appendTo(this._$wrpRows);
+
+        const hkRules = ()=>{
+            $btnDelete.toggleVe((parentComp.state.pb_rules[0] === rule || parentComp.state.pb_rules.last() === rule) && parentComp.state.pb_isCustom);
+        }
+        ;
+        parentComp._addHookBase("pb_rules", hkRules);
+        parentComp._addHookBase("pb_isCustom", hkRules);
+        hkRules();
+
+        return {
+            comp,
+            $wrpRow,
+            fnCleanup: ()=>{
+                parentComp._removeHookBase("pb_isCustom", hkIsCustom);
+                parentComp._removeHookBase("pb_isCustom", hkRules);
+                parentComp._removeHookBase("pb_rules", hkRules);
+            }
+            ,
+        };
+    }
+
+    doDeleteExistingRender(renderedMeta) {
+        renderedMeta.fnCleanup();
+    }
+}; */
 
 //#endregion
 
@@ -34734,8 +34952,726 @@ class ActorCharactermancerFeat extends ActorCharactermancerBaseComponent {
         'feat_pulseChange': false
       };
     }
-  }
-  ActorCharactermancerFeat._NAMESPACES_STATGEN = new Set(['ability', "race", "background", "custom"]);
+}
+ActorCharactermancerFeat._NAMESPACES_STATGEN = new Set(['ability', "race", "background", "custom"]);
+
+class Charactermancer_AdditionalFeatsSelect extends BaseComponent {
+    static async pGetUserInput({available, actor}) {
+        if (!available?.length)
+            return {
+                isFormComplete: true,
+                data: {}
+            };
+
+        if (UtilAdditionalFeats.isNoChoice(available)) {
+            const comp = new this({
+                available
+            });
+            return comp.pGetFormData();
+        }
+
+        const {ImportListFeat} = await Promise.resolve().then(function() {
+            return ImportListFeat$1;
+        });
+        const ImportListFeatSources = await (new ImportListFeat()).pGetSources();
+        const appSourceSelector = new AppSourceSelectorMulti({
+            title: `Select Feat Sources`,
+            filterNamespace: `Charactermancer_AdditionalFeatsSelect_filter`,
+            savedSelectionKey: `Charactermancer_AdditionalFeatsSelect_savedSelection`,
+            sourcesToDisplay: ImportListFeatSources,
+            props: ["feat"],
+            page: UrlUtil.PG_FEATS,
+            isDedupable: true,
+        });
+
+        const allData = await appSourceSelector.pWaitForUserInput();
+        if (allData == null)
+            return null;
+        const modalFilterFeats = await this._pGetUserInput_pGetModalFilterFeats({
+            allData
+        });
+        const modalFilterSpells = await this._pGetUserInput_pGetModalFilterSpells({
+            allData
+        });
+
+        const comp = new this({
+            available,
+            actor,
+            featDatas: allData.feat,
+            modalFilterFeats,
+            modalFilterSpells,
+        });
+        return UtilApplications.pGetImportCompApplicationFormData({
+            comp,
+            width: 800,
+            height: 640,
+        });
+    }
+
+    static async _pGetUserInput_pGetModalFilterFeats({allData}) {
+        const modalFilterFeats = new ModalFilterFeatsFvtt({
+            namespace: "Charactermancer_AdditionalFeatsSelect.feats",
+            isRadio: true,
+            allData: allData.feat,
+        });
+        await modalFilterFeats.pPreloadHidden();
+        return modalFilterFeats;
+    }
+
+    static async _pGetUserInput_pGetModalFilterSpells({allData}) {
+        const modalFilterSpells = new ModalFilterSpellsFvtt({
+            namespace: "Charactermancer_AdditionalFeatsSelect.spells",
+            isRadio: true,
+            allData: allData.spell,
+        });
+        await modalFilterSpells.pPreloadHidden();
+        return modalFilterSpells;
+    }
+
+    constructor(opts) {
+        opts = opts || {};
+        super();
+
+        this._available = opts.available;
+        this._actor = opts.actor;
+        this._featDatas = opts.featDatas || [];
+        this._modalFilterFeats = opts.modalFilterFeats;
+        this._modalFilterSpells = opts.modalFilterSpells;
+        this._featureSourceTracker = opts.featureSourceTracker;
+        this._isFeatureSelect = !!opts.isFeatureSelect;
+
+        this._featDatas.forEach(it=>it._hash = UrlUtil.URL_TO_HASH_BUILDER[UrlUtil.PG_FEATS]({
+            name: it.name,
+            source: it.source
+        }));
+        this._compsFeatFeatureOptionsSelect = {};
+
+        this._prevComp = opts.prevComp;
+        this._cache_featFeatureLoadeds = opts.prevComp?._cache_featFeatureLoadeds || new Map();
+    }
+
+    get modalTitle() {
+        return `Feats`;
+    }
+
+    get cntAny() {
+        const featSet = this._available[this._state.ixSet];
+        return featSet?.any || 0;
+    }
+
+    get ixSetAvailable() {
+        return this._state.ixSet;
+    }
+
+    addHookIxSet(hk) {
+        this._addHookBase("ixSet", hk);
+    }
+
+    addHookPulseFeats(hk) {
+        this._addHookBase("pulse_feats", hk);
+    }
+
+    setStateFromStatgenFeatList_(featList) {
+        const featListChoose = featList.filter(it=>it == null || it.type === "choose");
+
+        let offsetIx = 0;
+        const nxtState = {};
+        const ixsStatgen = [];
+        featListChoose.forEach((featMeta,ixRaw)=>{
+            if (!featMeta)
+                return offsetIx++;
+            ixsStatgen.push(ixRaw);
+
+            const ix = ixRaw - offsetIx;
+
+            const {type, ix: ixFeatRaw} = featMeta;
+            const {propIxFeat} = this._getProps({
+                ix,
+                type
+            });
+
+            nxtState[propIxFeat] = ixFeatRaw === -1 ? null : ixFeatRaw;
+        }
+        );
+
+        nxtState.readonly_ixsStatgen = ixsStatgen;
+        this._proxyAssignSimple("state", nxtState);
+    }
+
+    _getProps({ix, type}) {
+        return {
+            propPrefixFeat: `feat_${ix}_${type}_`,
+            propIxFeat: `feat_${ix}_${type}_ixFeat`,
+        };
+    }
+
+    _getLocks({ix, type}) {
+        return {
+            lockChangeFeat: `feat_${ix}_${type}_pHkChangeFeat`,
+            lockRenderFeatureOptionsSelects: `feat_${ix}_${type}_renderFeatureOptionsSelects`,
+        };
+    }
+
+    unregisterFeatureSourceTracking() {
+        if (this._featureSourceTracker)
+            this._featureSourceTracker.unregister(this);
+        this._unregisterSubComps();
+    }
+
+    _unregisterSubComps() {
+        if (!this._featureSourceTracker)
+            return;
+
+        Object.entries(this._compsFeatFeatureOptionsSelect).forEach(([type,ixToArr])=>{
+            Object.keys(ixToArr).forEach(ix=>{
+                (this._compsFeatFeatureOptionsSelect[type]?.[ix] || []).forEach(comp=>comp.unregisterFeatureSourceTracking());
+            }
+            );
+        }
+        );
+    }
+
+    render($wrp) {
+        const $wrpLeft = $(`<div class="ve-flex-col w-100 h-100 min-h-0 overflow-y-auto"></div>`);
+        const $wrpRight = $(`<div class="ve-flex-col w-100 h-100 min-h-0 overflow-y-auto"></div>`);
+
+        this.renderTwoColumn({
+            $wrpLeft,
+            $wrpRight
+        });
+
+        $$($wrp)`<div class="ve-flex w-100 h-100 min-h-0">
+			${$wrpLeft}
+			<div class="vr-3"></div>
+			${$wrpRight}
+		</div>
+		`;
+    }
+
+    renderTwoColumn({$wrpLeft, $wrpRight}) {
+        this._render_$getStgSelGroup({
+            $wrpLeft
+        });
+        const $stgGroupLeft = $$`<div class="ve-flex-col"></div>`.appendTo($wrpLeft);
+        const $stgGroupRight = $$`<div class="ve-flex-col"></div>`.appendTo($wrpRight);
+
+        const lastMetas = [];
+        const boundHkIxSet = this._hk_ixSet.bind(this, {
+            $stgGroupLeft,
+            $stgGroupRight,
+            lastMetas
+        });
+        this._addHookBase("ixSet", boundHkIxSet);
+        boundHkIxSet();
+    }
+
+    _render_$getStgSelGroup({$wrpLeft}) {
+        if (this._available.length <= 1)
+            return;
+
+        const {$sel: $selGroup} = UtilAdditionalFeats.getSelIxSetMeta({
+            comp: this,
+            prop: "ixSet",
+            available: this._available,
+        });
+
+        return $$`<div class="w-100 mb-2 ve-flex-v-center">
+			<div class="mr-2 no-shrink bold">Feat Set:</div>
+			${$selGroup}
+		</div>`.appendTo($wrpLeft);
+    }
+
+    _hk_ixSet({$stgGroupLeft, $stgGroupRight, lastMetas}) {
+        $stgGroupLeft.empty();
+        $stgGroupRight.empty();
+        lastMetas.splice(0, lastMetas.length).forEach(it=>it.cleanup());
+        const featSet = this._available[this._state.ixSet];
+        this._hk_ixSet_renderPts({
+            $stgGroupLeft,
+            $stgGroupRight,
+            featSet,
+            lastMetas
+        });
+        this._state.pulse_feats = !this._state.pulse_feats;
+    }
+
+    _hk_ixSet_renderPts({$stgGroupLeft, $stgGroupRight, featSet, lastMetas}) {
+        const hasStatic = Object.keys(featSet).some(it=>it !== "any");
+        const hasChoose = !!featSet.any;
+
+        if (hasStatic)
+            this._render_renderPtStatic({
+                $stgGroupLeft,
+                $stgGroupRight,
+                featSet
+            });
+        if (hasStatic && hasChoose)
+            $stgGroupLeft.append(`<hr class="hr-2 mt-0 hr--dotted">`);
+        if (hasChoose)
+            this._render_renderPtChooseFromFilter({
+                $stgGroupLeft,
+                $stgGroupRight,
+                featSet,
+                lastMetas
+            });
+        if (hasStatic || hasChoose)
+            $stgGroupLeft.append(`<hr class="hr-2>`);
+    }
+
+    _render_renderPtStatic({$stgGroupLeft, $stgGroupRight, featSet}) {
+        const type = "static";
+        const uidsStatic = UtilAdditionalFeats.getUidsStatic(featSet);
+
+        const rowMetas = uidsStatic.map((uid,ix)=>{
+            const {lockRenderFeatureOptionsSelects, } = this._getLocks({
+                ix,
+                type
+            });
+
+            const {name, source} = DataUtil.proxy.unpackUid("feat", uid, "feat");
+            const hash = UrlUtil.URL_TO_HASH_BUILDER[UrlUtil.PG_FEATS]({
+                name,
+                source
+            });
+            const feat = this._featDatas.find(it=>it._hash === hash);
+
+            if (!feat) {
+                console.warn(...LGT, `Could not find feat "${hash}" in loaded feat data!`);
+                return null;
+            }
+
+            const $stgFeatureOptions = this._isFeatureSelect ? $(`<div class="ve-flex-col w-100"></div>`) : null;
+
+            const $rowLeft = $$`<div class="mb-2">
+				<div class="ve-flex-v-center">
+					<div class="bold mr-2 no-shrink">Feat:</div>
+					${Renderer.get().render(`{@feat ${feat.name}|${feat.source}}`)}
+				</div>
+				${$stgFeatureOptions}
+			</div>`;
+
+            const $rowRight = $(`<div class="ve-flex-col w-100"></div>`);
+            this._render_displayFeat({
+                $wrp: $rowRight,
+                feat
+            });
+
+            if (this._isFeatureSelect) {
+                this._feat_pGetFilteredFeatures(feat).then(async filteredFeatures=>{
+                    await this._feat_pRenderFeatureOptionsSelects({
+                        ix,
+                        type,
+                        $stgFeatureOptions,
+                        filteredFeatures,
+                        lockRenderFeatureOptionsSelects
+                    });
+                }
+                );
+            }
+
+            return {
+                $rowLeft,
+                $rowRight,
+            };
+        }
+        ).filter(Boolean);
+
+        $$`<div class="ve-flex-col w-100">
+			${rowMetas.map(it=>it.$rowLeft)}
+		</div>`.appendTo($stgGroupLeft);
+
+        $$`<div class="ve-flex-col w-100">
+			${rowMetas.map(it=>it.$rowRight)}
+		</div>`.appendTo($stgGroupRight);
+    }
+
+    _render_displayFeat({$wrp, feat}) {
+        $wrp.empty();
+        if (!feat) {
+            $wrp.append(`<div class="ve-muted mb-2 italic ve-flex-vh-center">No feat selected.</div>`);
+        } else {
+            $wrp.append(Vetools.withUnpatchedDiceRendering(()=>Renderer.hover.$getHoverContent_stats(UrlUtil.PG_FEATS, feat)));
+        }
+        $wrp.append(`<hr class="hr-0">`);
+    }
+
+    _render_renderPtChooseFromFilter({$stgGroupLeft, $stgGroupRight, featSet, lastMetas}) {
+        const type = "choose";
+
+        const rowMetas = [...new Array(featSet.any)].map((_,ix)=>{
+            const {propIxFeat, propPrefixFeat} = this._getProps({
+                ix,
+                type
+            });
+
+            const {lockChangeFeat, lockRenderFeatureOptionsSelects, } = this._getLocks({
+                ix,
+                type
+            });
+
+            const {$sel: $selFeat, $btnFilter: $btnFilterForFeat, unhook} = Charactermancer_Util.getFilterSearchMeta({
+                comp: this,
+                prop: propIxFeat,
+                data: this._featDatas,
+                modalFilter: this._modalFilterFeats,
+                title: "Feat",
+            });
+            lastMetas.push({
+                cleanup: unhook
+            });
+
+            const $dispFeat = $(`<div class="ve-flex-col w-100"></div>`);
+
+            const $stgFeatureOptions = this._isFeatureSelect ? $(`<div class="ve-flex-col w-100 mt-2"></div>`) : null;
+
+            const $rowLeft = $$`<div class="ve-flex-col w-100">
+				<div class="bold mb-2">Select a Feat</div>
+				<div class="ve-flex-v-center btn-group w-100">${$btnFilterForFeat}${$selFeat}</div>
+				${$stgFeatureOptions}
+				<hr class="hr-1">
+			</div>`;
+
+            const _pHkChangeFeat = async()=>{
+                const nxtState = Object.keys(this.__state).filter(it=>it.startsWith(propPrefixFeat) && it !== propIxFeat).mergeMap(it=>({
+                    [it]: null
+                }));
+                this._proxyAssignSimple("state", nxtState);
+
+                const feat = this._featDatas[this._state[propIxFeat]];
+
+                this._render_displayFeat({
+                    $wrp: $dispFeat,
+                    feat
+                });
+
+                if (this._isFeatureSelect) {
+                    const filteredFeatures = await this._feat_pGetFilteredFeatures(feat);
+
+                    await this._feat_pRenderFeatureOptionsSelects({
+                        ix,
+                        type,
+                        $stgFeatureOptions,
+                        filteredFeatures,
+                        lockRenderFeatureOptionsSelects
+                    });
+                }
+
+                this._state.pulse_feats = !this._state.pulse_feats;
+            }
+            ;
+            const pHkChangeFeat = async(isLaterRun)=>{
+                try {
+                    await this._pLock(lockChangeFeat);
+                    await _pHkChangeFeat(isLaterRun);
+                } finally {
+                    this._unlock(lockChangeFeat);
+                }
+            }
+            ;
+            this._addHookBase(propIxFeat, pHkChangeFeat);
+            lastMetas.push({
+                cleanup: ()=>this._removeHookBase(propIxFeat, pHkChangeFeat)
+            });
+
+            _pHkChangeFeat();
+
+            return {
+                $rowLeft,
+                $rowRight: $dispFeat,
+            };
+        }
+        );
+
+        $$`<div class="ve-flex-col w-100">
+			${rowMetas.map(it=>it.$rowLeft)}
+		</div>`.appendTo($stgGroupLeft);
+
+        $$`<div class="ve-flex-col w-100">
+			${rowMetas.map(it=>it.$rowRight)}
+		</div>`.appendTo($stgGroupRight);
+    }
+
+    async _feat_pGetFilteredFeatures(feat) {
+        if (!feat)
+            return [];
+
+        const feature = await this._feat_pGetFilteredFeatures_getCacheFeature(feat);
+
+        return Charactermancer_Util.getFilteredFeatures([feature], this._modalFilterFeats.pageFilter, this._modalFilterFeats.pageFilter.filterBox.getValues(), );
+    }
+
+    async _feat_pGetFilteredFeatures_getCacheFeature(feat) {
+        const fromCache = this._cache_featFeatureLoadeds.get(feat);
+        if (fromCache)
+            return fromCache;
+
+        const feature = await DataConverterFeat.pGetInitFeatureLoadeds(feat, {
+            actor: this._actor
+        });
+        this._cache_featFeatureLoadeds.set(feat, feature);
+        return feature;
+    }
+
+    async _feat_pRenderFeatureOptionsSelects(opts) {
+        const {lockRenderFeatureOptionsSelects} = opts;
+
+        try {
+            await this._pLock(lockRenderFeatureOptionsSelects);
+            await this._feat_pRenderFeatureOptionsSelects_(opts);
+        } finally {
+            this._unlock(lockRenderFeatureOptionsSelects);
+        }
+    }
+
+    async _feat_pRenderFeatureOptionsSelects_({ix, type, filteredFeatures, $stgFeatureOptions}) {
+        const prevCompsFeatures = this._compsFeatFeatureOptionsSelect[type]?.[ix] || this._prevComp?._compsFeatFeatureOptionsSelect[type]?.[ix] || [];
+
+        $stgFeatureOptions.empty();
+
+        //TEMPFIX
+        //const existingFeatureChecker = new Charactermancer_Class_Util.ExistingFeatureChecker(this._actor);
+
+        const importableFeatures = Charactermancer_Util.getImportableFeatures(filteredFeatures);
+        const cpyImportableFeatures = MiscUtil.copy(importableFeatures);
+        Charactermancer_Util.doApplyFilterToFeatureEntries_bySource(cpyImportableFeatures, this._modalFilterFeats.pageFilter, this._modalFilterFeats.pageFilter.filterBox.getValues(), );
+        const importableFeaturesGrouped = Charactermancer_Util.getFeaturesGroupedByOptionsSet(cpyImportableFeatures);
+
+        this._feat_unregisterFeatureSourceTrackingFeatureComps(ix, type);
+
+        for (const topLevelFeatureMeta of importableFeaturesGrouped) {
+            const {topLevelFeature, optionsSets} = topLevelFeatureMeta;
+
+            for (const optionsSet of optionsSets) {
+                const compFeatureOptionsSelect = new Charactermancer_FeatureOptionsSelect({
+                    featureSourceTracker: this._featureSourceTracker,
+                    //TEMPFIX existingFeatureChecker,
+                    //actor: this._actor,
+                    optionsSet,
+                    level: topLevelFeature.level,
+                    modalFilterSpells: this._modalFilterSpells,
+                    isSkipRenderingFirstFeatureTitle: true,
+                });
+                const tgt = MiscUtil.getOrSet(this._compsFeatFeatureOptionsSelect, type, ix, []);
+                tgt.push(compFeatureOptionsSelect);
+                compFeatureOptionsSelect.findAndCopyStateFrom(prevCompsFeatures);
+            }
+        }
+
+        await this._feat_pRenderFeatureComps(ix, type, {
+            $stgFeatureOptions
+        });
+    }
+
+    _feat_unregisterFeatureSourceTrackingFeatureComps(ix, type) {
+        (this._compsFeatFeatureOptionsSelect[type]?.[ix] || []).forEach(comp=>comp.unregisterFeatureSourceTracking());
+        delete this._compsFeatFeatureOptionsSelect[type]?.[ix];
+    }
+
+    async _feat_pRenderFeatureComps(ix, type, {$stgFeatureOptions}) {
+        for (const compFeatureOptionsSelect of (this._compsFeatFeatureOptionsSelect[type]?.[ix] || [])) {
+            if (await compFeatureOptionsSelect.pIsNoChoice() && !(await compFeatureOptionsSelect.pIsAvailable()))
+                continue;
+
+            if (!(await compFeatureOptionsSelect.pIsNoChoice()) || await compFeatureOptionsSelect.pIsForceDisplay()) {
+                $stgFeatureOptions.showVe().append(`${compFeatureOptionsSelect.modalTitle ? `<hr class="hr-2"><div class="mb-2 bold w-100">${compFeatureOptionsSelect.modalTitle}</div>` : ""}`);
+            }
+            compFeatureOptionsSelect.render($stgFeatureOptions);
+        }
+    }
+
+    async pGetFormData() {
+        const out = [];
+
+        const ptrIsComplete = {
+            _: true
+        };
+
+        const featSet = this._available[this._state.ixSet];
+        await this._pGetFormData_static({
+            out,
+            featSet,
+            ptrIsComplete
+        });
+        await this._pGetFormData_choose({
+            out,
+            featSet,
+            ptrIsComplete
+        });
+
+        return {
+            isFormComplete: ptrIsComplete._,
+            data: out,
+            ixsStatgen: this._state.readonly_ixsStatgen ? MiscUtil.copy(this._state.readonly_ixsStatgen) : null,
+        };
+    }
+
+    async _pGetFormData_static({out, featSet, ptrIsComplete}) {
+        const uidsStatic = UtilAdditionalFeats.getUidsStatic(featSet);
+        if (!uidsStatic?.length)
+            return;
+
+        const type = "static";
+
+        for (let ix = 0; ix < uidsStatic.length; ++ix) {
+            const outItem = this._getFormData_static_ix({
+                uidsStatic,
+                ix
+            });
+            if (outItem)
+                out.push(outItem);
+
+            if (!this._isFeatureSelect || !outItem)
+                continue;
+
+            const formDatasFeatureOptionsSelect = await (this._compsFeatFeatureOptionsSelect[type]?.[ix] || []).filter(Boolean).pSerialAwaitMap(it=>it.pGetFormData());
+
+            if (formDatasFeatureOptionsSelect.some(it=>!it.isFormComplete))
+                ptrIsComplete._ = false;
+
+            outItem.formDatasFeatureOptionsSelect = formDatasFeatureOptionsSelect;
+        }
+    }
+
+    async _pGetFormData_choose({out, featSet, ptrIsComplete}) {
+        if (!featSet.any)
+            return;
+
+        const type = "choose";
+
+        for (let ix = 0; ix < featSet.any; ++ix) {
+            const outItem = this._getFormData_choose_ix({
+                ix,
+                ptrIsComplete
+            });
+            if (outItem)
+                out.push(outItem);
+
+            if (!this._isFeatureSelect || !outItem)
+                continue;
+
+            const formDatasFeatureOptionsSelect = await (this._compsFeatFeatureOptionsSelect[type]?.[ix] || []).filter(Boolean).pSerialAwaitMap(it=>it.pGetFormData());
+
+            if (formDatasFeatureOptionsSelect.some(it=>!it.isFormComplete))
+                ptrIsComplete._ = false;
+
+            outItem.formDatasFeatureOptionsSelect = formDatasFeatureOptionsSelect;
+        }
+    }
+
+    getFormDataReduced() {
+        const out = [];
+
+        const ptrIsComplete = {
+            _: true
+        };
+
+        const featSet = this._available[this._state.ixSet];
+        this._getFormDataReduced_static({
+            out,
+            featSet
+        });
+        this._getFormDataReduced_choose({
+            out,
+            featSet,
+            ptrIsComplete
+        });
+
+        return {
+            isFormComplete: ptrIsComplete._,
+            data: out,
+            ixsStatgen: this._state.readonly_ixsStatgen ? MiscUtil.copy(this._state.readonly_ixsStatgen) : null,
+        };
+    }
+
+    _getFormDataReduced_static({out, featSet}) {
+        const uidsStatic = UtilAdditionalFeats.getUidsStatic(featSet);
+        if (!uidsStatic?.length)
+            return;
+
+        for (let ix = 0; ix < uidsStatic.length; ++ix) {
+            const outItem = this._getFormData_static_ix({
+                uidsStatic,
+                ix
+            });
+            if (outItem)
+                out.push(outItem);
+        }
+    }
+
+    _getFormDataReduced_choose({out, featSet, ptrIsComplete}) {
+        if (!featSet.any)
+            return;
+
+        for (let ix = 0; ix < featSet.any; ++ix) {
+            const outItem = this._getFormData_choose_ix({
+                ix,
+                ptrIsComplete
+            });
+            if (outItem)
+                out.push(outItem);
+        }
+    }
+
+    _getFormData_static_ix({uidsStatic, ix}) {
+        const uid = uidsStatic[ix];
+
+        const {name, source} = DataUtil.proxy.unpackUid("feat", uid, "feat");
+        const hash = UrlUtil.URL_TO_HASH_BUILDER[UrlUtil.PG_FEATS]({
+            name,
+            source
+        });
+        const ixFeat = this._featDatas.findIndex(it=>it._hash === hash);
+        const feat = this._featDatas[ixFeat];
+
+        return {
+            page: UrlUtil.PG_FEATS,
+            source,
+            hash,
+            feat: MiscUtil.copy(feat, {
+                isSafe: true
+            }),
+            ixFeat,
+            type: "static",
+            ix,
+        };
+    }
+
+    _getFormData_choose_ix({ix, ptrIsComplete}) {
+        const {propIxFeat} = this._getProps({
+            ix,
+            type: "choose"
+        });
+        const ixFeat = this._state[propIxFeat];
+        if (ixFeat == null || !~ixFeat) {
+            ptrIsComplete._ = false;
+            return;
+        }
+
+        const feat = this._featDatas[ixFeat];
+        const hash = UrlUtil.URL_TO_HASH_BUILDER[UrlUtil.PG_FEATS](feat);
+
+        return {
+            page: UrlUtil.PG_FEATS,
+            source: feat.source,
+            hash,
+            feat: MiscUtil.copy(feat, {
+                isSafe: true
+            }),
+            ixFeat,
+            type: "choose",
+            ix,
+        };
+    }
+
+    _getDefaultState() {
+        return {
+            ixSet: 0,
+
+            pulse_feats: false,
+            readonly_ixsStatgen: null,
+        };
+    }
+}
 //#endregion
 
 //#region Charactermancer Sheet
@@ -41067,6 +42003,21 @@ class SideDataInterfaceClass extends SideDataInterfaceBase {
     static init() {
         PageFilterClassesFoundry.setImplSideData("class", this);
         PageFilterClassesFoundry.setImplSideData("subclass", this);
+    }
+}
+class SideDataInterfaceFeat extends SideDataInterfaceBase {
+    static _SIDE_LOAD_OPTS = {
+        propBrew: "foundryFeat",
+        fnLoadJson: async()=>this.pPreloadSideData(),
+        propJson: "feat",
+    };
+
+    static async _pGetPreloadSideData() {
+        return Vetools.pGetFeatSideData();
+    }
+
+    static init() {
+        PageFilterClassesFoundry.setImplSideData("feat", this);
     }
 }
 //#region List
@@ -51265,6 +52216,209 @@ class DataConverterClass extends DataConverter {
         return out;
     }
 }
+
+class DataConverterFeature extends DataConverter {
+    static async _pGetGenericDescription(ent, configGroup, {fluff=null}={}) {
+        if (!Config.get(configGroup, "isImportDescription") && !fluff?.entries?.length)
+            return "";
+
+        const pts = [Config.get(configGroup, "isImportDescription") ? await UtilDataConverter.pGetWithDescriptionPlugins(()=>`<div>${Renderer.get().setFirstSection(true).render({
+            entries: ent.entries
+        }, 2)}</div>`) : null, fluff?.entries?.length ? Renderer.get().setFirstSection(true).render({
+            type: "entries",
+            entries: fluff?.entries
+        }) : "", ].filter(Boolean).join(`<hr class="hr-1">`);
+
+        return pts.length ? `<div>${pts}</div>` : "";
+    }
+
+    static _getData_getConsume({ent, actor}) {
+        if (!ent?.consumes)
+            return {};
+
+        const sheetItem = DataConverter.getConsumedSheetItem({
+            consumes: ent.consumes,
+            actor
+        });
+        if (!sheetItem)
+            return {};
+
+        return {
+            type: "charges",
+            amount: ent.consumes.amount ?? 1,
+            target: sheetItem.id,
+        };
+    }
+
+    static async pMutActorUpdateFeature(actor, actorUpdate, ent, dataBuilderOpts) {
+        const sideData = await this._SideDataInterface.pGetSideLoaded(ent);
+        this.mutActorUpdate(actor, actorUpdate, ent, {
+            sideData
+        });
+    }
+
+    static async pGetDereferencedFeatureItem(feature) {
+        return MiscUtil.copy(feature);
+    }
+
+    static async pGetClassSubclassFeatureAdditionalEntities(actor, entity, {taskRunner=null}={}) {
+        const sideData = await this._SideDataInterface.pGetSideLoaded(entity);
+        if (!sideData)
+            return [];
+        if (!sideData.subEntities)
+            return [];
+
+        const {ChooseImporter} = await Promise.resolve().then(function() {
+            return ChooseImporter$1;
+        });
+
+        for (const prop in sideData.subEntities) {
+            if (!sideData.subEntities.hasOwnProperty(prop))
+                continue;
+
+            const arr = sideData.subEntities[prop];
+            if (!(arr instanceof Array))
+                continue;
+
+            const importer = ChooseImporter.getImporter(prop, {
+                actor
+            });
+            await importer.pInit();
+            for (const ent of arr) {
+                await importer.pImportEntry(ent, {
+                    taskRunner,
+                }, );
+            }
+        }
+    }
+}
+class DataConverterFeat extends DataConverterFeature {
+    static _configGroup = "importFeat";
+
+    static _SideDataInterface = SideDataInterfaceFeat;
+    //TEMPFIX static _ImageFetcher = ImageFetcherFeat;
+
+    static async pGetDereferencedFeatureItem(feature) {
+        if (feature.entries)
+            return MiscUtil.copy(feature);
+
+        const hash = UrlUtil.URL_TO_HASH_BUILDER[UrlUtil.PG_FEATS](feature);
+        return DataLoader.pCacheAndGet(UrlUtil.PG_FEATS, feature.source, hash, {
+            isCopy: true
+        });
+    }
+
+    static async pGetInitFeatureLoadeds(feature, {actor=null}={}) {
+        const uid = DataUtil.proxy.getUid("feat", feature, {
+            isMaintainCase: true
+        });
+        const asFeatRef = {
+            feat: uid
+        };
+        await PageFilterClassesFoundry.pInitFeatLoadeds({
+            feat: asFeatRef,
+            raw: feature,
+            actor
+        });
+        return asFeatRef;
+    }
+
+    static async pGetDocumentJson(feat, opts) {
+        opts = opts || {};
+        if (opts.actor)
+            opts.isActorItem = true;
+
+        Renderer.get().setFirstSection(true).resetHeaderIndex();
+
+        const fluff = opts.fluff || await Renderer.feat.pGetFluff(feat);
+
+        const cpyFeat = Charactermancer_Feature_Util.getCleanedFeature_tmpOptionalfeatureList(feat);
+
+        const content = await UtilDataConverter.pGetWithDescriptionPlugins(()=>{
+            const fluffRender = fluff?.entries?.length ? Renderer.get().setFirstSection(true).render({
+                type: "entries",
+                entries: fluff?.entries
+            }) : "";
+
+            const ptCategoryPrerequisite = Renderer.feat.getJoinedCategoryPrerequisites(cpyFeat.category, Renderer.utils.prerequisite.getHtml(cpyFeat.prerequisite), );
+            const ptRepeatable = Renderer.utils.getRepeatableHtml(cpyFeat);
+
+            Renderer.feat.initFullEntries(cpyFeat);
+            const statsRender = `<div>
+				${ptCategoryPrerequisite ? `<p>${ptCategoryPrerequisite}</p>` : ""}
+				${ptRepeatable ? `<p>${ptRepeatable}</p>` : ""}
+				${Renderer.get().setFirstSection(true).render({
+                entries: cpyFeat._fullEntries || cpyFeat.entries
+            }, 2)}
+			</div>`;
+
+            return `<div>${[fluffRender, statsRender].join("<hr>")}</div>`;
+        }
+        );
+
+        //TEMPFIX
+        /* const img = await this._ImageFetcher.pGetSaveImagePath(cpyFeat, {
+            propCompendium: "feat",
+            fluff,
+            taskRunner: opts.taskRunner
+        }); */
+
+        const additionalData = await this._SideDataInterface.pGetDataSideLoaded(cpyFeat);
+        const additionalFlags = await this._SideDataInterface.pGetFlagsSideLoaded(cpyFeat);
+
+        const effectsSideTuples = await this._SideDataInterface.pGetEffectsSideLoadedTuples({
+            ent: cpyFeat,
+            img,
+            actor: opts.actor
+        });
+        effectsSideTuples.forEach(({effect, effectRaw})=>DataConverter.mutEffectDisabledTransfer(effect, "importFeat", UtilActiveEffects.getDisabledTransferHintsSideData(effectRaw)));
+
+        const out = this._pGetItemActorPassive(feat, {
+            isActorItem: opts.isActorItem,
+            mode: "player",
+            img,
+            fvttType: "feat",
+            typeType: "feat",
+            source: feat.source,
+            actor: opts.actor,
+            description: content,
+            isSkipDescription: !Config.get(this._configGroup, "isImportDescription"),
+            requirements: Renderer.utils.prerequisite.getHtml(cpyFeat.prerequisite, {
+                isTextOnly: true,
+                isSkipPrefix: true
+            }),
+            additionalData: additionalData,
+            additionalFlags: additionalFlags,
+            foundryFlags: this._getFeatFlags(cpyFeat, opts),
+            effects: DataConverter.getEffectsMutDedupeId(effectsSideTuples.map(it=>it.effect)),
+        }, );
+
+        this._mutApplyDocOwnership(out, opts);
+
+        return out;
+    }
+
+    static _getFeatFlags(feat, opts) {
+        opts = opts || {};
+
+        const out = {
+            [SharedConsts.MODULE_ID]: {
+                page: UrlUtil.PG_FEATS,
+                source: feat.source,
+                hash: UrlUtil.URL_TO_HASH_BUILDER[UrlUtil.PG_FEATS](feat),
+            },
+        };
+
+        if (opts.isAddDataFlags) {
+            out[SharedConsts.MODULE_ID].propDroppable = "feat";
+            out[SharedConsts.MODULE_ID].filterValues = opts.filterValues;
+        }
+
+        return out;
+    }
+}
+
+
 //#endregion
 //#region Util
 class Util {
@@ -54746,6 +55900,131 @@ globalThis.CryptUtil = {
 };
 //#endregion
 
+//#region CurrencyUtil
+globalThis.CurrencyUtil = class {
+    static doSimplifyCoins(obj, opts) {
+        opts = opts || {};
+
+        const conversionTable = opts.currencyConversionTable || Parser.getCurrencyConversionTable(opts.currencyConversionId);
+        if (!conversionTable.length)
+            return obj;
+
+        const normalized = conversionTable.map(it=>{
+            return {
+                ...it,
+                normalizedMult: 1 / it.mult,
+            };
+        }
+        ).sort((a,b)=>SortUtil.ascSort(a.normalizedMult, b.normalizedMult));
+
+        for (let i = 0; i < normalized.length - 1; ++i) {
+            const coinCur = normalized[i].coin;
+            const coinNxt = normalized[i + 1].coin;
+            const coinRatio = normalized[i + 1].normalizedMult / normalized[i].normalizedMult;
+
+            if (obj[coinCur] && Math.abs(obj[coinCur]) >= coinRatio) {
+                const nxtVal = obj[coinCur] >= 0 ? Math.floor(obj[coinCur] / coinRatio) : Math.ceil(obj[coinCur] / coinRatio);
+                obj[coinCur] = obj[coinCur] % coinRatio;
+                obj[coinNxt] = (obj[coinNxt] || 0) + nxtVal;
+            }
+        }
+
+        if (opts.originalCurrency) {
+            const normalizedHighToLow = MiscUtil.copyFast(normalized).reverse();
+
+            normalizedHighToLow.forEach((coinMeta,i)=>{
+                const valOld = opts.originalCurrency[coinMeta.coin] || 0;
+                const valNew = obj[coinMeta.coin] || 0;
+
+                const prevCoinMeta = normalizedHighToLow[i - 1];
+                const nxtCoinMeta = normalizedHighToLow[i + 1];
+
+                if (!prevCoinMeta) {
+                    if (nxtCoinMeta) {
+                        const diff = valNew - valOld;
+                        if (diff > 0) {
+                            obj[coinMeta.coin] = valOld;
+                            const coinRatio = coinMeta.normalizedMult / nxtCoinMeta.normalizedMult;
+                            obj[nxtCoinMeta.coin] = (obj[nxtCoinMeta.coin] || 0) + (diff * coinRatio);
+                        }
+                    }
+                } else {
+                    if (nxtCoinMeta) {
+                        const diffPrevCoin = (opts.originalCurrency[prevCoinMeta.coin] || 0) - (obj[prevCoinMeta.coin] || 0);
+                        const coinRatio = prevCoinMeta.normalizedMult / coinMeta.normalizedMult;
+                        const capFromOld = valOld + (diffPrevCoin > 0 ? diffPrevCoin * coinRatio : 0);
+                        const diff = valNew - capFromOld;
+                        if (diff > 0) {
+                            obj[coinMeta.coin] = capFromOld;
+                            const coinRatio = coinMeta.normalizedMult / nxtCoinMeta.normalizedMult;
+                            obj[nxtCoinMeta.coin] = (obj[nxtCoinMeta.coin] || 0) + (diff * coinRatio);
+                        }
+                    }
+                }
+            }
+            );
+        }
+
+        normalized.filter(coinMeta=>obj[coinMeta.coin] === 0 || obj[coinMeta.coin] == null).forEach(coinMeta=>{
+            obj[coinMeta.coin] = null;
+            delete obj[coinMeta.coin];
+        }
+        );
+
+        if (opts.isPopulateAllValues)
+            normalized.forEach(coinMeta=>obj[coinMeta.coin] = obj[coinMeta.coin] || 0);
+
+        return obj;
+    }
+
+    static getAsCopper(obj) {
+        return Parser.FULL_CURRENCY_CONVERSION_TABLE.map(currencyMeta=>(obj[currencyMeta.coin] || 0) * (1 / currencyMeta.mult)).reduce((a,b)=>a + b, 0);
+    }
+
+    static getAsSingleCurrency(obj) {
+        const simplified = CurrencyUtil.doSimplifyCoins({
+            ...obj
+        });
+
+        if (Object.keys(simplified).length === 1)
+            return simplified;
+
+        const out = {};
+
+        const targetDemonination = Parser.FULL_CURRENCY_CONVERSION_TABLE.find(it=>simplified[it.coin]);
+
+        out[targetDemonination.coin] = simplified[targetDemonination.coin];
+        delete simplified[targetDemonination.coin];
+
+        Object.entries(simplified).forEach(([coin,amt])=>{
+            const denom = Parser.FULL_CURRENCY_CONVERSION_TABLE.find(it=>it.coin === coin);
+            out[targetDemonination.coin] = (out[targetDemonination.coin] || 0) + (amt / denom.mult) * targetDemonination.mult;
+        }
+        );
+
+        return out;
+    }
+
+    static getCombinedCurrency(currencyA, currencyB) {
+        const out = {};
+
+        [currencyA, currencyB].forEach(currency=>{
+            Object.entries(currency).forEach(([coin,cnt])=>{
+                if (cnt == null)
+                    return;
+                if (isNaN(cnt))
+                    throw new Error(`Unexpected non-numerical value "${JSON.stringify(cnt)}" for currency key "${coin}"`);
+
+                out[coin] = (out[coin] || 0) + cnt;
+            }
+            );
+        }
+        );
+
+        return out;
+    }
+};
+//#endregion
 
 //#endregion
 
@@ -73391,6 +74670,121 @@ class PageFilterClassesRaw extends PageFilterClassesBase {
         PageFilterClassesRaw._IMPLS_SIDE_DATA[prop] = Impl;
     }
 };
+
+class PageFilterClassesFoundry extends PageFilterClassesRaw {
+    static _handleReferenceError(msg) {
+        console.error(...LGT, msg);
+        ui.notifications.error(msg);
+    }
+
+    static _pLoadSubEntries_getMappedWalkerArrayEntry({it, path, references, actor, isIgnoredLookup, ...opts}) {
+        const out = super._pLoadSubEntries_getMappedWalkerArrayEntry({
+            it,
+            path,
+            references,
+            actor,
+            ...opts
+        });
+        if (out != null)
+            return out;
+
+        const isIgnored = this._pLoadSubEntries_getMappedWalkerArrayEntry_isIgnored({
+            it,
+            isIgnoredLookup
+        });
+        if (isIgnored)
+            return null;
+
+        const meta = this._pLoadSubEntries_getMappedWalkerArrayEntry_getMeta({
+            it
+        });
+        const {name, source} = meta;
+
+        const ident = this._pLoadSubEntries_getMappedWalkerArrayEntry_getPageSourceHash({
+            it
+        });
+        const b64Ident = btoa(encodeURIComponent(JSON.stringify(ident)));
+
+        return {
+            type: "wrapper",
+            wrapped: actor ? `@UUID[Actor.${actor.id}.Item.temp-${SharedConsts.MODULE_ID_FAKE}-${b64Ident}]{${name}}` : `@UUID[Item.temp-${SharedConsts.MODULE_ID_FAKE}-${b64Ident}]{${name}}`,
+            source,
+            data: {
+                isFvttSyntheticFeatureLink: true,
+            },
+        };
+    }
+
+    static _pLoadSubEntries_getMappedWalkerArrayEntry_getMeta({it}) {
+        switch (it.type) {
+        case "refClassFeature":
+            return DataUtil.class.unpackUidClassFeature(it.classFeature);
+        case "refSubclassFeature":
+            return DataUtil.class.unpackUidSubclassFeature(it.subclassFeature);
+        case "refOptionalfeature":
+            return DataUtil.proxy.unpackUid("optionalfeature", it.optionalfeature, "optfeature");
+        default:
+            throw new Error(`Unhandled reference type "${it.type}"`);
+        }
+    }
+
+    static _pLoadSubEntries_getMappedWalkerArrayEntry_getPageSourceHash({it}) {
+        let page;
+        let source;
+        let hash;
+        switch (it.type) {
+        case "refClassFeature":
+            {
+                const meta = DataUtil.class.unpackUidClassFeature(it.classFeature);
+                page = "classFeature";
+                hash = UrlUtil.URL_TO_HASH_BUILDER[page](meta);
+                source = meta.source;
+                break;
+            }
+
+        case "refSubclassFeature":
+            {
+                const meta = DataUtil.class.unpackUidSubclassFeature(it.subclassFeature);
+                page = "subclassFeature";
+                hash = UrlUtil.URL_TO_HASH_BUILDER[page](meta);
+                source = meta.source;
+                break;
+            }
+
+        case "refOptionalfeature":
+            {
+                const meta = DataUtil.proxy.unpackUid("optionalfeature", it.optionalfeature, "optfeature");
+                page = UrlUtil.PG_OPT_FEATURES;
+                hash = UrlUtil.URL_TO_HASH_BUILDER[page](meta);
+                source = meta.source;
+                break;
+            }
+
+        default:
+            throw new Error(`Unhandled reference type "${it.type}"`);
+        }
+
+        return {
+            page,
+            source,
+            hash
+        };
+    }
+
+    static _pLoadSubEntries_getMappedWalkerArrayEntry_isIgnored({it, isIgnoredLookup}) {
+        if (!isIgnoredLookup)
+            return false;
+
+        switch (it.type) {
+        case "refClassFeature":
+            return isIgnoredLookup[(it.classFeature || "").toLowerCase()];
+        case "refSubclassFeature":
+            return isIgnoredLookup[(it.subclassFeature || "").toLowerCase()];
+        default:
+            return false;
+        }
+    }
+}
 //#endregion
 
 //#region PageFilterRaces
