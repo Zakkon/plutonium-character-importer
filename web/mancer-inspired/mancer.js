@@ -217,9 +217,9 @@ class ParentWindow {
             case "abilities": newActivePanel = this.tabAbilities; tabIx = 2; break;
             case "background": newActivePanel = this.tabBackground; tabIx = 3; break;
             case "startingEquipment": newActivePanel = this.tabEquipment; tabIx = 4; break;
-            case "spells": newActivePanel = this.tabSpells; tabIx = 6; break;
-            case "feats": newActivePanel = this.tabFeats; tabIx = 7; break;
-            case "sheet": newActivePanel = this.tabSheet; tabIx = 8; break;
+            case "spells": newActivePanel = this.tabSpells; tabIx = 5; break;
+            case "feats": newActivePanel = this.tabFeats; tabIx = 6; break;
+            case "sheet": newActivePanel = this.tabSheet; tabIx = 7; break;
         }
         const pressedBtn = this.tabButtonParent.children().eq(tabIx);
         pressedBtn.addClass("active");

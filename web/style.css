@@ -248,3 +248,7 @@ input.form-control, textarea.form-control {
 .overflow-x-vis{
     overflow-x: visible;
 }
+.manc__list-row-button.active{
+    border: 2px solid rgb(227, 227, 227);
+    border-radius: 7%;
+}
