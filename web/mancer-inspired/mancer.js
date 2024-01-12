@@ -4,6 +4,8 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 window.addEventListener('load', function () {
    
+    initializeAll();
+
     //prepare export button
     
 
@@ -15,7 +17,11 @@ window.addEventListener('load', function () {
     
     //test_AddClassPage();
 });
+async function initializeAll(){
+    //mimics 'handleReady()' function
 
+    SideDataInterfaces.init();
+}
 async function test_nativeImportContent(){
     const content = await SourceSelectorTest.getOutputEntities();
     ContentGetter._cachedData = content;
@@ -17392,8 +17398,7 @@ Renderer.dice = {
         const $minRoll = $(`<button class="rollbox-min"><span class="glyphicon glyphicon-chevron-up"></span></button>`).on("click", ()=>{
             Renderer.dice._showBox();
             Renderer.dice._$iptRoll.focus();
-        }
-        );
+        });
         const $head = $(`<div class="head-roll"><span class="hdr-roll">Dice Roller</span><span class="p-2 glyphicon glyphicon-remove"></span></div>`).on("click", ()=>{
             if (!Renderer.dice._panel)
                 Renderer.dice._hideBox();
@@ -17440,7 +17445,8 @@ Renderer.dice = {
         Renderer.dice._$outRoll = $outRoll;
         Renderer.dice._$iptRoll = $iptRoll;
 
-        $(`body`).append($minRoll).append($wrpRoll);
+        //TEMPFIX removing this because i dont know where to put it or even why you would need a button to open a field and type roll commands
+        //$(`body`).append($minRoll).append($wrpRoll);
 
         $wrpRoll.on("click", ".out-roll-item-code", (evt)=>Renderer.dice._$iptRoll.val($(evt.target).text()).focus());
 
@@ -41891,7 +41897,8 @@ class SideDataInterfaceBase {
     static async _pGetSideLoadedMatch(ent, {propBrew, fnLoadJson, propJson, propsMatch, propBase, base=undefined, actorType=undefined, isSilent=false}={}) {
         const founds = [];
 
-        if (UtilCompat.isPlutoniumAddonAutomationActive()) {
+        //TEMPFIX
+        /* if (UtilCompat.isPlutoniumAddonAutomationActive()) {
             const valsLookup = propsMatch.map(prop=>ent[prop]).filter(Boolean);
             const found = await UtilCompat.getApi(UtilCompat.MODULE_PLUTONIUM_ADDON_AUTOMATION).pGetExpandedAddonData({
                 propJson,
@@ -41905,7 +41912,7 @@ class SideDataInterfaceBase {
             });
             if (found)
                 founds.push(found);
-        }
+        } */
 
         if (propBrew) {
             const prerelease = await PrereleaseUtil.pGetBrewProcessed();
@@ -42018,6 +42025,18 @@ class SideDataInterfaceFeat extends SideDataInterfaceBase {
 
     static init() {
         PageFilterClassesFoundry.setImplSideData("feat", this);
+    }
+}
+
+class SideDataInterfaces {
+    static init() {
+        SideDataInterfaceClass.init();
+        //SideDataInterfaceClassSubclassFeature.init();
+        //SideDataInterfaceOptionalfeature.init();
+        SideDataInterfaceFeat.init();
+        //SideDataInterfaceReward.init();
+        //SideDataInterfaceCharCreationOption.init();
+        //SideDataInterfaceVehicleUpgrade.init();
     }
 }
 //#region List
