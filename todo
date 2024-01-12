@@ -12,3 +12,4 @@ CLASS
 - fix starting equipment choices
 - spell menu reacts on class change, creating error
 - Make contentgetter not pull tons of useless properties when loading from json files (call object.flat()?)
+- fix shop item costs (item 'value' seems to be null)

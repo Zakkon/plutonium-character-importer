@@ -1144,7 +1144,7 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
                     //TEMPFIX //'actor': this._actor,
                     'optionsSet': set,
                     'level': topLevelFeature.level,
-                    //TEMPFIX //'modalFilterSpells': this._parent.compSpell.modalFilterSpells
+                    'modalFilterSpells': this._parent.compSpell.modalFilterSpells
                 });
                 this._compsClassFeatureOptionsSelect[ix].push(component);
                 component.findAndCopyStateFrom(selElement);
@@ -8688,7 +8688,7 @@ Charactermancer_StartingEquipment.ComponentDefault = class extends Charactermanc
         hkCpRolled();
 
         if (this._fnDoShowShop) {
-            const hkOnChangeCurrency = (prop,val,prevVal)=>{
+            const hkOnChangeCurrency = (prop, val, prevVal)=>{
                 if (prevVal == null && val != null)
                     this._fnDoShowShop();
             };
@@ -8856,27 +8856,22 @@ Charactermancer_StartingEquipment.ComponentDefault = class extends Charactermanc
 
         const hkSetCoinsFromDefault = ()=>{
             if (Config.get("equipmentShop", "startingGold") != null) {
-                this._compCurrency.cpFromDefault = 0;
-                return;
+                this._compCurrency.cpFromDefault = 0; return;
             }
 
             let cpValue = 0;
 
-            const fnEqui = (ixGroup,ixChoice,equi)=>{
+            const fnEqui = (ixGroup, ixChoice, equi)=>{
                 if (equi.item) {
-                    if (equi.containsValue)
-                        cpValue += equi.containsValue;
-                } else if (equi.special) {
-                    if (equi.containsValue)
-                        cpValue += equi.containsValue;
-                } else if (equi.value) {
-                    cpValue += equi.value;
+                    if (equi.containsValue) {cpValue += equi.containsValue;}
                 }
-            }
-            ;
+                else if (equi.special) {
+                    if (equi.containsValue) {cpValue += equi.containsValue;}
+                }
+                else if (equi.value) { cpValue += equi.value; }
+            };
 
             this._iterChosenStartingEquipment(fnEqui);
-
             this._compCurrency.cpFromDefault = cpValue;
         };
 
@@ -9109,8 +9104,7 @@ Charactermancer_StartingEquipment.ComponentGold = class extends Charactermancer_
                 if (!choices)
                     return;
                 this._state.itemDatas = choices;
-            }
-            );
+            });
         }
 
         const $dispCurrencyRemaining = $(`<div class="ml-auto ve-flex-v-center"></div>`);
@@ -9176,58 +9170,52 @@ Charactermancer_StartingEquipment.ComponentGold = class extends Charactermancer_
             $btnReset: $(`<button class="btn-5et veapp__btn-list-reset" name="btn-reset">Reset</button>`),
         }, ).then(meta=>{
             const {list, $btnSendAllToRight} = meta;
+            //A button for adding ALL items to the cart of bought items
             $btnSendAllToRight.addClass("btn-5et ve-grow").click(async evt=>{
+
                 if (list.visibleItems.length > 10 && !(await InputUiUtil.pGetUserBoolean({
                     title: `You are about to add ${list.visibleItems.length} items. Are you sure?`
-                })))
-                    return;
+                    }))){return;}
 
+                
                 const quantity = evt.shiftKey ? 5 : 1;
-                list.visibleItems.forEach(it=>this.addBoughtItem(`${it.name}|${it.values.source}`, {
-                    quantity,
-                    isTriggerUpdate: false
-                }));
+                //Buy the items
+                list.visibleItems.forEach(it=>this.addBoughtItem(`${it.name}|${it.values.source}`, { quantity, isTriggerUpdate: false }));
                 this._triggerCollectionUpdate("itemPurchases");
-            }
-            );
+            });
 
+            //Populate the list of items to click to buy
             hkItemDatas();
-        }
-        );
+        });
 
         const $wrpBoughtList = $(`<div class="w-100 h-100 min-h-0 overflow-y-auto"></div>`);
 
+        //Call this whenever user clicks to buy (or sell) an item
         const hkGoldItemUids = ()=>{
             this._renderCollection({
                 prop: "itemPurchases",
-                fnUpdateExisting: (renderedMeta,itemPurchase)=>{
+                fnUpdateExisting: (renderedMeta, itemPurchase)=>{
                     renderedMeta.comp._proxyAssignSimple("state", itemPurchase.data, true);
-                }
-                ,
+                },
                 fnGetNew: (itemPurchase)=>{
                     const comp = BaseComponent.fromObject(itemPurchase.data);
                     comp._addHookAll("state", ()=>{
                         itemPurchase.data = comp.toObject();
                         this._triggerCollectionUpdate("itemPurchases");
-                    }
-                    );
+                    });
 
                     const [name,source] = itemPurchase.data.uid.split("|");
-                    DataLoader.pCacheAndGetHash(UrlUtil.PG_ITEMS, UrlUtil.URL_TO_HASH_BUILDER[UrlUtil.PG_ITEMS]({
-                        name,
-                        source
-                    })).then(item=>{
+                    const priceMult = Config.get("equipmentShop", "priceMultiplier") || 1;
+
+                    DataLoader.pCacheAndGetHash(UrlUtil.PG_ITEMS, UrlUtil.URL_TO_HASH_BUILDER[UrlUtil.PG_ITEMS]({ name, source })).then(item=>{
                         comp._state.name = item.name;
-                        comp._state.value = item.value * Config.get("equipmentShop", "priceMultiplier");
-                    }
-                    );
+                        comp._state.value = item.value * priceMult;
+                    });
 
                     const hkNoQuantity = ()=>{
-                        if (comp._state.quantity > 0)
-                            return;
+                        if (comp._state.quantity > 0) { return; }
                         this._state.itemPurchases = this._state.itemPurchases.filter(it=>it !== itemPurchase);
-                    }
-                    ;
+                    };
                     comp._addHookBase("quantity", hkNoQuantity);
 
                     const $btnSubtract = $(`<button class="btn btn-xxs btn-5et btn-danger" title="Remove One (SHIFT to remove  5)"><span class="glyphicon glyphicon-minus"></span></button>`).click(evt=>{
@@ -9235,16 +9223,14 @@ Charactermancer_StartingEquipment.ComponentGold = class extends Charactermancer_
                             comp._state.quantity -= 5;
                         else
                             comp._state.quantity--;
-                    }
-                    );
+                    });
 
                     const $btnAdd = $(`<button class="btn btn-xxs btn-5et btn-success" title="Add Another (SHIFT to add 5)"><span class="glyphicon glyphicon-plus"></span></button>`).click(evt=>{
                         if (evt.shiftKey)
                             comp._state.quantity += 5;
                         else
                             comp._state.quantity++;
-                    }
-                    );
+                    });
 
                     const $dispQuantity = $(`<div class="ve-text-center no-shrink imp-cls__disp-equi-count"></div>`);
                     const hkQuantity = ()=>$dispQuantity.text(comp._state.quantity);
@@ -9266,8 +9252,7 @@ Charactermancer_StartingEquipment.ComponentGold = class extends Charactermancer_
                         if (comp._state.value == null || comp._state.quantity == null)
                             return;
                         $dispCostTotal.html(comp._state.isIgnoreCost ? `<span class="ve-muted" title="Cost Ignored">\u2014</span>` : this.constructor._getHumanReadableCoinage(comp._state.value * comp._state.quantity));
-                    }
-                    ;
+                    };
                     comp._addHookBase("value", hkCostTotal);
                     comp._addHookBase("quantity", hkCostTotal);
                     hkCostTotal();
@@ -9287,14 +9272,13 @@ Charactermancer_StartingEquipment.ComponentGold = class extends Charactermancer_
                         comp,
                         $wrpRow,
                     };
-                }
-                ,
+                },
             });
-        }
-        ;
+        };
         this._addHookBase("itemPurchases", hkGoldItemUids);
         hkGoldItemUids();
 
+        //Call this whenever user clicks to buy (or sell) an item
         const pHkItemsPurchased = async()=>{
             try {
                 await this._pLock("pHkItemsPurchased");
@@ -9302,15 +9286,14 @@ Charactermancer_StartingEquipment.ComponentGold = class extends Charactermancer_
             } finally {
                 this._unlock("pHkItemsPurchased");
             }
-        }
-        ;
+        };
         this._addHookBase("itemPurchases", pHkItemsPurchased);
         pHkItemsPurchased();
 
         const hkItemDatas = ()=>{
+            //Refresh the list of items that we can click and buy
             this._modalFilter.setDataList(this._state.itemDatas);
-        }
-        ;
+        };
         this._addHookBase("itemDatas", hkItemDatas);
 
         const $btnClearPurchases = $(`<button class="btn btn-xxs btn-5et btn-danger" title="Remove All Purchases"><span class="glyphicon glyphicon-minus"></span></button>`).click(async()=>{
@@ -9392,6 +9375,7 @@ Charactermancer_StartingEquipment.ComponentGold = class extends Charactermancer_
     }
 
     async _pGetCpSpent() {
+        const priceMult = Config.get("equipmentShop", "priceMultiplier") || 1;
         const expenses = await Promise.all(this._state.itemPurchases.map(async itemMeta=>{
             if (itemMeta.data.isIgnoreCost)
                 return 0;
@@ -9401,7 +9385,7 @@ Charactermancer_StartingEquipment.ComponentGold = class extends Charactermancer_
                 name,
                 source
             }));
-            return item.value * Config.get("equipmentShop", "priceMultiplier") * (itemMeta.data.quantity || 1);
+            return item.value * priceMult * (itemMeta.data.quantity || 1);
         }
         ));
         return expenses.reduce((a,b)=>a + b, 0);
@@ -9435,6 +9419,12 @@ Charactermancer_StartingEquipment.ComponentGold = class extends Charactermancer_
         return out;
     }
 
+    /**
+     * Add an item to our cart of bought items
+     * @param {string} itemUid
+     * @param {{quantity:number, isTriggerUpdate:boolean, isIgnoreCost:boolean}} opts
+     * @returns {any}
+     */
     addBoughtItem(itemUid, opts) {
         opts = opts || {};
         opts.quantity = opts.quantity === undefined ? 1 : opts.quantity;
@@ -9444,10 +9434,10 @@ Charactermancer_StartingEquipment.ComponentGold = class extends Charactermancer_
         itemUid = itemUid.toLowerCase();
         const collectionId = `${itemUid}__${opts.isIgnoreCost}`;
 
+        //See if we already bought an item like this, and if so, just add to its quantity
         const existing = this._state.itemPurchases.find(it=>it.id === collectionId);
-        if (existing) {
-            existing.data.quantity += opts.quantity;
-        } else {
+        if (existing) { existing.data.quantity += opts.quantity; }
+        else {
             this._state.itemPurchases.push({
                 id: collectionId,
                 data: {
@@ -9458,8 +9448,7 @@ Charactermancer_StartingEquipment.ComponentGold = class extends Charactermancer_
             });
         }
 
-        if (opts.isTriggerUpdate)
-            this._triggerCollectionUpdate("itemPurchases");
+        if (opts.isTriggerUpdate) { this._triggerCollectionUpdate("itemPurchases"); }
     }
 
     _getDefaultState() {

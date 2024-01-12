@@ -3,7 +3,7 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 window.addEventListener('load', function () {
    
-    initializeAll();
+    handleInit().then(() => handleReady()).then(() => test_nativeImportContent());
 
     //prepare export button
     
@@ -16,10 +16,13 @@ window.addEventListener('load', function () {
     
     //test_AddClassPage();
 });
-async function initializeAll(){
-    //mimics 'handleReady()' function
+async function handleInit(){
+    Config.prePreInit();
+}
+async function handleReady(){
+ //mimics 'handleReady()' function
 
-    SideDataInterfaces.init();
+ SideDataInterfaces.init();
 }
 async function test_nativeImportContent(){
     const content = await SourceSelectorTest.getOutputEntities();

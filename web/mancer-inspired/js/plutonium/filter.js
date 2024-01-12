@@ -9095,6 +9095,9 @@ class ModalFilterEquipment extends ModalFilter {
         return super._$getFilterColumnHeaders(btnMeta).map($btn=>$btn.addClass(`btn-5et`));
     }
 
+    /**
+     * @param {Charactermancer_StartingEquipment.ComponentGold} compStartingEquipment
+     */
     constructor(compStartingEquipment) {
         super({
             pageFilter: new PageFilterEquipment(),
@@ -9150,6 +9153,10 @@ class ModalFilterEquipment extends ModalFilter {
         const source = Parser.sourceJsonToAbv(item.source);
         const type = item._typeListText.join(", ");
 
+
+        
+        const priceMult = Config.get("equipmentShop", "priceMultiplier") || 1.0;
+
         eleRow.innerHTML = `<div class="w-100 veapp__list-row-hoverable ve-flex-v-center">
 			<div class="col-1 ve-flex-vh-center">
 				<div class="ui-list__btn-inline" title="Toggle Preview (SHIFT to Toggle Info Preview)">${ListUiUtil.HTML_GLYPHICON_EXPAND}</div>
@@ -9159,7 +9166,7 @@ class ModalFilterEquipment extends ModalFilter {
 			<span class="col-3-2">${item._typeListText.join(", ").toTitleCase()}</span>
 			<span class="col-1-8 text-right px-1">${Parser.itemValueToFullMultiCurrency(item, {
             isShortForm: true,
-            multiplier: Config.get("equipmentShop", "priceMultiplier")
+            multiplier: priceMult
         }).replace(/ +/g, "\u00A0")}</span>
 			<span class="col-1-8 ve-text-center ${Parser.sourceJsonToColor(item.source)} pr-0" title="${Parser.sourceJsonToFull(item.source)}" ${Parser.sourceJsonToStyle(item.source)}>${source}</span>
 			<div class="col-1 ve-flex-vh-center"><button class="btn btn-xxs btn-default btn-5et" title="Add (SHIFT to add 5; CTRL to ignore price)"><span class="glyphicon glyphicon-arrow-right"></span></button></div>
@@ -9176,11 +9183,11 @@ class ModalFilterEquipment extends ModalFilter {
         }
         );
 
-        const listItem = new ListItem(itI,eleRow,item.name,{
+        const listItem = new ListItem(itI, eleRow, item.name,{
             hash,
             source,
             sourceJson: item.source,
-            cost: (item.value || 0) * Config.get("equipmentShop", "priceMultiplier"),
+            cost: (item.value || 0) * priceMult,
             type,
         },{
             btnSendToRight: eleRow.firstElementChild.lastElementChild.lastElementChild,
@@ -9190,42 +9197,38 @@ class ModalFilterEquipment extends ModalFilter {
         return listItem;
     }
 
+    /**
+     * Add items from allData to the graphical list of purchaseble items
+     * @param {any} allData
+     */
     setDataList(allData) {
+        //Remove all items from the list first
         this._list.removeAllItems();
 
         this._allData = (allData?.item || []).filter(it=>it.value != null && it.type !== "$");
 
+        //Then add items back to the list
         this._allData.forEach((it,i)=>{
             this._pageFilter.mutateAndAddToFilters(it);
             const filterListItem = this._getListItem(this._pageFilter, it, i);
             this._list.addItem(filterListItem);
+            if(it.name == "Abacus"){console.log("ABACUS", it, filterListItem);}
             const itemUid = `${it.name}|${it.source}`;
+            //Add an event listener to the button for sending the item right to cart
             filterListItem.data.btnSendToRight.addEventListener("click", evt=>{
                 const isIgnoreCost = evt.ctrlKey;
-                if (evt.shiftKey)
-                    this._compParent.addBoughtItem(itemUid, {
-                        quantity: 5,
-                        isIgnoreCost
-                    });
-                else
-                    this._compParent.addBoughtItem(itemUid, {
-                        isIgnoreCost
-                    });
-            }
-            );
-        }
-        );
-
-        this._pageFilter.sourceFilter.setFromValues({
-            "Source": {}
+                //Set quantity to 5 if pressing shift
+                if (evt.shiftKey) { this._compParent.addBoughtItem(itemUid, { quantity: 5, isIgnoreCost });}
+                else { this._compParent.addBoughtItem(itemUid, { isIgnoreCost });}
+            });
         });
+
+        this._pageFilter.sourceFilter.setFromValues({ "Source": {} });
 
         this._pageFilter.filterBox.render();
         this._list.update();
     }
 };
-
-
 
 class MixedModalFilterFvtt //extends Cls
 {
