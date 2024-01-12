@@ -29,7 +29,7 @@ async function test_nativeImportContent(){
     ContentGetter._cachedData = content;
     await ContentGetter.cookClassFeatures(content); //unfortunately this function pulls from _cachedData, so we need to set it before that (i know, needs fixing)
     
-    let window = new ParentWindow(ContentGetter._cachedData);
+    let window = new CharacterBuilder(ContentGetter._cachedData);
 }
 class SourceSelectorTest {
     static async getOutputEntities() {
@@ -139,7 +139,7 @@ class SETTINGS{
     static USE_EXISTING = false;
     static LOCALPATH_REDIRECT = true;
 }
-class ParentWindow {
+class CharacterBuilder {
     tabButtonParent;
     tabClass;
     tabRace;
@@ -159,38 +159,20 @@ class ParentWindow {
     compFeat;
     compSheet;
     tabs;
+    _featureSourceTracker;
     
     constructor(data){
 
         this.parent = this;
-        this.createTabs();
-
-        const _root = $("#window-root");
-        const $tabClass = $(`<div class="ui-tab__wrp-tab-body ve-flex-col ui-tab__wrp-tab-body--border"></div>`).appendTo(_root);
-        this.tabClass = new WindowTab($tabClass);
-        const $tabRace = $(`<div class="ui-tab__wrp-tab-body ve-flex-col ui-tab__wrp-tab-body--border"></div>`).appendTo(_root);
-        this.tabRace = new WindowTab($tabRace);
-        const $tabAbilities = $(`<div class="ui-tab__wrp-tab-body ve-flex-col ui-tab__wrp-tab-body--border"></div>`).appendTo(_root);
-        this.tabAbilities = new WindowTab($tabAbilities);
-        const $tabBackground = $(`<div class="ui-tab__wrp-tab-body ve-flex-col ui-tab__wrp-tab-body--border"></div>`).appendTo(_root);
-        this.tabBackground = new WindowTab($tabBackground);
-        const $tabEquipment = $(`<div class="ui-tab__wrp-tab-body ve-flex-col ui-tab__wrp-tab-body--border"></div>`).appendTo(_root);
-        this.tabEquipment = new WindowTab($tabEquipment);
-        const $tabShop = $(`<div class="ui-tab__wrp-tab-body ve-flex-col ui-tab__wrp-tab-body--border"></div>`).appendTo(_root);
-        this.tabShop = new WindowTab($tabShop);
-        const $tabSpells = $(`<div class="ui-tab__wrp-tab-body ve-flex-col ui-tab__wrp-tab-body--border"></div>`).appendTo(_root);
-        this.tabSpells = new WindowTab($tabSpells);
-        const $tabFeats = $(`<div class="ui-tab__wrp-tab-body ve-flex-col ui-tab__wrp-tab-body--border"></div>`).appendTo(_root);
-        this.tabFeats = new WindowTab($tabFeats);
-        const $tabSheet = $(`<div class="ui-tab__wrp-tab-body ve-flex-col ui-tab__wrp-tab-body--border"></div>`).appendTo(_root);
-        this.tabSheet = new WindowTab($tabSheet);
-
-        const DEFAULT_SOURCES = [Parser.SRC_PHB, Parser.SRC_DMG, Parser.SRC_XGE, Parser.SRC_VGM, Parser.SRC_MPMM];
+        this.createTabs(); //Create the small tab buttons
+        this.createPanels(); //Create the panels that hold components
 
         this.data = data;
 
+        //Create a feature source tracker (this one gets used alot by the components)
         this._featureSourceTracker = new Charactermancer_FeatureSourceTracker();
 
+        //Create components
         this.compClass = new ActorCharactermancerClass(this);
         this.compRace = new ActorCharactermancerRace(this);
         this.compAbility = new ActorCharactermancerAbility(this);
@@ -200,62 +182,60 @@ class ParentWindow {
         this.compFeat = new ActorCharactermancerFeat(this);
         this.compSheet = new ActorCharactermancerSheet(this);
 
+        //Configure the export button
         const exportBtn = $("#btn_export");
         exportBtn.click(() => {
             this.compSheet.test_gatherExportInfo();
         });
         
-
+        //This is a test to only have certain sources selected as active in the filter
+        //Note that this does not delete the sources, and they can still be toggled on again via the filter
+        const DEFAULT_SOURCES = [Parser.SRC_PHB, Parser.SRC_DMG, Parser.SRC_XGE, Parser.SRC_VGM, Parser.SRC_MPMM];
         const testApplyDefaultSources = () => {
             HelperFunctions.setModalFilterSourcesStrings(this.compBackground.modalFilterBackgrounds, DEFAULT_SOURCES);
             HelperFunctions.setModalFilterSourcesStrings(this.compRace.modalFilterRaces, DEFAULT_SOURCES);
         }
         
-
-        this.pLoad().then(() => this.renderComponents()).then(() => testApplyDefaultSources()).then(() => this.e_switchTab("class"));
+        //Call this to let the components load some content before we start using them
+        this.pLoad()
+        .then(() => this.renderComponents()) //Then render the components
+        .then(() => testApplyDefaultSources()) //Use our test function to set only certain sources as active in the filter
+        .then(() => this.e_switchTab("class")); //Then switch to the tab we want to start off with
     }
 
-    _createTabWrapper(name, rootDiv){
-        const el = $(`<div class="ui-tab__wrp-tab-body ve-flex-col ui-tab__wrp-tab-body--border"></div>`).appendTo(rootDiv);
-        this[name] = new WindowTab(el);
-    }
     createTabs(){
         const tabHolder = $(`.tab_button_holder`);
+        const createTabBtn = (label) => {
+            return $$`<button class="btn btn-default ui-tab__btn-tab-head btn-sm">${label}</button>`.appendTo(tabHolder);
+        }
+
         //Create the tabs
-
-        //Class tab (mark as active)
-        const clsBtn = $(`<button class="btn btn-default ui-tab__btn-tab-head btn-sm">Class</button>`).click(()=>{
-            this.e_switchTab("class");
-        }).appendTo(tabHolder);
-        const raceBtn = $(`<button class="btn btn-default ui-tab__btn-tab-head btn-sm">Race</button>`).click(()=>{
-            this.e_switchTab("race");
-        }).appendTo(tabHolder);
-        const ablBtn = $(`<button class="btn btn-default ui-tab__btn-tab-head btn-sm">Abilities</button>`).click(()=>{
-            this.e_switchTab("abilities");
-        }).appendTo(tabHolder);
-        const bckBtn = $(`<button class="btn btn-default ui-tab__btn-tab-head btn-sm">Background</button>`).click(()=>{
-            this.e_switchTab("background");
-        }).appendTo(tabHolder);
-        const startEqBtn = $(`<button class="btn btn-default ui-tab__btn-tab-head btn-sm">Starting Equipment</button>`).click(()=>{
-            this.e_switchTab("startingEquipment");
-        }).appendTo(tabHolder);
-        const eqShopBtn = $(`<button class="btn btn-default ui-tab__btn-tab-head btn-sm">Equipment Shop</button>`).click(()=>{
-            this.e_switchTab("shop");
-        }).appendTo(tabHolder);
-        const spellsBtn = $(`<button class="btn btn-default ui-tab__btn-tab-head btn-sm">Spells</button>`).click(()=>{
-            this.e_switchTab("spells");
-        }).appendTo(tabHolder);
-
-        const featsBtn = $(`<button class="btn btn-default ui-tab__btn-tab-head btn-sm">Feats</button>`).click(()=>{
-            this.e_switchTab("feats");
-        }).appendTo(tabHolder); 
-        const shtBtn = $(`<button class="btn btn-default ui-tab__btn-tab-head btn-sm">Sheet</button>`).click(()=>{
-            this.e_switchTab("sheet");
-        }).appendTo(tabHolder);
+        createTabBtn("Class").click(()=>{ this.e_switchTab("class"); }).addClass("active"); //Set class button as active
+        createTabBtn("Race").click(()=>{ this.e_switchTab("race"); });
+        createTabBtn("Abilities").click(()=>{ this.e_switchTab("abilities"); });
+        createTabBtn("Background").click(()=>{ this.e_switchTab("background"); });
+        createTabBtn("Starting Equipment").click(()=>{ this.e_switchTab("startingEquipment"); });
+        createTabBtn("Equipment Shop").click(()=>{ this.e_switchTab("shop"); });
+        createTabBtn("Spells").click(()=>{ this.e_switchTab("spells"); });
+        createTabBtn("Feats").click(()=>{ this.e_switchTab("feats"); });
+        createTabBtn("Sheet").click(()=>{ this.e_switchTab("sheet"); });
         
-
         this.tabButtonParent = tabHolder;
-        clsBtn.addClass("active");
+    }
+    createPanels(){
+
+        const _root = $("#window-root");
+        const newPanel = () => {return new CharacterBuilderPanel($(`<div class="ui-tab__wrp-tab-body ve-flex-col ui-tab__wrp-tab-body--border"></div>`).appendTo(_root)); }
+
+        this.tabClass = newPanel();
+        this.tabRace = newPanel();
+        this.tabAbilities = newPanel();
+        this.tabBackground = newPanel();
+        this.tabEquipment = newPanel();
+        this.tabShop = newPanel();
+        this.tabSpells = newPanel();
+        this.tabFeats = newPanel();
+        this.tabSheet = newPanel();
     }
     async pLoad(){
         if(!SETTINGS.FILTERS){return;}
@@ -323,8 +303,8 @@ class ParentWindow {
    }
 
 }
-/**Don't think of this as a tab button, but more as a tab screen */
-class WindowTab {
+/**A wrapper for a div that contains components. Only used by CharacterBuilder */
+class CharacterBuilderPanel {
     $wrpTab;
     constructor(parentDiv){
         this.$wrpTab = parentDiv;
