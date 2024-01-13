@@ -3,7 +3,7 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 window.addEventListener('load', function () {
    
-    handleInit().then(() => handleReady()).then(() => SourceSelectorTest._pOpen({actor:null}))//.then(() => test_nativeImportContent());
+    handleInit().then(() => handleReady()).then(() => SourceSelectorTest._pOpen({actor:null}))
     
 });
 async function handleInit(){
@@ -11,60 +11,21 @@ async function handleInit(){
   Config.prePreInit();
 }
 async function handleReady(){
-  //mimics 'handleReady()' function
   SideDataInterfaces.init();
 }
-async function test_nativeImportContent(){
-    const content = await SourceSelectorTest.getOutputEntities();
-    console.log("CONTENT", content);
-    ContentGetter._cachedData = content;
-    //So strangely, classes in content.class does not have any entries in their "subclasses" array
-    //We will fix that
-    //await ContentGetter.matchSubclassesToClasses(content);
 
-    //WARNING: it might be stupid to match subclasses to classes before the subclass features have been cooked
-    //but right now, the ContentGetter gets subclasses from each class's 'subclasses' property, ON the subclass itself (which requires matching)
-    //But that also means that the content.subclass array's entries don't get cooked (aka "fixed"). so hopefully nobody will ever use them
-
-    //Class features defined in the .json files don't include information about the various options they have (expertise and so on)
-    //We will bake this into the class features now
-    await ContentGetter.cookClassFeatures(content); //unfortunately this function pulls from _cachedData, so we need to set it before that (i know, needs fixing)
-    
-    let window = new CharacterBuilder(ContentGetter._cachedData);
-}
 class SourceSelectorTest {
 
-  static async _pOpen({ actor: _0x4eb02c }) {
-    const sources = await this._pGetSources({'actor': _0x4eb02c});
-    /* const _0x26bcef = new ActorCharactermancerSourceSelector({
-      'title': "Charactermancer (Actor \"" + _0x4eb02c.name + "\"): Select Sources",
-      'filterNamespace': 'ActorCharactermancerSourceSelector_filter',
-      'savedSelectionKey': "ActorCharactermancerSourceSelector_savedSelection",
-      'sourcesToDisplay': sources
-    });
-    const _0x48a940 = await _0x26bcef.pWaitForUserInput();
-    if (_0x48a940 == null) { return; }
-    const _0x36cd98 = this._postProcessAllSelectedData(_0x48a940);
-    const _0x672311 = new ActorCharactermancer({ 'actor': _0x4eb02c, 'data': _0x36cd98 });
-    _0x672311.render(true); */
-
-    
+  static async _pOpen({ actor: actor }) {
+    const sources = await this._pGetSources({'actor': actor});
     const content = await SourceSelectorTest.getOutputEntities(sources, true);
     
-    //Create a window for the charactermancer, and feed it the data
-    //test
+    //Create a window for the character builder, and feed it the data
     const postProcessedData = SourceSelectorTest._postProcessAllSelectedData(content);
-    //console.log("postProcessedData: ", postProcessedData);
-    const mergedData = postProcessedData; //UtilDataSource.getMergedData(content);
+    const mergedData = postProcessedData;
     CharacterBuilder._DATA_PROPS_EXPECTED.forEach(propExpected => mergedData[propExpected] = mergedData[propExpected] || []);
     
     const window = new CharacterBuilder(mergedData);
-
-    /* this._comp = new ActorCharactermancer.Component({
-      'actor': _0x53cbd6.actor,
-      'data': mergedData,
-      'cbPostSave': this.close.bind(this)
-    }); */
   }
   static _postProcessAllSelectedData(data) {
 
@@ -118,17 +79,6 @@ class SourceSelectorTest {
   //TEMPFIX .filter(dataSource => !UtilWorldDataSourceSelector.isFiltered(dataSource));
   }
 
-  static async test_getOutputEntities() {
-
-      const officialSources = new UtilDataSource.DataSourceSpecial("SRD", this._pLoadVetoolsSource.bind(this), {
-          'cacheKey': '5etools-charactermancer',
-          'filterTypes': [UtilDataSource.SOURCE_TYP_OFFICIAL_ALL],
-          'isDefault': true,
-          //'pPostLoad': this._pPostLoad.bind(this, {'actor': _0x2344b6 })
-      });
-      const sources = [officialSources];
-      return SourceSelectorTest.getOutputEntities(sources, true);
-  }
   /**
    * @param {{name:string, isDefault:boolean, cacheKey:string}[]} sources
    * @returns {any}
