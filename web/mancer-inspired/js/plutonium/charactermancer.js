@@ -988,11 +988,8 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
             //A problem is that the class.classFeatures array doesn't contain the text content that we want to display. It only has the name
             //So what we need to do is get that text information from somewhere
 
-            //TEMPFIX 
-            const classInfo = //cls;
-            {classFeatures: HelperFunctions.getClassFeaturesFromClassInData(this._data, cls)};
-            /*cls._isStub ? cls : await DataLoader.pCacheAndGet("class", cls.source,
-            UrlUtil.URL_TO_HASH_BUILDER["class"](cls)); */ //The hash will look something like 'barbarian_phb' (depending on class name and source)
+            const classInfo = cls._isStub ? cls : await DataLoader.pCacheAndGet("class", cls.source,
+            UrlUtil.URL_TO_HASH_BUILDER["class"](cls)); //The hash will look something like 'barbarian_phb' (depending on class name and source)
             let entries = MiscUtil.copy(classInfo.classFeatures || []).flat();
             if(SETTINGS.FILTERS){entries = Charactermancer_Class_Util.getFilteredEntries_bySource(entries,
                 this._modalFilterClasses.pageFilter, this._modalFilterClasses.pageFilter.filterBox.getValues());}
@@ -1005,7 +1002,7 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
             const toRender = { 'type': "section", 'entries': entries};
             this._class_renderEntriesSection(parentElement, cls.name, toRender, { '$wrpTable': this._$wrpsClassTable[ix] });
             //Render the class table
-            //TEMPFIX await this._class_renderClass_pClassTable({ 'ix': ix, 'cls': cls, 'sc': sc });
+            await this._class_renderClass_pClassTable({ 'ix': ix, 'cls': cls, 'sc': sc });
         }
     }
     async _class_renderClass_pDispSubclass({
@@ -7590,8 +7587,7 @@ class Charactermancer_Background_Features extends BaseComponent {
     }
 
     _getOtherBackground() {
-        //TEMPFIX return this._modalFilter.allData[this._state.ixBackgroundOther];
-        return ContentGetter.getBackgrounds()[this._state.ixBackgroundOther];
+        return this._modalFilter.allData[this._state.ixBackgroundOther];
     }
 
     _render_other() {
@@ -12332,7 +12328,7 @@ class Charactermancer_Spell_Level extends BaseComponent {
             $wrpList: this._$wrpRows,
             fnSort: PageFilterSpells.sortSpells, //this function is important
             fnSearch: (li,searchTerm)=>{
-                return true; //DEBUG
+                return true; //TEMPFIX DEBUG
                 const {ixLearned, ixPrepared, ixAlwaysPrepared, ixAlwaysKnownSpell} = this.constructor._getProps(li.ix);
                 if ([ixLearned, ixPrepared, ixAlwaysPrepared, ixAlwaysKnownSpell].some(k=>this._state[k])) { return true; }
                 if(!searchTerm || !searchTerm.length){return true;} //TEMPFIX DEBUG maybe this helps?
