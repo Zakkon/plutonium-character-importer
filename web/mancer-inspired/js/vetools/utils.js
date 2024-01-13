@@ -5530,7 +5530,7 @@ globalThis.DataUtil = {
 		}
 
 		/**
-		 * @param uid
+		 * @param {string} uid
 		 * @param [opts]
 		 * @param [opts.isLower] If the returned values should be lowercase.
 		 */

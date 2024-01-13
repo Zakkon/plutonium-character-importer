@@ -5300,7 +5300,10 @@ class PageFilterClassesRaw extends PageFilterClassesBase {
             const isScExcluded = (subclassExclusions[sc.source] || {})[sc.name] || false;
             if (!isScExcluded) {
                 this._sourceFilter.addItem(sc.source);
-                sc.subclassFeatures.forEach(feature=>feature.loadeds.forEach(ent=>this._addEntrySourcesToFilter(ent.entity)));
+                sc.subclassFeatures.forEach(feature=> {
+                    if(!feature.loadeds){console.error("Subclassfeature is lacking loadeds", feature);}
+                    feature.loadeds.forEach(ent=>this._addEntrySourcesToFilter(ent.entity))
+                });
             }
         }
         );
@@ -5334,44 +5337,57 @@ class PageFilterClassesRaw extends PageFilterClassesBase {
         return (brew.class || []).find(bc=>bc.name.toLowerCase() === sc.className.toLowerCase() && (bc.source.toLowerCase() || Parser.SRC_PHB) === sc.classSource.toLowerCase());
     }
 
+
+    /**
+     * Postload classes and subclasses. Matches subclasses to classes (and nests them inside, instead of letting them live in data.subclass)
+     * Also sanity checks classes to make sure their properties are in order and that they are sorted by name.
+     * Also adds 'loadeds' to class features and subclass features
+     * @param {{class:any[], subclass:any[]}} data
+     * @param {any} {...opts}={}
+     * @returns {any} returns the data
+     */
     static async pPostLoad(data, {...opts}={}) {
         data = MiscUtil.copy(data);
 
         await PrereleaseUtil.pGetBrewProcessed();
         await BrewUtil2.pGetBrewProcessed();
 
-        if (!data.class)
-            data.class = [];
+        if (!data.class) { data.class = []; } //Make sure this property is initalized
 
+        //If data has subclasses listed, go through them and match each subclass to the corresponding class
+        //We only want subclasses to exist nested within their parent classes
         if (data.subclass) {
             for (const sc of data.subclass) {
-                if (!sc.className)
-                    continue;
-                sc.classSource = sc.classSource || Parser.SRC_PHB;
+                if (!sc.className) { continue; } //The subclass must have a className listed
+                sc.classSource = sc.classSource || Parser.SRC_PHB; //Default to PHB source if none is provided
 
-                let cls = data.class.find(it=>(it.name || "").toLowerCase() === sc.className.toLowerCase() && (it.source || Parser.SRC_PHB).toLowerCase() === sc.classSource.toLowerCase());
+                //Lets try to find a class that matches this subclass
+                let cls = data.class.find(it=>
+                    (it.name || "").toLowerCase() === sc.className.toLowerCase() //class name must match
+                && (it.source || Parser.SRC_PHB).toLowerCase() === sc.classSource.toLowerCase()); //class source must match
 
-                if (!cls) {
-                    cls = await this._pGetParentClass(sc);
+                if (!cls) { //If we failed to get a match
+                    cls = await this._pGetParentClass(sc); //Try to get a match another way
                     if (cls) {
                         cls = MiscUtil.copy(cls);
                         cls.subclasses = [];
                         data.class.push(cls);
-                    } else {
-                        cls = {
-                            name: sc.className,
-                            source: sc.classSource
-                        };
-                        data.class.push(cls);
+                    }
+                    else {
+                        //Just create a stub class for now
+                        cls = { name: sc.className, source: sc.classSource };
+                        data.class.push(cls); //And add it to the data, why not
                     }
                 }
 
+                //Then push the subclass to the class's 'subclasses array', which we initialize here if it doesnt already exist
                 (cls.subclasses = cls.subclasses || []).push(sc);
             }
 
-            delete data.subclass;
+            delete data.subclass; //When done, we also want to sipe data.subclass so that subclasses only exist nested inside their parent classes
         }
 
+        //Make sure each class their properties sanity checked and in order
         data.class.forEach(cls=>{
             cls.source = cls.source || Parser.SRC_PHB;
 
@@ -5392,34 +5408,33 @@ class PageFilterClassesRaw extends PageFilterClassesBase {
             cls._cntStartingSkillChoicesMutliclass = (MiscUtil.get(cls, "multiclassing", "proficienciesGained", "skills") || []).map(it=>it.choose ? (it.choose.count || 1) : 0).reduce((a,b)=>a + b, 0);
         }
         );
+        //Then sort all the classes by name
         data.class.sort((a,b)=>SortUtil.ascSortLower(a.name, b.name) || SortUtil.ascSortLower(a.source, b.source));
 
         data.class.forEach(cls=>{
-            cls.classFeatures = (cls.classFeatures || []).map(cf=>typeof cf === "string" ? {
-                classFeature: cf
-            } : cf);
+            cls.classFeatures = (cls.classFeatures || []).map(cf=>typeof cf === "string" ? { classFeature: cf } : cf);
 
             (cls.subclasses || []).forEach(sc=>{
                 sc.subclassFeatures = (sc.subclassFeatures || []).map(cf=>typeof cf === "string" ? {
                     subclassFeature: cf
                 } : cf);
-            }
-            );
-        }
-        );
+            });
+        });
 
         await this._pPreloadSideData();
 
         for (const cls of data.class) {
+            //Load the 'loadeds' of all the class features
             await (cls.classFeatures || []).pSerialAwaitMap(cf=>this.pInitClassFeatureLoadeds({
                 ...opts,
                 classFeature: cf,
                 className: cls.name
             }));
 
-            if (cls.classFeatures)
-                cls.classFeatures = cls.classFeatures.filter(it=>!it.isIgnored);
+            //Then filter away all ignored class features
+            if (cls.classFeatures) {cls.classFeatures = cls.classFeatures.filter(it=>!it.isIgnored);}
 
+            //Moving on to subclasses, we will repeat the procedure for each subclass feature
             for (const sc of cls.subclasses || []) {
                 await (sc.subclassFeatures || []).pSerialAwaitMap(scf=>this.pInitSubclassFeatureLoadeds({
                     ...opts,
@@ -5436,10 +5451,18 @@ class PageFilterClassesRaw extends PageFilterClassesBase {
         return data;
     }
 
+    /**
+     * Sets the 'loadeds' property of a classFeature, which contains information about choices that the class feature can make (expertise, etc)
+     * Normally this information is not stored in the same .json as the classfeature itself, but is stored in some external .json file
+     * @param {{classFeature:string}} classFeature
+     * @param {string} className
+     * @param {any} opts
+     */
     static async pInitClassFeatureLoadeds({classFeature, className, ...opts}) {
         if (typeof classFeature !== "object")
             throw new Error(`Expected an object of the form {classFeature: "<UID>"}`);
 
+        //Unpack the UID to get some strings
         const unpacked = DataUtil.class.unpackUidClassFeature(classFeature.classFeature);
 
         classFeature.hash = UrlUtil.URL_TO_HASH_BUILDER["classFeature"](unpacked);
@@ -5449,9 +5472,14 @@ class PageFilterClassesRaw extends PageFilterClassesBase {
         classFeature.level = level;
         classFeature.source = source;
 
+        //Now, the information about the class feature choices is usually stored in some other place, not within the classFeature itself
+        //So we have to get that information from somewhere
+
+        //Ask the cache to get us a raw classfeature from our source, and with our hash
         const entityRoot = await DataLoader.pCacheAndGet("raw_classFeature", classFeature.source, classFeature.hash, {
-            isCopy: true
+            isCopy: true //And make it a copy
         });
+
         const loadedRoot = {
             type: "classFeature",
             entity: entityRoot,
@@ -5461,6 +5489,7 @@ class PageFilterClassesRaw extends PageFilterClassesBase {
             className,
         };
 
+        //Check if this class feature is on the ignore list
         const isIgnored = await this._pGetIgnoredAndApplySideData(entityRoot, "classFeature");
         if (isIgnored) {
             classFeature.isIgnored = true;
@@ -5470,12 +5499,11 @@ class PageFilterClassesRaw extends PageFilterClassesBase {
         const {entityRoot: entityRootNxt, subLoadeds} = await this._pLoadSubEntries(this._getPostLoadWalker(), entityRoot, {
             ...opts,
             ancestorType: "classFeature",
-            ancestorMeta: {
-                _ancestorClassName: className,
-            },
+            ancestorMeta: { _ancestorClassName: className, },
         }, );
         loadedRoot.entity = entityRootNxt;
 
+        //Finally, set the loadeds
         classFeature.loadeds = [loadedRoot, ...subLoadeds];
     }
 
@@ -5628,13 +5656,16 @@ class PageFilterClassesRaw extends PageFilterClassesBase {
         await Promise.all(Object.values(PageFilterClassesRaw._IMPLS_SIDE_DATA).map(Impl=>Impl.pPreloadSideData()));
     }
 
+    /**
+     * @param {any} entity
+     * @param {string} type
+     * @returns {boolean}
+     */
     static async _pGetIgnoredAndApplySideData(entity, type) {
         if (!PageFilterClassesRaw._IMPLS_SIDE_DATA[type])
             throw new Error(`Unhandled type "${type}"`);
 
-        const sideData = await PageFilterClassesRaw._IMPLS_SIDE_DATA[type].pGetSideLoaded(entity, {
-            isSilent: true
-        });
+        const sideData = await PageFilterClassesRaw._IMPLS_SIDE_DATA[type].pGetSideLoaded(entity, { isSilent: true });
 
         if (!sideData)
             return false;
@@ -9212,7 +9243,6 @@ class ModalFilterEquipment extends ModalFilter {
             this._pageFilter.mutateAndAddToFilters(it);
             const filterListItem = this._getListItem(this._pageFilter, it, i);
             this._list.addItem(filterListItem);
-            if(it.name == "Abacus"){console.log("ABACUS", it, filterListItem);}
             const itemUid = `${it.name}|${it.source}`;
             //Add an event listener to the button for sending the item right to cart
             filterListItem.data.btnSendToRight.addEventListener("click", evt=>{

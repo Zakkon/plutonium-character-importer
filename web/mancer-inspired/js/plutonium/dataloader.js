@@ -2610,12 +2610,20 @@ class SideDataInterfaceBase {
 
     static init() {}
 
+    /**
+     * @param {{name: string, className: string, classSource: string, level: number, source: string, displayText: string}} ent
+     * @returns {any}
+     */
     static _getSideLoadOpts(ent) {
         return null;
     }
 
     static _SIDE_LOAD_OPTS = null;
 
+    /**
+     * @param {{ent: {name: string, className: string, classSource: string, level: number, source: string, displayText: string}, propOpts:string}}
+     * @returns {any}
+     */
     static _getResolvedOpts({ent, propOpts="_SIDE_LOAD_OPTS"}={}) {
         const out = this._getSideLoadOpts(ent) || this[propOpts];
         if (out.propsMatch)
@@ -2727,11 +2735,14 @@ class SideDataInterfaceBase {
         });
     }
 
+    /**
+     * @param {{name: string, className: string, classSource: string, level: number, source: string, displayText: string}} ent
+     * @param {any} propOpts
+     * @param {any} actorType
+     * @returns {any}
+     */
     static async pGetIsIgnoredSideLoaded(ent, {propOpts="_SIDE_LOAD_OPTS", actorType=undefined}={}) {
-        const opts = this._getResolvedOpts({
-            ent,
-            propOpts
-        });
+        const opts = this._getResolvedOpts({ ent, propOpts });
         if (!opts)
             return null;
 
@@ -3005,6 +3016,29 @@ class SideDataInterfaceClass extends SideDataInterfaceBase {
         PageFilterClassesFoundry.setImplSideData("subclass", this);
     }
 }
+class SideDataInterfaceClassSubclassFeature extends SideDataInterfaceBase {
+     /**
+     * @param {{name: string, className: string, classSource: string, level: number, source: string, displayText: string}} feature
+     * @returns {any}
+     */
+    static _getSideLoadOpts(feature) {
+        return {
+            propBrew: UtilEntityClassSubclassFeature.getBrewProp(feature),
+            fnLoadJson: async()=>this.pPreloadSideData(),
+            propJson: UtilEntityClassSubclassFeature.getEntityType(feature),
+            propsMatch: ["classSource", "className", "subclassSource", "subclassShortName", "level", "source", "name"],
+        };
+    }
+
+    static async _pGetPreloadSideData() {
+        return Vetools.pGetClassSubclassSideData();
+    }
+
+    static init() {
+        PageFilterClassesFoundry.setImplSideData("classFeature", this);
+        PageFilterClassesFoundry.setImplSideData("subclassFeature", this);
+    }
+}
 class SideDataInterfaceFeat extends SideDataInterfaceBase {
     static _SIDE_LOAD_OPTS = {
         propBrew: "foundryFeat",
@@ -3020,16 +3054,86 @@ class SideDataInterfaceFeat extends SideDataInterfaceBase {
         PageFilterClassesFoundry.setImplSideData("feat", this);
     }
 }
+class SideDataInterfaceOptionalfeature extends SideDataInterfaceBase {
+    static _SIDE_LOAD_OPTS = {
+        propBrew: "foundryOptionalfeature",
+        fnLoadJson: async()=>this.pPreloadSideData(),
+        propJson: "optionalfeature",
+    };
+
+    static async _pGetPreloadSideData() {
+        return Vetools.pGetOptionalFeatureSideData();
+    }
+
+    static init() {
+        PageFilterClassesFoundry.setImplSideData("optionalfeature", this);
+    }
+}
+class SideDataInterfaceReward extends SideDataInterfaceBase {
+    static _SIDE_LOAD_OPTS = {
+        propBrew: "foundryReward",
+        fnLoadJson: async()=>this.pPreloadSideData(),
+        propJson: "reward",
+    };
+
+    static async _pGetPreloadSideData() {
+        return Vetools.pGetRewardSideData();
+    }
+
+    static init() {
+        PageFilterClassesFoundry.setImplSideData("reward", this);
+    }
+}
+class SideDataInterfaceCharCreationOption extends SideDataInterfaceBase {
+    static _SIDE_LOAD_OPTS = {
+        propBrew: "foundryCharoption",
+        fnLoadJson: async()=>this.pPreloadSideData(),
+        propJson: "charoption",
+    };
+
+    static async _pGetPreloadSideData() {
+        return Vetools.pGetCharCreationOptionSideData();
+    }
+
+    static init() {
+        PageFilterClassesFoundry.setImplSideData("charoption", this);
+    }
+}
+class SideDataInterfaceVehicleUpgrade extends SideDataInterfaceBase {
+    static _SIDE_LOAD_OPTS = {
+        propBrew: "foundryVehicleUpgrade",
+        fnLoadJson: async()=>this.pPreloadSideData(),
+        propJson: "vehicleUpgrade",
+    };
+
+    static async _pGetPreloadSideData() {
+        return Vetools.pGetVehicleUpgradeSideData();
+    }
+
+    static init() {
+        PageFilterClassesFoundry.setImplSideData("vehicleUpgrade", this);
+    }
+}
 
 class SideDataInterfaces {
     static init() {
         SideDataInterfaceClass.init();
-        //SideDataInterfaceClassSubclassFeature.init();
-        //SideDataInterfaceOptionalfeature.init();
+        SideDataInterfaceClassSubclassFeature.init();
+        SideDataInterfaceOptionalfeature.init();
         SideDataInterfaceFeat.init();
-        //SideDataInterfaceReward.init();
-        //SideDataInterfaceCharCreationOption.init();
-        //SideDataInterfaceVehicleUpgrade.init();
+        SideDataInterfaceReward.init();
+        SideDataInterfaceCharCreationOption.init();
+        SideDataInterfaceVehicleUpgrade.init();
     }
 }
+//#endregion
+
+
+//#region Image Fetcher
+/* class ImageFetcherClassSubclassFeature extends ImageFetcherBase {
+    static _SideDataInterface = SideDataInterfaceClassSubclassFeature;
+    static _UtilEntity = UtilEntityClassSubclassFeature;
+    static _IMG_FALLBACK = `modules/${SharedConsts.MODULE_ID}/media/icon/mighty-force.svg`;
+} */
+
 //#endregion

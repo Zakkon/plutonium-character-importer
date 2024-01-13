@@ -10300,7 +10300,8 @@ Renderer.spell = class {
     }
 
     static getCombinedClasses(sp, prop) {
-        if((sp.classes == null || sp.classes.length < 1)){ console.error("Spell " + sp.name + " does not have any classes defined. Is data/spells/sources.json used? (it contains class information for all spells)", sp);}
+        if((sp.classes == null || sp.classes.length < 1)){
+            console.warn("Spell " + sp.name + " does not have any classes defined. Is data/spells/sources.json used? (it contains class information for all spells)", sp);}
         return [...((sp.classes || {})[prop] || []), ...((sp._tmpClasses || {})[prop] || []), ].filter(it=>{
 
             if (!ExcludeUtil.isInitialised){

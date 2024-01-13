@@ -3204,7 +3204,7 @@ class Config {
   static prePreInit() {
     this._preInit_doLoadConfig();
   }
-  static ["_preInit_getLoadedConfig"]() {
+  static _preInit_getLoadedConfig() {
     let _0x4eb887 = UtilGameSettings.getSafe(SharedConsts.MODULE_ID, Config._SETTINGS_KEY);
     if (_0x4eb887 == null || !Object.keys(_0x4eb887).length) {
       return {
@@ -3745,3 +3745,138 @@ Config._CONFIG_PLAYER = {};
 Config._CONFIG_TEMP = {};
 //#endregion
 
+//#region ConfigMigration
+class _ConfigMigratorBase {
+  _versionFrom;
+  _versionTo;
+
+  get versionFrom() {
+      return this._versionFrom;
+  }
+  get versionTo() {
+      return this._versionTo;
+  }
+
+  getMigratedForward({config, versionCurrent, versionTarget}) {
+      if (versionCurrent !== this._versionFrom)
+          return config;
+      if (this._versionTo > versionTarget)
+          return config;
+      return this._getMigratedForward({
+          config
+      });
+  }
+
+  _getMigratedForward({config}) {
+      throw new Error("Unimplemented!");
+  }
+
+  _mutMoveProp({config, groupSource, groupDestination, prop}) {
+      if (!(prop in config[groupSource] || {}))
+          return;
+
+      (config[groupDestination] ||= {})[prop] = config[groupSource][prop];
+      delete config[groupSource][prop];
+
+      if (!Object.keys(config[groupSource]).length)
+          delete config[groupSource];
+  }
+}
+
+class _ConfigMigratorZeroToOne extends _ConfigMigratorBase {
+  _versionFrom = 0;
+  _versionTo = 1;
+
+  _getMigratedForward({config}) {
+      config = MiscUtil.copyFast(config);
+
+      ["isLoadLocalPrereleaseIndex", "localPrereleaseDirectoryPath", "isUseLocalPrereleaseIndexJson", "localPrerelease", "isLoadLocalHomebrewIndex", "localHomebrewDirectoryPath", "isUseLocalHomebrewIndexJson", "localHomebrew", "baseSiteUrl", "isNoLocalData", "isNoPrereleaseBrewIndexes", "basePrereleaseUrl", "baseBrewUrl", ].forEach(prop=>{
+          this._mutMoveProp({
+              config,
+              groupSource: "import",
+              groupDestination: "dataSources",
+              prop,
+          });
+      }
+      );
+
+      return config;
+  }
+}
+class ConfigMigration {
+  static _MIGRATORS = [new _ConfigMigratorZeroToOne(), ];
+
+  static get CURRENT_VERSION() {
+      return Math.max(...this._MIGRATORS.map(it=>it.versionTo));
+  }
+
+  static _IS_INIT = false;
+  static _init() {
+      if (this._IS_INIT)
+          return;
+      this._IS_INIT = true;
+
+      const cnts = {};
+      this._MIGRATORS.forEach(({versionFrom, versionTo})=>{
+          cnts[versionFrom] = (cnts[versionFrom] || 0) + 1;
+          cnts[versionTo] = (cnts[versionTo] || 0) + 1;
+      }
+      );
+      if (Object.values(cnts).some(it=>it > 0))
+          throw new Error(`Multiple Config migrations defined for one or more versions! This is a bug!`);
+  }
+
+  static getMigrated({config}) {
+      if (!config)
+          return config;
+
+      const versionFrom = config.version ?? 0;
+      const versionTarget = this.CURRENT_VERSION;
+
+      const migrators = this._MIGRATORS.slice(versionFrom);
+      if (!migrators.length)
+          return config;
+
+      let versionCurrent = versionFrom;
+      for (const migrator of migrators) {
+          config = migrator.getMigratedForward({
+              config,
+              versionCurrent,
+              versionTarget
+          });
+          versionCurrent = migrator.versionTo;
+      }
+
+      config.version = versionCurrent;
+
+      return config;
+  }
+}
+//#endregion
+
+//#region ConfigUtilSettings
+class ConfigUtilsSettings {
+  static getEnumValues(meta) {
+      return typeof meta.values === "function" ? meta.values() : meta.values;
+  }
+
+  static getEnumValueValue(val) {
+      return val.value !== undefined ? val.value : val;
+  }
+
+  static isPlayerEditable(group, key) {
+      const meta = this._is_getKeyMeta(group, key);
+      return !!meta?.isPlayerEditable;
+  }
+
+  static isNullable(group, key) {
+      const meta = this._is_getKeyMeta(group, key);
+      return !!meta?.isNullable;
+  }
+
+  static _is_getKeyMeta(groupKey, key) {
+      return ConfigConsts.getDefaultConfigSortedFlat_().find(([groupKey_])=>groupKey_ === groupKey)[1][key];
+  }
+}
+
+//#endregion

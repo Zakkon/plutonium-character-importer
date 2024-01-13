@@ -4738,6 +4738,9 @@ class ContentGetter {
     static getClassByNameAndSource(name, source) {
         return ContentGetter.getClasses().filter(cls => !!cls && cls.name == name && cls.source == source);
     }
+    static getSubclassByNameAndSource(shortName, source, className, classSource) {
+        return ContentGetter.getSubclasses().filter(sc => !!sc && sc.shortName == shortName && sc.source == source && sc.className == className && sc.classSource == classSource);
+    }
     static getClassFeatureByUID(featureUID){
         const unpacked = ContentGetter.unpackUidClassFeature(featureUID);
         const foundClasses = this.getClassByNameAndSource(unpacked.className, unpacked.classSource);
@@ -4747,11 +4750,34 @@ class ContentGetter {
         const allFeatures = ContentGetter.getFeaturesFromClass(cls);
         return allFeatures.filter(f => f.name == unpacked.name && f.level == unpacked.level)[0];
     }
-    static async _cookData(data){
-        console.log("data", data);
-        await ContentGetter.cookClassFeatures(data);
-        await ContentGetter.cookSpellClasses(data);
+    static getSubclassFeatureByUID(featureUID){
+        const unpacked = ContentGetter.unpackUidSubclassFeature(featureUID);
+        const foundSubclasses = this.getSubclassByNameAndSource(unpacked.subclassShortName, unpacked.subclassSource, unpacked.className, unpacked.classSource);
+        if(foundSubclasses.length<1){console.error("Did not find any subclasses with name and source ", unpacked.subclassShortName, unpacked.subclassSource, unpacked.className, unpacked.classSource);}
+        if(foundSubclasses.length>1){console.error("Found too many subclasses with name and source ", unpacked.subclassShortName, unpacked.subclassSource, unpacked.className, unpacked.classSource);}
+        const sc = foundSubclasses[0];
+        const allFeatures = ContentGetter.getFeaturesFromSubclass(sc);
+        return allFeatures.filter(f => f.name == unpacked.name && f.level == unpacked.level)[0];
     }
+    /**Matches subclasses to classes */
+    static async matchSubclassesToClasses(data){
+        let subclasses = MiscUtil.copy(data.subclass);
+
+        for(let i = 0; i < subclasses.length; ++i)
+        {
+            const sc = subclasses[i];
+            if(!sc){continue;}
+            const matchingClasses = data.class.filter(cls => 
+                cls && cls.name == sc.className && cls.source == sc.classSource
+            );
+            if(matchingClasses.length > 1){ console.warn("Could not match subclass " + sc.name + "|" 
+            + sc.className + " to a class, as we got more than one match", matchingClasses, sc); continue;}
+            else if(matchingClasses.length < 1){ continue;} //Could not match. Maybe force use lowercase spelling when matching?
+            if(!matchingClasses[0].subclass){matchingClasses[0].subclasses = [];}
+            matchingClasses[0].subclasses.push(sc);
+        }
+    }
+
     /**Slightly parses the class features a bit to prepare them with loadeds, a property needed to convert them to option sets later. */
     static async cookClassFeatures(data){
         //Prep class feature info
@@ -4781,14 +4807,30 @@ class ContentGetter {
 
             if (cls.classFeatures) {cls.classFeatures = cls.classFeatures.filter(it => !it.isIgnored);}
             data.class[j] = cls;
-    
-            /* for (const sc of cls.subclasses || []) {
-            await (sc.subclassFeatures || []).pSerialAwaitMap(scf => this.pInitSubclassFeatureLoadeds({...opts, subclassFeature: scf, className: cls.name, subclassName: sc.name}));
-    
-            if (sc.subclassFeatures) sc.subclassFeatures = sc.subclassFeatures.filter(it => !it.isIgnored);
-        } */
+
+            
+            const sclen = cls.subclasses? cls.subclasses.length : 0;
+            console.log(cls.subclasses);
+            console.log("sclen for " + cls.name + " is ", sclen); 
+            for (let k = 0; k < sclen; ++k) {
+
+                const sc = cls.subclasses[k];
+                //Make sure the subclassFeatures aren't just strings, look like this:
+                //{subclassFeature: "string"}
+                for(let i = 0; i < sc.subclassFeatures.length; ++i){
+                    let f = sc.subclassFeatures[i];
+                    if (typeof f !== "object") {sc.subclassFeatures[i] = {subclassFeature: f};}
+                }
+
+                await (sc.subclassFeatures || []).pSerialAwaitMap(scf => ContentGetter.pInitSubclassFeatureLoadedsSync(
+                    {...opts, subclassFeature: scf, className: cls.name, subclassName: sc.name}));
+        
+                if (sc.subclassFeatures) { sc.subclassFeatures = sc.subclassFeatures.filter(it => !it.isIgnored); }
+                data.class[j].subclasses[k] = sc;
+            }
         }
     }
+
     static async cookSpellClasses(data){
         const _SPELL_SOURCE_LOOKUP = await HelperFunctions.loadJSONFile(`data/generated/gendata-spell-source-lookup.json`);
         DataUtil.spell._SPELL_SOURCE_LOOKUP = _SPELL_SOURCE_LOOKUP;
@@ -4959,6 +5001,55 @@ class ContentGetter {
             if(foundryFeature){ loadedRoot.entity.entryData = foundryFeature.entryData; }
         }
         classFeature.loadeds = [loadedRoot];
+    }
+    static pInitSubclassFeatureLoadedsSync({subclassFeature, className, subclassName, ...opts}) {
+        if (typeof subclassFeature !== "object")
+            throw new Error(`Expected an object of the form {subclassFeature: "<UID>"}`);
+
+        const unpacked = DataUtil.class.unpackUidSubclassFeature(subclassFeature.subclassFeature);
+
+        subclassFeature.hash = UrlUtil.URL_TO_HASH_BUILDER["subclassFeature"](unpacked);
+
+        const {name, level, source} = unpacked;
+        subclassFeature.name = name;
+        subclassFeature.level = level;
+        subclassFeature.source = source;
+
+        const entityRoot = ContentGetter.getSubclassFeatureByUID(subclassFeature.subclassFeature);
+        /* await DataLoader.pCacheAndGet("raw_subclassFeature", subclassFeature.source, subclassFeature.hash, {
+            isCopy: true
+        }); */
+        const loadedRoot = {
+            type: "subclassFeature",
+            entity: entityRoot,
+            page: "subclassFeature",
+            source: subclassFeature.source,
+            hash: subclassFeature.hash,
+            className,
+            subclassName,
+        };
+
+        /* const isIgnored = await this._pGetIgnoredAndApplySideData(entityRoot, "subclassFeature");
+        if (isIgnored) {
+            subclassFeature.isIgnored = true;
+            return;
+        }
+
+        if (entityRoot.isGainAtNextFeatureLevel) {
+            subclassFeature.isGainAtNextFeatureLevel = true;
+        }
+
+        const {entityRoot: entityRootNxt, subLoadeds} = await this._pLoadSubEntries(this._getPostLoadWalker(), entityRoot, {
+            ...opts,
+            ancestorType: "subclassFeature",
+            ancestorMeta: {
+                _ancestorClassName: className,
+                _ancestorSubclassName: subclassName,
+            },
+        }, );
+        loadedRoot.entity = entityRootNxt;
+
+        subclassFeature.loadeds = [loadedRoot, ...subLoadeds]; */
     }
 
     /**Deprecated */

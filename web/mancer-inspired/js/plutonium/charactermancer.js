@@ -108,7 +108,6 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
       this._existingClassMetas = [];
 
     }
-    //FINDME ActorCharactermancerClass.render
     render() {
         let wrptab = this._tabClass?.$wrpTab;
         if (!wrptab) { return; }
@@ -261,10 +260,7 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
             }
             //First time this function is called, we will probably not get anything out of getClass since we haven't set anything to _state yet
             const cls = this.getClass_({'propIxClass': propIxClass});
-            const subcls = this.getSubclass_({
-            'cls': cls,
-            'propIxSubclass': propIxSubclass
-            });
+            const subcls = this.getSubclass_({ 'cls': cls, 'propIxSubclass': propIxSubclass });
 
             this._class_renderClass_stgSelectSubclass({
             '$stgSelectSubclass': holder_selectSubclass,
@@ -343,39 +339,35 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
             [_0x207fe4]: null
             }));
             this._proxyAssignSimple("state", toObj);
-            const cls = this.getClass_({
-            'propIxClass': propIxClass
-            });
-            const subcls = this.getSubclass_({
-            'cls': cls,
-            'propIxSubclass': propIxSubclass
-            });
-            /* const filteredFeatures = this._class_getFilteredFeatures(cls, subcls);
+            const cls = this.getClass_({ 'propIxClass': propIxClass });
+            const subcls = this.getSubclass_({ 'cls': cls, 'propIxSubclass': propIxSubclass });
+            const filteredFeatures = this._class_getFilteredFeatures(cls, subcls);
             if (this._compsClassLevelSelect[ix]) {
-            this._compsClassLevelSelect[ix].setFeatures(filteredFeatures);
+                this._compsClassLevelSelect[ix].setFeatures(filteredFeatures);
             }
             await this._class_pRenderFeatureOptionsSelects({
-            'ix': ix,
-            'propCntAsi': propCntAsi,
-            'filteredFeatures': filteredFeatures,
-            '$stgFeatureOptions': holder_featureOptions,
-            'lockRenderFeatureOptionsSelects': _0x3217e0
-            }); */
+                'ix': ix,
+                'propCntAsi': propCntAsi,
+                'filteredFeatures': filteredFeatures,
+                '$stgFeatureOptions': holder_featureOptions,
+                'lockRenderFeatureOptionsSelects': lockRenderFeatureOptionsSelects
+            });
             if(SETTINGS.FILTERS){this._modalFilterClasses.pageFilter.filterBox.on(filter_evnt_valchange_subclass, () => applySubclassFilter());}
-            /* applySubclassFilter();
+            applySubclassFilter();
             await this._class_renderClass_pDispSubclass({
-            'ix': ix,
-            '$dispSubclass': disp_subclass,
-            'cls': cls,
-            'sc': subcls
-            }); */
+                'ix': ix,
+                '$dispSubclass': disp_subclass,
+                'cls': cls,
+                'sc': subcls
+            });
         };
         const renderSubclass_safe = async () => {
             try {
-            await this._pLock(lockChangeSubclass);
-            await renderSubclassComponents();
-            } finally {
-            this._unlock(lockChangeSubclass);
+                await this._pLock(lockChangeSubclass);
+                await renderSubclassComponents();
+            }
+            finally {
+                this._unlock(lockChangeSubclass);
             }
         };
         this._addHookBase(propIxSubclass, renderSubclass_safe);
@@ -663,46 +655,50 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
       idFilterBoxChangeSubclass: idFilterBoxChangeSubclass,
       doApplyFilterToSelSubclass: doApplyFilterToSelSubclass
     }) {
-      stgSelectSubclass.empty();
-      if (this._metaHksClassStgSubclass[ix]) { this._metaHksClassStgSubclass[ix].unhook(); }
-      if(cls == null){console.error("Class is null");}
-      if (cls && cls.subclasses && cls.subclasses.length) {
-        const uiSearchElement = ComponentUiUtil.$getSelSearchable(this, propIxSubclass, {
-          'values': cls.subclasses.map((a, b) => b),
-          'isAllowNull': true,
-          'fnDisplay': ix => {
-            const subcls = this.getSubclass_({'cls': cls, 'ix': ix });
-            if (!subcls) {
-              console.warn(...LGT, "Could not find subclass with index " + ix + " (" + cls.subclasses.length + " subclasses were available for class " + cls.name + ')');
-              return '(Unknown)';
+        stgSelectSubclass.empty();
+        if (this._metaHksClassStgSubclass[ix]) { this._metaHksClassStgSubclass[ix].unhook(); }
+        //We will be looking att cls.subclasses to see which subclasses we have to choose from
+        if (cls && cls.subclasses && cls.subclasses.length) {
+            const uiSearchElement = ComponentUiUtil.$getSelSearchable(this, propIxSubclass, {
+            'values': cls.subclasses.map((a, b) => b),
+            'isAllowNull': true,
+            'fnDisplay': ix => {
+                const subcls = this.getSubclass_({'cls': cls, 'ix': ix });
+                if (!subcls) {
+                console.warn(...LGT, "Could not find subclass with index " + ix + " (" + cls.subclasses.length + " subclasses were available for class " + cls.name + ')');
+                return '(Unknown)';
+                }
+                return subcls.name + " " + (subcls.source !== Parser.SRC_PHB ? '[' + Parser.sourceJsonToAbv(subcls.source) + ']' : '');
+            },
+            'fnGetAdditionalStyleClasses': ix => {
+                if (ix == null) { return null; }
+                const subcls = this.getSubclass_({'cls': cls, 'ix': ix });
+                if (!subcls) { return; }
+                return subcls._versionBase_isVersion ? ['italic'] : null;
+            },
+            'asMeta': true,
+            'isDisabled': this._class_isSubclassSelectionDisabled({'ix': ix}),
+            'displayNullAs': "Select a Subclass"
+            });
+            uiSearchElement.$iptDisplay.addClass('bl-0');
+            uiSearchElement.$iptSearch.addClass("bl-0");
+            this._metaHksClassStgSubclass[ix] = uiSearchElement;
+            this._modalFilterClasses.pageFilter.filterBox.on(idFilterBoxChangeSubclass, () => doApplyFilterToSelSubclass());
+            doApplyFilterToSelSubclass();
+            const wrp = $$`<div class="ve-flex-col w-100 mt-1">${uiSearchElement.$wrp}</div>`;
+            stgSelectSubclass.showVe().append(wrp);
+        }
+        else {
+            if(cls){
+                console.error("No subclasses found for class " + cls.name + ". Is the class.subclasses property not set?");
+                console.log(cls);
             }
-            return subcls.name + " " + (subcls.source !== Parser.SRC_PHB ? '[' + Parser.sourceJsonToAbv(subcls.source) + ']' : '');
-          },
-          'fnGetAdditionalStyleClasses': ix => {
-            if (ix == null) { return null; }
-            const subcls = this.getSubclass_({'cls': cls, 'ix': ix });
-            if (!subcls) { return; }
-            return subcls._versionBase_isVersion ? ['italic'] : null;
-          },
-          'asMeta': true,
-          'isDisabled': this._class_isSubclassSelectionDisabled({'ix': ix}),
-          'displayNullAs': "Select a Subclass"
-        });
-        uiSearchElement.$iptDisplay.addClass('bl-0');
-        uiSearchElement.$iptSearch.addClass("bl-0");
-        this._metaHksClassStgSubclass[ix] = uiSearchElement;
-        this._modalFilterClasses.pageFilter.filterBox.on(idFilterBoxChangeSubclass, () => doApplyFilterToSelSubclass());
-        doApplyFilterToSelSubclass();
-        const wrp = $$`<div class="ve-flex-col w-100 mt-1">${uiSearchElement.$wrp}</div>`;
-        stgSelectSubclass.showVe().append(wrp);
-      }
-      else {
-        console.error("No subclasses found");
-        console.log(cls);
-        stgSelectSubclass.hideVe();
-        this._metaHksClassStgSubclass[ix] = null;
-      }
+            
+            stgSelectSubclass.hideVe();
+            this._metaHksClassStgSubclass[ix] = null;
+        }
     }
+    
     //#region Health
     /**Create the display for the choice of HP gain mode for our class (average, roll, etc) */
     _class_renderClass_stgHpMode({
@@ -19310,6 +19306,64 @@ class Charactermancer_FeatureOptionsSelect extends BaseComponent {
                 parentAbilityAbv,
             }, );
         }
+    }
+}
+class Charactermancer_Feature_Util {
+    static addFauxOptionalFeatureEntries(featureList, optfeatList) {
+        if (!featureList || !optfeatList)
+            return;
+
+        Object.values(featureList).forEach(arr=>{
+            if (!(arr instanceof Array))
+                return;
+
+            for (const feature of arr) {
+                if (!feature.entries?.length || !feature.optionalfeatureProgression)
+                    continue;
+
+                for (const optFeatProgression of feature.optionalfeatureProgression) {
+                    this._addFauxOptionalFeatureFeatures_handleFeatProgression(optfeatList, feature, optFeatProgression, );
+                }
+            }
+        }
+        );
+    }
+
+    static _addFauxOptionalFeatureFeatures_handleFeatProgression(optfeatList, feature, optFeatProgression) {
+        if (optFeatProgression.progression instanceof Array)
+            return;
+
+        if (!optFeatProgression.progression["*"])
+            return;
+
+        const availOptFeats = optfeatList.filter(it=>optFeatProgression.featureType instanceof Array && (optFeatProgression.featureType || []).some(ft=>it.featureType.includes(ft))).filter(it=>!ExcludeUtil.isExcluded(UrlUtil.URL_TO_HASH_BUILDER[UrlUtil.PG_OPT_FEATURES](it), "optionalfeature", it.source, {
+            isNoCount: true
+        }, ));
+
+        feature.entries.push({
+            type: "options",
+            count: optFeatProgression.progression["*"],
+            entries: availOptFeats.map(it=>({
+                type: "refOptionalfeature",
+                optionalfeature: DataUtil.proxy.getUid("optionalfeature", it, {
+                    isMaintainCase: true
+                }),
+            })),
+            data: {
+                _plut_tmpOptionalfeatureList: true,
+            },
+        });
+    }
+
+    static getCleanedFeature_tmpOptionalfeatureList(feature) {
+        const cpyFeature = MiscUtil.copy(feature);
+        MiscUtil.getWalker().walk(cpyFeature, {
+            array: (arr)=>{
+                return arr.filter(it=>it.data == null || !it.data._plut_tmpOptionalfeatureList);
+            }
+            ,
+        }, );
+        return cpyFeature;
     }
 }
 //#endregion

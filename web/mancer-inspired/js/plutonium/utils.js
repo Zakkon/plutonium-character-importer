@@ -304,9 +304,7 @@ class UtilDataSource {
     }
 
     static async pPostLoadGeneric({isPrerelease, isBrew}, out) {
-        out = {
-            ...out
-        };
+        out = { ...out };
 
         if ((isBrew || isPrerelease) && (out.race || out.subrace)) {
             const nxt = await Charactermancer_Race_Util.pPostLoadPrereleaseBrew(out);
@@ -386,6 +384,13 @@ class UtilDataSource {
         },)), ];
     }
 
+
+    /**
+     * Returns the prerelease and brew sources from the inputted material
+     * @param {{_meta:{sources:{json:string}[]}}} json
+     * @param {boolean} isErrorOnMultiple
+     * @returns {{isPrerelease: Array, isBrew: Array}}
+     */
     static getSourceType(json, {isErrorOnMultiple=false}={}) {
         const isPrereleasePerSource = (json._meta?.sources || []).map(it=>SourceUtil.isPrereleaseSource(it.json || ""));
         const isPrerelease = isPrereleasePerSource.every(it=>it);
@@ -394,10 +399,7 @@ class UtilDataSource {
         if (isPrerelease && isBrew && isErrorOnMultiple)
             throw new Error(`Could not determine if data contained homebrew or if data contained prerelease content! Please ensure all homebrew/prerelease files have a valid "_meta.sources", and that no file contains both homebrew and prerelease sources.`);
 
-        return {
-            isPrerelease,
-            isBrew
-        };
+        return { isPrerelease, isBrew };
     }
 }
 UtilDataSource.SOURCE_TYP_OFFICIAL_BASE = "Official";
@@ -609,6 +611,13 @@ UtilDataSource.DataSourceFile = class extends UtilDataSource.DataSourceBase {
 };
 
 UtilDataSource.DataSourceSpecial = class extends UtilDataSource.DataSourceBase {
+
+    /**
+     * @param {string} name
+     * @param {any} pGet
+     * @param {{cacheKey:string}} opts
+     * @returns {any}
+     */
     constructor(name, pGet, opts) {
         opts = opts || {};
 
@@ -4455,6 +4464,36 @@ ComponentUiUtil.RangeSlider._W_LABEL_PX = 24;
 ComponentUiUtil.RangeSlider._MAX_PIPS = 40;
 //#endregion
 
+//#region UtilGameSettings
+class UtilGameSettings {
+    static prePreInit() {
+        //TEMPFIX
+        /* game.settings.register(SharedConsts.MODULE_ID, "isDbgMode", {
+            name: `Debug Mode`,
+            hint: `Enable additional developer-only debugging functionality. Not recommended, as it may reduce stability.`,
+            default: false,
+            type: Boolean,
+            scope: "world",
+            config: true,
+        }); */
+    }
+
+    static isDbg() {
+        return !!this.getSafe(SharedConsts.MODULE_ID, "isDbgMode");
+    }
+
+    static getSafe(module, key) {
+        //TEMPFIX
+        return null;
+       /*  try {
+            return game.settings.get(module, key);
+        } catch (e) {
+            return null;
+        } */
+    }
+}
+//#endregion
+
 //#region UtilPrePreInit
 class UtilPrePreInit {
     static _IS_GM = null;
@@ -5294,6 +5333,12 @@ globalThis.SourceUtil = {
         return Parser.SOURCES_PARTNERED_WOTC.has(source);
     },
 
+    
+    /**
+     * Returns true if the source is a prerelease source
+     * @param {string} source
+     * @returns {boolean}
+     */
     isPrereleaseSource(source) {
         if (source == null)
             return false;
@@ -10630,6 +10675,399 @@ class DataConverterFeature extends DataConverter {
         }
     }
 }
+class DataConverterClassSubclassFeature extends DataConverterFeature {
+    static _configGroup = "importClassSubclassFeature";
+
+    static _SideDataInterface = SideDataInterfaceClassSubclassFeature;
+    //TEMPFIX static _ImageFetcher = ImageFetcherClassSubclassFeature;
+
+    static async pGetDereferencedFeatureItem(feature) {
+        const type = UtilEntityClassSubclassFeature.getEntityType(feature);
+        const hash = UrlUtil.URL_TO_HASH_BUILDER[type](feature);
+        return DataLoader.pCacheAndGet(type, feature.source, hash, {
+            isCopy: true
+        });
+    }
+
+    static async pGetInitFeatureLoadeds(feature, {actor=null}={}) {
+        const isIgnoredLookup = await this._pGetInitFeatureLoadeds_getIsIgnoredLookup(feature);
+
+        const type = UtilEntityClassSubclassFeature.getEntityType(feature);
+        switch (type) {
+        case "classFeature":
+            {
+                const uid = DataUtil.class.packUidClassFeature(feature);
+                const asClassFeatureRef = {
+                    classFeature: uid
+                };
+                await PageFilterClassesFoundry.pInitClassFeatureLoadeds({
+                    classFeature: asClassFeatureRef,
+                    className: feature.className,
+                    actor,
+                    isIgnoredLookup
+                });
+                return asClassFeatureRef;
+            }
+        case "subclassFeature":
+            {
+                const uid = DataUtil.class.packUidSubclassFeature(feature);
+                const asSubclassFeatureRef = {
+                    subclassFeature: uid
+                };
+                const subclassNameLookup = await DataUtil.class.pGetSubclassLookup();
+                const subclassName = MiscUtil.get(subclassNameLookup, feature.classSource, feature.className, feature.subclassSource, feature.subclassShortName, "name");
+                await PageFilterClassesFoundry.pInitSubclassFeatureLoadeds({
+                    subclassFeature: asSubclassFeatureRef,
+                    className: feature.className,
+                    subclassName: subclassName,
+                    actor,
+                    isIgnoredLookup
+                });
+                return asSubclassFeatureRef;
+            }
+        default:
+            throw new Error(`Unhandled feature type "${type}"`);
+        }
+    }
+
+    static async _pGetInitFeatureLoadeds_getIsIgnoredLookup(feature) {
+        if (!feature.entries)
+            return {};
+
+        const type = UtilEntityClassSubclassFeature.getEntityType(feature);
+        switch (type) {
+        case "classFeature":
+            {
+                return this.pGetClassSubclassFeatureIgnoredLookup({
+                    data: {
+                        classFeature: [feature]
+                    }
+                });
+            }
+        case "subclassFeature":
+            {
+                return this.pGetClassSubclassFeatureIgnoredLookup({
+                    data: {
+                        subclassFeature: [feature]
+                    }
+                });
+            }
+        default:
+            throw new Error(`Unhandled feature type "${type}"`);
+        }
+    }
+
+
+    /**
+     * Returns an object with boolean properties named after class and subclass features that are marked as ignored
+     * @param {{classFeature:any[], subclassFeature:any[]}} data
+     * @returns {any}
+     */
+    static async pGetClassSubclassFeatureIgnoredLookup({data}) {
+        if (!data.classFeature?.length && !data.subclassFeature?.length)
+            return {};
+
+        const isIgnoredLookup = {};
+
+        const allRefsClassFeature = new Set();
+        const allRefsSubclassFeature = new Set();
+
+        (data.classFeature || []).forEach(cf=>{
+            const {refsClassFeature, refsSubclassFeature} = Charactermancer_Class_Util.getClassSubclassFeatureReferences(cf.entries);
+
+            refsClassFeature.forEach(ref=>allRefsClassFeature.add((ref.classFeature || "").toLowerCase()));
+            refsSubclassFeature.forEach(ref=>allRefsSubclassFeature.add((ref.subclassFeature || "").toLowerCase()));
+        });
+
+        (data.subclassFeature || []).forEach(scf=>{
+            const {refsClassFeature, refsSubclassFeature} = Charactermancer_Class_Util.getClassSubclassFeatureReferences(scf.entries);
+
+            refsClassFeature.forEach(ref=>allRefsClassFeature.add((ref.classFeature || "").toLowerCase()));
+            refsSubclassFeature.forEach(ref=>allRefsSubclassFeature.add((ref.subclassFeature || "").toLowerCase()));
+        });
+
+        for (const uid of allRefsClassFeature) {
+            if (await this._SideDataInterface.pGetIsIgnoredSideLoaded(DataUtil.class.unpackUidClassFeature(uid))) {
+                isIgnoredLookup[uid] = true;
+            }
+        }
+
+        for (const uid of allRefsSubclassFeature) {
+            if (await this._SideDataInterface.pGetIsIgnoredSideLoaded(DataUtil.class.unpackUidSubclassFeature(uid))) {
+                isIgnoredLookup[uid] = true;
+            }
+        }
+
+        return isIgnoredLookup;
+    }
+
+    static async pGetDocumentJson(feature, opts) {
+        opts = opts || {};
+        if (opts.actor)
+            opts.isActorItem = true;
+
+        Renderer.get().setFirstSection(true).resetHeaderIndex();
+
+        const out = await this._pGetClassSubclassFeatureItem(feature, opts);
+
+        const additionalData = await this._SideDataInterface.pGetDataSideLoaded(feature);
+        Object.assign(out.system, additionalData);
+
+        const additionalFlags = await this._SideDataInterface.pGetFlagsSideLoaded(feature);
+        Object.assign(out.flags, additionalFlags);
+
+        this._mutApplyDocOwnership(out, opts);
+
+        return out;
+    }
+
+    static _isUnarmoredDefense(feature) {
+        const cleanLowerName = (feature.name || "").toLowerCase().trim();
+        return /^unarmored defen[sc]e/.test(cleanLowerName);
+    }
+
+    static _getUnarmoredDefenseMeta(entity) {
+        if (!entity.entries)
+            return null;
+
+        const attribs = new Set();
+
+        JSON.stringify(entity.entries).replace(/(strength|dexterity|constitution|intelligence|wisdom|charisma|str|dex|con|int|wis|cha) modifier/gi, (fullMatch,ability)=>{
+            ability = ability.slice(0, 3).toLowerCase();
+            attribs.add(ability);
+        }
+        );
+
+        const predefinedKey = CollectionUtil.setEq(DataConverterClassSubclassFeature._UNARMORED_DEFENSE_BARBARIAN, attribs) ? "unarmoredBarb" : CollectionUtil.setEq(DataConverterClassSubclassFeature._UNARMORED_DEFENSE_MONK, attribs) ? "unarmoredMonk" : null;
+
+        return {
+            formula: ["10", ...[...attribs].map(ab=>`@abilities.${ab}.mod`)].join(" + "),
+            abilities: [...attribs],
+            predefinedKey,
+        };
+    }
+
+    static _getUnarmoredDefenseEffectSideTuples({actor, feature, img}) {
+        if (!this._isUnarmoredDefense(feature))
+            return [];
+
+        const unarmoredDefenseMeta = this._getUnarmoredDefenseMeta(feature);
+        if (!unarmoredDefenseMeta)
+            return [];
+
+        if (unarmoredDefenseMeta.predefinedKey) {
+            return UtilActiveEffects.getExpandedEffects([{
+                name: "Unarmored Defense",
+                changes: [{
+                    key: "system.attributes.ac.calc",
+                    mode: "OVERRIDE",
+                    value: unarmoredDefenseMeta.predefinedKey,
+                }, ],
+                transfer: true,
+            }, ], {
+                actor,
+                img,
+                parentName: feature.name,
+            }, {
+                isTuples: true,
+            }, );
+        }
+
+        return UtilActiveEffects.getExpandedEffects([{
+            name: "Unarmored Defense",
+            changes: [{
+                key: "system.attributes.ac.calc",
+                mode: "OVERRIDE",
+                value: "custom",
+            }, ],
+            transfer: true,
+        }, {
+            name: "Unarmored Defense",
+            changes: [{
+                key: "system.attributes.ac.formula",
+                mode: "UPGRADE",
+                value: unarmoredDefenseMeta.formula,
+            }, ],
+            transfer: true,
+        }, ], {
+            actor,
+            img,
+            parentName: feature.name,
+        }, {
+            isTuples: true,
+        }, );
+    }
+
+    static async _pGetClassSubclassFeatureItem(feature, opts) {
+        opts = opts || {};
+
+        let {type=null, actor} = opts;
+        type = type || UtilEntityClassSubclassFeature.getEntityType(feature);
+
+        let pOut;
+        if (await this._pIsInSrd(feature, type, opts)) {
+            pOut = this._pGetClassSubclassFeatureItem_fromSrd(feature, type, actor, opts);
+        } else {
+            pOut = this._pGetClassSubclassFeatureItem_other(feature, type, actor, opts);
+        }
+        return pOut;
+    }
+
+    static async _pIsInSrd(feature, type, {taskRunner=null}={}) {
+        const srdData = await UtilCompendium.getSrdCompendiumEntity(type, feature, {
+            fnGetAliases: UtilEntityClassSubclassFeature.getCompendiumAliases.bind(UtilEntityClassSubclassFeature),
+            taskRunner
+        });
+        return !!srdData;
+    }
+
+    static async _pGetClassSubclassFeatureItem_fromSrd(feature, type, actor, opts={}) {
+        const srdData = await UtilCompendium.getSrdCompendiumEntity(type, feature, {
+            fnGetAliases: UtilEntityClassSubclassFeature.getCompendiumAliases.bind(UtilEntityClassSubclassFeature),
+            taskRunner: opts.taskRunner
+        });
+
+        const {name: translatedName, description: translatedDescription, flags: translatedFlags} = this._getTranslationMeta({
+            translationData: this._getTranslationData({
+                srdData
+            }),
+            name: UtilApplications.getCleanEntityName(UtilDataConverter.getNameWithSourcePart(feature, {
+                isActorItem: actor != null
+            })),
+            description: await this.pGetEntryDescription(feature),
+        });
+
+        //TEMPFIX
+        const img = null;/* await this._ImageFetcher.pGetSaveImagePath(feature, {
+            propCompendium: type,
+            taskRunner: opts.taskRunner
+        }); */
+
+        const dataConsume = this._getData_getConsume({
+            ent: feature,
+            actor: opts.actor
+        });
+
+        const srdEffects = await this._SideDataInterface.pIsIgnoreSrdEffectsSideLoaded(feature) ? [] : MiscUtil.copy(srdData.effects || []);
+        DataConverter.mutEffectsDisabledTransfer(srdEffects, "importClassSubclassFeature");
+
+        const effectsSideTuples = UtilActiveEffects.getExpandedEffects(feature.effectsRaw, {
+            actor,
+            img,
+            parentName: feature.name
+        }, {
+            isTuples: true
+        });
+        effectsSideTuples.push(...this._getUnarmoredDefenseEffectSideTuples({
+            actor,
+            feature,
+            img
+        }));
+        effectsSideTuples.forEach(({effect, effectRaw})=>DataConverter.mutEffectDisabledTransfer(effect, "importClassSubclassFeature", UtilActiveEffects.getDisabledTransferHintsSideData(effectRaw)));
+
+        return {
+            name: translatedName,
+            type: srdData.type,
+            system: {
+                ...srdData.system,
+
+                source: UtilDocumentSource.getSourceObjectFromEntity(feature),
+                description: {
+                    value: translatedDescription,
+                    chat: "",
+                    unidentified: ""
+                },
+                consume: dataConsume,
+
+                ...(feature.foundryAdditionalSystem || {}),
+            },
+            ownership: {
+                default: 0
+            },
+            effects: DataConverter.getEffectsMutDedupeId([...srdEffects, ...effectsSideTuples.map(it=>it.effect), ]),
+            flags: {
+                ...translatedFlags,
+                ...this._getClassSubclassFeatureFlags(feature, type, opts),
+                ...(feature.foundryAdditionalFlags || {}),
+            },
+            img,
+        };
+    }
+
+    static _getClassSubclassFeatureFlags(feature, type, opts) {
+        opts = opts || {};
+
+        const prop = UtilEntityClassSubclassFeature.getEntityType(feature);
+
+        const out = {
+            [SharedConsts.MODULE_ID]: {
+                page: prop,
+                source: feature.source,
+                hash: UrlUtil.URL_TO_HASH_BUILDER[prop](feature),
+            },
+        };
+
+        if (opts.isAddDataFlags) {
+            out[SharedConsts.MODULE_ID].propDroppable = prop;
+            out[SharedConsts.MODULE_ID].filterValues = opts.filterValues;
+        }
+
+        return out;
+    }
+
+    static async _pGetClassSubclassFeatureItem_other(feature, type, actor, opts) {
+        const dataConsume = this._getData_getConsume({
+            ent: feature,
+            actor: opts.actor
+        });
+
+        //TEMPFIX
+        const img = null;/* await this._ImageFetcher.pGetSaveImagePath(feature, {
+            propCompendium: type,
+            taskRunner: opts.taskRunner
+        }); */
+
+        const effectsSideTuples = UtilActiveEffects.getExpandedEffects(feature.effectsRaw, {
+            actor,
+            img,
+            parentName: feature.name
+        }, {
+            isTuples: true
+        });
+        effectsSideTuples.push(...this._getUnarmoredDefenseEffectSideTuples({
+            actor,
+            feature,
+            img
+        }));
+        effectsSideTuples.forEach(({effect, effectRaw})=>DataConverter.mutEffectDisabledTransfer(effect, "importClassSubclassFeature", UtilActiveEffects.getDisabledTransferHintsSideData(effectRaw)));
+
+        return this._pGetItemActorPassive(feature, {
+            isActorItem: opts.isActorItem,
+            mode: "player",
+            modeOptions: {
+                isChannelDivinity: feature.className === "Cleric" && feature.name.toLowerCase().startsWith("channel divinity:"),
+            },
+            renderDepth: 0,
+            fvttType: "feat",
+            typeType: "class",
+            img,
+            fvttSource: UtilDocumentSource.getSourceObjectFromEntity(feature),
+            requirements: [feature.className, feature.level, feature.subclassShortName ? `(${feature.subclassShortName})` : ""].filter(Boolean).join(" "),
+            additionalData: feature.foundryAdditionalSystem,
+            foundryFlags: this._getClassSubclassFeatureFlags(feature, type, opts),
+            additionalFlags: feature.foundryAdditionalFlags,
+            effects: DataConverter.getEffectsMutDedupeId(effectsSideTuples.map(it=>it.effect)),
+            actor,
+            consumeType: dataConsume.type,
+            consumeTarget: dataConsume.target,
+            consumeAmount: dataConsume.amount,
+        }, );
+    }
+}
+
+DataConverterClassSubclassFeature._UNARMORED_DEFENSE_BARBARIAN = new Set(["dex", "con"]);
+DataConverterClassSubclassFeature._UNARMORED_DEFENSE_MONK = new Set(["dex", "wis"]);
+
 class DataConverterFeat extends DataConverterFeature {
     static _configGroup = "importFeat";
 
@@ -10857,7 +11295,9 @@ Util.Fvtt = class {
 //#region UtilCompat
 class UtilCompat {
     static isModuleActive(moduleId) {
-        return !!game.modules.get(moduleId)?.active;
+        //TEMPFIX
+        return false;
+        //return !!game.modules.get(moduleId)?.active;
     }
 
     static _MODULE_LIB_WRAPPER = "lib-wrapper";
@@ -11357,6 +11797,48 @@ globalThis.CurrencyUtil = class {
     }
 };
 //#endregion
+
+//#region UtilWorldDataSourceSelector
+class UtilWorldDataSourceSelector {
+    static _SETTINGS_KEY = "data-source-selection";
+    static async pInit() {
+        
+        await game.settings.register(SharedConsts.MODULE_ID, this._SETTINGS_KEY, {
+            name: "World Data Source Selection",
+            default: {},
+            type: Object,
+            scope: "world",
+            onChange: data=>{}
+            ,
+        }, );
+    }
+
+    static async pSaveState(saveableState) {
+       await game.settings.set(SharedConsts.MODULE_ID, this._SETTINGS_KEY, saveableState);
+        ui.notifications.info(`Saved! Note that you (and connected players) may need to reload for any changes to take effect.`);
+    }
+
+    static loadState() {
+        return UtilGameSettings.getSafe(SharedConsts.MODULE_ID, this._SETTINGS_KEY);
+    }
+
+    static isSourceSelectionActive() {
+        return (!game.user.isGM && Config.get("dataSources", "isPlayerEnableSourceSelection")) || (game.user.isGM && Config.get("dataSources", "isGmEnableSourceSelection"));
+    }
+
+    static isFiltered(dataSource) {
+        if (!this.isSourceSelectionActive())
+            return false;
+
+        const savedState = this.loadState();
+        if (savedState == null)
+            return false;
+
+        return !savedState.state?.[dataSource.identifierWorld];
+    }
+}
+//#endregion
+
 
 //#region Hist
 let Hist = class Hist {

@@ -3,135 +3,227 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 window.addEventListener('load', function () {
    
-    handleInit().then(() => handleReady()).then(() => test_nativeImportContent());
-
-    //prepare export button
+    handleInit().then(() => handleReady()).then(() => SourceSelectorTest._pOpen({actor:null}))//.then(() => test_nativeImportContent());
     
-
-    //console.log(Vetools._getMaybeLocalUrl("data/class/index.json"));
-    //test_loadJSON().then(() => {console.log("Done pinging");});
-
-    //Test using 5etools import
-    test_nativeImportContent();
-    
-    //test_AddClassPage();
 });
 async function handleInit(){
-  //Uncommenting this will cause this entire file to be ran twice. I think its because this function is async and needs to do something and not be empty
+  //The below function  throws an error: UtilGameSettings is not defined
   Config.prePreInit();
 }
 async function handleReady(){
- //mimics 'handleReady()' function
-
- SideDataInterfaces.init();
+  //mimics 'handleReady()' function
+  SideDataInterfaces.init();
 }
 async function test_nativeImportContent(){
     const content = await SourceSelectorTest.getOutputEntities();
+    console.log("CONTENT", content);
     ContentGetter._cachedData = content;
+    //So strangely, classes in content.class does not have any entries in their "subclasses" array
+    //We will fix that
+    //await ContentGetter.matchSubclassesToClasses(content);
+
+    //WARNING: it might be stupid to match subclasses to classes before the subclass features have been cooked
+    //but right now, the ContentGetter gets subclasses from each class's 'subclasses' property, ON the subclass itself (which requires matching)
+    //But that also means that the content.subclass array's entries don't get cooked (aka "fixed"). so hopefully nobody will ever use them
+
+    //Class features defined in the .json files don't include information about the various options they have (expertise and so on)
+    //We will bake this into the class features now
     await ContentGetter.cookClassFeatures(content); //unfortunately this function pulls from _cachedData, so we need to set it before that (i know, needs fixing)
     
     let window = new CharacterBuilder(ContentGetter._cachedData);
 }
 class SourceSelectorTest {
-    static async getOutputEntities() {
 
-        const officialSources = new UtilDataSource.DataSourceSpecial("SRD", this._pLoadVetoolsSource.bind(this), {
-            'cacheKey': '5etools-charactermancer',
-            'filterTypes': [UtilDataSource.SOURCE_TYP_OFFICIAL_ALL],
-            'isDefault': true,
-            //'pPostLoad': this._pPostLoad.bind(this, {'actor': _0x2344b6 })
-        });
-        const sources = [officialSources];
+  static async _pOpen({ actor: _0x4eb02c }) {
+    const sources = await this._pGetSources({'actor': _0x4eb02c});
+    /* const _0x26bcef = new ActorCharactermancerSourceSelector({
+      'title': "Charactermancer (Actor \"" + _0x4eb02c.name + "\"): Select Sources",
+      'filterNamespace': 'ActorCharactermancerSourceSelector_filter',
+      'savedSelectionKey': "ActorCharactermancerSourceSelector_savedSelection",
+      'sourcesToDisplay': sources
+    });
+    const _0x48a940 = await _0x26bcef.pWaitForUserInput();
+    if (_0x48a940 == null) { return; }
+    const _0x36cd98 = this._postProcessAllSelectedData(_0x48a940);
+    const _0x672311 = new ActorCharactermancer({ 'actor': _0x4eb02c, 'data': _0x36cd98 });
+    _0x672311.render(true); */
 
-        //Should contain all spells, classes, etc from every source we provide
-        const allContentMeta = await UtilDataSource.pGetAllContent({
-			sources,
-			/* uploadedFileMetas: this.uploadedFileMetas,
-			customUrls: this.getCustomUrls(),
-			isBackground,
+    
+    const content = await SourceSelectorTest.getOutputEntities(sources, true);
+    
+    //Create a window for the charactermancer, and feed it the data
+    //test
+    const postProcessedData = SourceSelectorTest._postProcessAllSelectedData(content);
+    //console.log("postProcessedData: ", postProcessedData);
+    const mergedData = postProcessedData; //UtilDataSource.getMergedData(content);
+    CharacterBuilder._DATA_PROPS_EXPECTED.forEach(propExpected => mergedData[propExpected] = mergedData[propExpected] || []);
+    
+    const window = new CharacterBuilder(mergedData);
 
-			page: this._page,
+    /* this._comp = new ActorCharactermancer.Component({
+      'actor': _0x53cbd6.actor,
+      'data': mergedData,
+      'cbPostSave': this.close.bind(this)
+    }); */
+  }
+  static _postProcessAllSelectedData(data) {
 
-			isDedupable: this._isDedupable,
-			fnGetDedupedData: this._fnGetDedupedData,
+    data = ImportListClass.Utils.getDedupedData({allContentMerged: data});
 
-			fnGetBlocklistFilteredData: this._fnGetBlocklistFilteredData,
+    data = ImportListClass.Utils.getBlocklistFilteredData({dedupedAllContentMerged: data});
 
-			isAutoSelectAll, */
-		});
+    delete data.subclass;
+    Charactermancer_Feature_Util.addFauxOptionalFeatureEntries(data, data.optionalfeature);
 
-        const out = allContentMeta.dedupedAllContentMerged;
-        //spells have their classes set already, thankfully
-        //however class feature's loadeds are not set
-        console.log("loaded content", out);
-        //TEMPFIX
-       /*  Renderer.spell.populatePrereleaseLookup(await PrereleaseUtil.pGetBrewProcessed(), {isForce: true});
-		Renderer.spell.populateBrewLookup(await BrewUtil2.pGetBrewProcessed(), {isForce: true});
+    Charactermancer_Class_Util.addFauxOptionalFeatureFeatures(data.class, data.optionalfeature);
+    return data;
+  }
 
-		(out.spell || []).forEach(sp => { Renderer.spell.uninitBrewSources(sp); Renderer.spell.initBrewSources(sp); }); */
+  /**
+   * Description
+   * @param {any} actor
+   * @returns {{name:string, isDefault:boolean, cacheKey:string}[]}
+   */
+  static async _pGetSources({ actor: actor }) {
+    const isStreamerMode = true;//Config.get('ui', 'isStreamerMode');
+    return [new UtilDataSource.DataSourceSpecial( isStreamerMode?
+      "SRD" : "5etools", this._pLoadVetoolsSource.bind(this),
+      {
+        cacheKey: '5etools-charactermancer',
+        filterTypes: [UtilDataSource.SOURCE_TYP_OFFICIAL_ALL],
+        isDefault: true,
+        pPostLoad: this._pPostLoad.bind(this, { actor: actor })
+      })/* , ...UtilDataSource.getSourcesCustomUrl({
+      'pPostLoad': this._pPostLoad.bind(this, {
+        'isBrewOrPrerelease': true,
+        'actor': actor
+      })
+    }), ...UtilDataSource.getSourcesUploadFile({
+      'pPostLoad': this._pPostLoad.bind(this, {
+        'isBrewOrPrerelease': true,
+        'actor': actor
+      })
+    }), ...(await UtilDataSource.pGetSourcesPrerelease(ActorCharactermancerSourceSelector._BREW_DIRS, {
+      'pPostLoad': this._pPostLoad.bind(this, {
+        'isPrerelease': true,
+        'actor': actor
+      })
+    })), ...(await UtilDataSource.pGetSourcesBrew(ActorCharactermancerSourceSelector._BREW_DIRS, {
+      'pPostLoad': this._pPostLoad.bind(this, {
+        'isBrew': true,
+        'actor': actor
+      })
+    })) */
+  ];
+  //TEMPFIX .filter(dataSource => !UtilWorldDataSourceSelector.isFiltered(dataSource));
+  }
 
-        return out;
+  static async test_getOutputEntities() {
+
+      const officialSources = new UtilDataSource.DataSourceSpecial("SRD", this._pLoadVetoolsSource.bind(this), {
+          'cacheKey': '5etools-charactermancer',
+          'filterTypes': [UtilDataSource.SOURCE_TYP_OFFICIAL_ALL],
+          'isDefault': true,
+          //'pPostLoad': this._pPostLoad.bind(this, {'actor': _0x2344b6 })
+      });
+      const sources = [officialSources];
+      return SourceSelectorTest.getOutputEntities(sources, true);
+  }
+  /**
+   * @param {{name:string, isDefault:boolean, cacheKey:string}[]} sources
+   * @returns {any}
+   */
+  static async getOutputEntities(sources, getDeduped=false) {
+
+    //Should contain all spells, classes, etc from every source we provide
+    const allContentMeta = await UtilDataSource.pGetAllContent({
+  sources,
+  /* uploadedFileMetas: this.uploadedFileMetas,
+  customUrls: this.getCustomUrls(),
+  isBackground,
+
+  page: this._page,
+
+  isDedupable: this._isDedupable,
+  fnGetDedupedData: this._fnGetDedupedData,
+
+  fnGetBlocklistFilteredData: this._fnGetBlocklistFilteredData,
+
+  isAutoSelectAll, */
+});
+
+    const out = getDeduped? allContentMeta.dedupedAllContentMerged : allContentMeta;
+    //spells have their classes set already, thankfully
+    //however class feature's loadeds are not set
+    //TEMPFIX
+    /*  Renderer.spell.populatePrereleaseLookup(await PrereleaseUtil.pGetBrewProcessed(), {isForce: true});
+Renderer.spell.populateBrewLookup(await BrewUtil2.pGetBrewProcessed(), {isForce: true});
+
+(out.spell || []).forEach(sp => { Renderer.spell.uninitBrewSources(sp); Renderer.spell.initBrewSources(sp); }); */
+
+    return out;
+}
+  static async _pLoadVetoolsSource() {
+      const combinedSource = {};
+      const [classResult, raceResult, backgroundResult, itemResults, spellResults, featResults, optionalFeatureResults]
+      = await Promise.all([Vetools.pGetClasses(), Vetools.pGetRaces(), DataUtil.loadJSON(Vetools.DATA_URL_BACKGROUNDS),
+          Vetools.pGetItems(), Vetools.pGetAllSpells(), DataUtil.loadJSON(Vetools.DATA_URL_FEATS), DataUtil.loadJSON(Vetools.DATA_URL_OPTIONALFEATURES)]);
+      Object.assign(combinedSource, classResult);
+      combinedSource.race = raceResult.race;
+      combinedSource.background = backgroundResult.background;
+      combinedSource.item = itemResults.item;
+      combinedSource.spell = spellResults.spell;
+      combinedSource.feat = featResults.feat;
+      combinedSource.optionalfeature = optionalFeatureResults.optionalfeature;
+      return combinedSource;
+  }
+  /**
+   * Called when a source has been loaded
+   * @param {any} data
+   * @param {{actor:any, isBrewOrPrerelease:boolean}} opts
+   * @returns {any} data
+   */
+  static async _pPostLoad(opts, data) {
+    let isBrew = false; let isPrerelease = false;
+    const isBrewOrPrerelease = opts.isBrewOrPrerelease || false;
+    if (isBrewOrPrerelease) {
+      const { isPrerelease: _isPre, isBrew: _isBrew } =
+      UtilDataSource.getSourceType(data, { isErrorOnMultiple: true });
+      isPrerelease = _isPre;
+      isBrew = _isBrew;
     }
-    static async _pLoadVetoolsSource() {
-        const combinedSource = {};
-        const [classResult, raceResult, backgroundResult, itemResults, spellResults, featResults, optionalFeatureResults]
-        = await Promise.all([Vetools.pGetClasses(), Vetools.pGetRaces(), DataUtil.loadJSON(Vetools.DATA_URL_BACKGROUNDS),
-            Vetools.pGetItems(), Vetools.pGetAllSpells(), DataUtil.loadJSON(Vetools.DATA_URL_FEATS), DataUtil.loadJSON(Vetools.DATA_URL_OPTIONALFEATURES)]);
-        Object.assign(combinedSource, classResult);
-        combinedSource.race = raceResult.race;
-        combinedSource.background = backgroundResult.background;
-        combinedSource.item = itemResults.item;
-        combinedSource.spell = spellResults.spell;
-        combinedSource.feat = featResults.feat;
-        combinedSource.optionalfeature = optionalFeatureResults.optionalfeature;
-        return combinedSource;
+
+    //Load the actual content
+    data = await UtilDataSource.pPostLoadGeneric({ isBrew: isBrew, isPrerelease: isPrerelease }, data);
+
+
+    if (data.class || data.subclass) {
+      //TEMPFIX
+      /* const { DataConverterClassSubclassFeature: convSubclFeature  } = await Promise.resolve().then(function () {
+        return DataConverterClassSubclassFeature;
+      }); */
+
+      const isIgnoredLookup = await DataConverterClassSubclassFeature/*convSubclFeature*/.pGetClassSubclassFeatureIgnoredLookup({ data: data });
+      const postLoadedData = await PageFilterClassesFoundry.pPostLoad({
+        'class': data.class,
+        'subclass': data.subclass,
+        'classFeature': data.classFeature,
+        'subclassFeature': data.subclassFeature
+      }, {
+        //'actor': _0x5d48db,
+        'isIgnoredLookup': isIgnoredLookup
+      });
+      Object.assign(data, postLoadedData);
+      if (data.class) {
+        data.class.forEach(cls => PageFilterClasses.mutateForFilters(cls));
+      }
     }
-      /* static async _pPostLoad(_0x4e0586) {
-        if (isBrewOrPrerelease) {
-          const {
-            isPrerelease: _0xd968a5,
-            isBrew: _0xbba490
-          } = UtilDataSource.getSourceType(_0x4e0586, {
-            'isErrorOnMultiple': true
-          });
-          _0xd968a5;
-          isBrew = _0xbba490;
-        }
-        _0x4e0586 = await UtilDataSource.pPostLoadGeneric({
-          'isBrew': isBrew,
-          'isPrerelease': _0xd968a5
-        }, _0x4e0586);
-        if (_0x4e0586["class"] || _0x4e0586.subclass) {
-          const {
-            DataConverterClassSubclassFeature: _0x1311c6
-          } = await Promise.resolve().then(function () {
-            return DataConverterClassSubclassFeature$1;
-          });
-          const _0x2f74ed = await _0x1311c6.pGetClassSubclassFeatureIgnoredLookup({
-            'data': _0x4e0586
-          });
-          const _0x15dc0a = await PageFilterClassesFoundry.pPostLoad({
-            'class': _0x4e0586["class"],
-            'subclass': _0x4e0586.subclass,
-            'classFeature': _0x4e0586.classFeature,
-            'subclassFeature': _0x4e0586.subclassFeature
-          }, {
-            'actor': _0x5d48db,
-            'isIgnoredLookup': _0x2f74ed
-          });
-          Object.assign(_0x4e0586, _0x15dc0a);
-          if (_0x4e0586["class"]) {
-            _0x4e0586["class"].forEach(_0x4b57f1 => PageFilterClasses.mutateForFilters(_0x4b57f1));
-          }
-        }
-        if (_0x4e0586.feat) {
-          _0x4e0586.feat = MiscUtil.copy(_0x4e0586.feat);
-        }
-        if (_0x4e0586.optionalfeature) {
-          _0x4e0586.optionalfeature = MiscUtil.copy(_0x4e0586.optionalfeature);
-        }
-        return _0x4e0586;
-      } */
+    if (data.feat) { data.feat = MiscUtil.copy(data.feat); }
+    if (data.optionalfeature) {
+      data.optionalfeature = MiscUtil.copy(data.optionalfeature);
+    }
+    return data;
+  }
 }
 class SETTINGS{
     static FILTERS = true;
@@ -141,6 +233,8 @@ class SETTINGS{
     static LOCALPATH_REDIRECT = true;
 }
 class CharacterBuilder {
+  static _DATA_PROPS_EXPECTED = ['class', "subclass", 'classFeature', "subclassFeature",
+  "race", "background", "item", "spell", "feat", 'optionalfeature'];
     tabButtonParent;
     tabClass;
     tabRace;
