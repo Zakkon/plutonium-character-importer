@@ -590,6 +590,11 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
     _getExistingClassCount() {
       return this._existingClassMetas.filter(Boolean).length;
     }
+    /**
+     * @param {number} ix used to get a class directly from cached memory (this._data[ix]). 
+     * @param {string} propIxClass Used to get the class that propIxClass points to
+     * @returns {any} Returns a full class object, or a stub of one if all else fails
+     */
     getClass_({ix: ix, propIxClass: propIxClass}) {
       if (ix == null && propIxClass == null) { throw new Error("At least one argument must be provided!"); }
       //If a propIxClass was provived, try to get the class from this._state
@@ -602,39 +607,33 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
       if (ix != null && ~ix) { return this._data.class[ix];}
       return DataConverterClass.getClassStub();
     }
-    getSubclass_({
-      cls: _0x5c8967,
-      propIxSubclass: _0x3ff653,
-      ix: _0x325aa4
-    }) {
-      if (_0x325aa4 == null && _0x3ff653 == null) {
-        throw new Error("At least one argument must be provided!");
-      }
-      if (!_0x5c8967) {
-        return null;
-      }
-      if (_0x3ff653 != null) {
-        if (this._state[_0x3ff653] == null) {
-          return null;
+    /**
+     * @param {any} cls A class object
+     * @param {string} propIxSubclass
+     * @param {number} ix optional, only used if propIxSubclass is not provided
+     * @returns {any} Returns a full subclass object, or a stub of one if all else fails
+     */
+    getSubclass_({ cls: cls, propIxSubclass: propIxSubclass, ix: ix })
+    {
+        if (ix == null && propIxSubclass == null) {
+            throw new Error("At least one argument must be provided!");
         }
-        if (!~this._state[_0x3ff653]) {
-          return DataConverterClass.getSubclassStub({
-            'cls': _0x5c8967
-          });
+        if (!cls) { return null; } //We need to have the class object to continue
+        if (propIxSubclass != null) {
+            if (this._state[propIxSubclass] == null) { return null; }
+            //If state doesnt have an entry for this prop, just return a stub
+            if (!~this._state[propIxSubclass]) {
+                return DataConverterClass.getSubclassStub({ 'cls': cls });
+            }
+            //If the class doesnt seem to have any subclasses to choose from, just return a stub
+            if (!cls.subclasses?.length) {
+                return DataConverterClass.getSubclassStub({ 'cls': cls });
+            }
+            //Now we use state to find the subclass from the class object
+            return cls.subclasses[this._state[propIxSubclass]];
         }
-        if (!_0x5c8967.subclasses?.["length"]) {
-          return DataConverterClass.getSubclassStub({
-            'cls': _0x5c8967
-          });
-        }
-        return _0x5c8967.subclasses[this._state[_0x3ff653]];
-      }
-      if (_0x325aa4 != null && ~_0x325aa4) {
-        return _0x5c8967.subclasses[_0x325aa4];
-      }
-      return DataConverterClass.getSubclassStub({
-        'cls': _0x5c8967
-      });
+        if (ix != null && ~ix) { return cls.subclasses[ix];  }
+        return DataConverterClass.getSubclassStub({ 'cls': cls });
     }
     _class_isClassSelectionDisabled({
       ix: _0x5bbf32
@@ -1320,10 +1319,10 @@ class Charactermancer_Class_HpIncreaseModeSelect extends BaseComponent {
 			<div class="inline-block bold mr-1 no-wrap">Custom Formula:</div>
 			${$iptCustom}
 		</div>`;
+        
         const hkMode = ()=>{
             $stgCustom.toggleVe(this._state.mode === ConfigConsts.C_IMPORT_CLASS_HP_INCREASE_MODE__ROLL_CUSTOM);
-        }
-        ;
+        };
         this._addHookBase("mode", hkMode);
         hkMode();
 
@@ -2616,15 +2615,9 @@ class Charactermancer_Class_LevelSelect extends BaseComponent {
         const $cbAll = this._isRadio ? null : $(`<input type="checkbox" name="cb-select-all">`);
         const $wrpList = $(`<div class="veapp__list mb-1"></div>`);
 
-        this._list = new List({
-            $wrpList: $wrpList,
-            fnSort: null,
-            isUseJquery: true,
-        });
+        this._list = new List({ $wrpList: $wrpList, fnSort: null, isUseJquery: true, });
 
-        this._listSelectClickHandler = new ListSelectClickHandler({
-            list: this._list
-        });
+        this._listSelectClickHandler = new ListSelectClickHandler({ list: this._list });
 
         for (let ix = 0; ix < this._featureArr.length; ++ix) {
             const $cb = this._render_$getCbRow(ix);
@@ -2633,7 +2626,8 @@ class Charactermancer_Class_LevelSelect extends BaseComponent {
             const fnUpdateRowText = ()=>$dispFeatures.text(this.constructor._getRowText(this._featureArr[ix]));
             fnUpdateRowText();
 
-            const $li = $$`<label class="w-100 ve-flex veapp__list-row veapp__list-row-hoverable ${this._isRadio && this._isForceSelect && ix <= this._maxPreviousLevel ? `list-multi-selected` : ""} ${ix < this._maxPreviousLevel ? `ve-muted` : ""}">
+            const $li = $$`<label class="w-100 ve-flex veapp__list-row veapp__list-row-hoverable ${this._isRadio 
+                && this._isForceSelect && ix <= this._maxPreviousLevel ? `list-multi-selected` : ""} ${ix < this._maxPreviousLevel ? `ve-muted` : ""}">
 				<span class="col-1 ve-flex-vh-center">${$cb}</span>
 				<span class="col-1-5 ve-text-center">${ix + 1}</span>
 				${$dispFeatures}
@@ -2642,15 +2636,11 @@ class Charactermancer_Class_LevelSelect extends BaseComponent {
             }
             );
 
-            const listItem = new ListItem(ix,$li,"",{},{
-                cbSel: $cb[0],
-                fnUpdateRowText,
-            },);
+            const listItem = new ListItem(ix,$li,"",{},{ cbSel: $cb[0], fnUpdateRowText, },);
             this._list.addItem(listItem);
         }
 
-        if (!this._isRadio)
-            this._listSelectClickHandler.bindSelectAllCheckbox($cbAll);
+        if (!this._isRadio) { this._listSelectClickHandler.bindSelectAllCheckbox($cbAll); }
 
         this._list.init();
 
@@ -10357,10 +10347,10 @@ class ActorCharactermancerSpell extends ActorCharactermancerBaseComponent {
         }
     }
     //#endregion
-    static ["_spell_isClassCaster"](_0x5c820c, _0xed7b9e) {
+    static _spell_isClassCaster(_0x5c820c, _0xed7b9e) {
       return _0x5c820c?.["casterProgression"] || _0xed7b9e?.["casterProgression"] || _0x5c820c?.["additionalSpells"] || _0xed7b9e?.["additionalSpells"] || _0x5c820c?.["cantripProgression"] || _0xed7b9e?.["cantripProgression"];
     }
-    static ["_spell_isCasterClassAtLevel"](_0x2a0e39, _0x31e64f, _0x338223) {
+    static _spell_isCasterClassAtLevel(_0x2a0e39, _0x31e64f, _0x338223) {
       if (!this._spell_isClassCaster(_0x2a0e39, _0x31e64f)) {
         return false;
       }
@@ -10390,7 +10380,7 @@ class ActorCharactermancerSpell extends ActorCharactermancerBaseComponent {
       }
       return false;
     }
-    static ["_spell_isCasterClassAtLevel_additionalSpells"](_0x38e4ef, _0x2fbd60) {
+    static _spell_isCasterClassAtLevel_additionalSpells(_0x38e4ef, _0x2fbd60) {
       if (!_0x38e4ef) {
         return false;
       }
@@ -10399,7 +10389,7 @@ class ActorCharactermancerSpell extends ActorCharactermancerBaseComponent {
       }
       return _0x38e4ef.some(_0x3b9665 => this._spell_isCasterClassAtLevel_additionalSpellsBlock(_0x3b9665, _0x2fbd60));
     }
-    static ["_spell_isCasterClassAtLevel_additionalSpellsBlock"](_0x269f28, _0x72034d) {
+    static _spell_isCasterClassAtLevel_additionalSpellsBlock(_0x269f28, _0x72034d) {
       const _0x5c8362 = Object.keys(_0x269f28);
       for (const _0x300d1e of _0x5c8362) {
         switch (_0x300d1e) {
@@ -10425,7 +10415,7 @@ class ActorCharactermancerSpell extends ActorCharactermancerBaseComponent {
       }
       return false;
     }
-    static ["_spell_isCasterClassAtLevel_cantrips"](_0x2d0ad1, _0x1d6ef4) {
+    static _spell_isCasterClassAtLevel_cantrips(_0x2d0ad1, _0x1d6ef4) {
       return !!_0x2d0ad1?.[_0x1d6ef4 - 0x1];
     }
     _spell_getExistingCasterMeta({
@@ -12974,7 +12964,7 @@ class ActorCharactermancerFeat extends ActorCharactermancerBaseComponent {
     }
 
     render() {
-        const tabFeats = this._tabFeats?.["$wrpTab"];
+        const tabFeats = this._tabFeats?.$wrpTab;
         if (!tabFeats) { return; }
         const wrapper = $$`<div class="ve-flex-col w-100 h-100 px-1 pt-1 overflow-y-auto ve-grow veapp__bg-foundry"></div>`;
         const sectionParent = $$`<div class="ve-flex-col w-100 h-100 px-1 overflow-y-auto ve-grow veapp__bg-foundry"></div>`;
@@ -13013,7 +13003,7 @@ class ActorCharactermancerFeat extends ActorCharactermancerBaseComponent {
         this._state.feat_availableFromBackground = this._parent.compBackground.getFeatureCustomizedBackground_({
           'isAllowStub': false
         })?.["feats"];
-      }
+    }
 
     get modalFilterFeats() {
       return this._modalFilterFeats;
@@ -13932,6 +13922,7 @@ class Charactermancer_AdditionalFeatsSelect extends BaseComponent {
 
 //#region Charactermancer Sheet
 class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
+    
     constructor(parentInfo) {
         parentInfo = parentInfo || {};
         super();
@@ -13942,67 +13933,100 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
   
     }
     render(){
-        let wrptab = this._tabSheet?.$wrpTab;
-        if (!wrptab) { return; }
-        let leftElement = $(`<div class="ve-flex-col w-100 h-100 px-1 pt-1 overflow-y-auto ve-grow veapp__bg-foundry"></div>`);
-        let sidebarElement = $(`<div class="ve-flex-col w-100 h-100 px-1 overflow-y-auto ve-grow veapp__bg-foundry"></div>`);
-        //this._addHookBase("class_ixPrimaryClass", () => this._state.class_pulseChange = !this._state.class_pulseChange);
-  
-
-
-        console.log("Sheet render");
-        const alertIfRaceChanged = () => this._setStateValue('race_ixRace_version', null);
-        //this._parent.compRace.addHookBase('race_ixRace', alertIfRaceChanged); //No need for this, looks like
+        const tabSheet = this._tabSheet?.$wrpTab;
+        if (!tabSheet) { return; }
+        const wrapper = $$`<div class="ve-flex-col w-100 h-100 px-1 pt-1 overflow-y-auto ve-grow veapp__bg-foundry"></div>`;
+        //const noFeatsWarningLbl = $("<div><i class=\"ve-muted\">No feats are available for your current build.</i><hr class=\"hr-1\"></div>").appendTo(wrapper);
+        console.log("RENDER SHEET");
         
-        const updateElements = () => {
-            console.log("Create sheet info elements");
-            //Take all child names of __state
-            //Get only the child names that start with "race_" and arent 'race_ixRace' or 'race_ixRace_version'
-            //From those, return them all as an array? not sure
-            /* const racePropertyNames = Object.keys(this.__state).filter(prop => prop.startsWith('race_')
-                && !['race_ixRace', 'race_ixRace_version'].includes(prop)).mergeMap(props => ({
-                [props]: null
-            })); */
-
-            //this._proxyAssignSimple("state", racePropertyNames);
-            let curRace = this.getRace_();
-
-            this.renderRace({$parentElement: leftElement, race: curRace });
+        const $wrpDisplay = $(`<div class="ve-flex-col min-h-0 ve-small"></div>`).appendTo(wrapper);
+        
+        const $colClass = $$`<div></div>`.appendTo($wrpDisplay);
+        //When class changes, redraw the elements
+        const hkClass = () => {
+            $colClass.empty();
+            $colClass.append("<hr class=\"hr-2\"><div class=\"bold mb-2\">Class</div>");
+            let classData = this.getClassData();
+            if(!classData?.length){
+                $colClass.append(`<div>None</div>`); return;
+            }
+            for(let i = 0; i < classData.length; ++i){
+                const d = classData[i];
+                const n = d.cls.name + (d.sc? ` (${d.sc.name})` : "") + (d.isPrimary && classData.length > 1? " (Primary)" : "");
+                $colClass.append(`<div>${n}</div>`);
+            }
+            
         };
+        this._parent.compClass.addHookBase("class_ixPrimaryClass", hkClass); //double check this, maybe add others
+        this._parent.compClass.addHookBase("class_ixMax", hkClass); 
+        this._parent.compClass.addHookBase("class_totalLevels", hkClass);
+        hkClass();
 
+        const $colRace = $$`<div></div>`.appendTo($wrpDisplay);
         //When race version changes, redraw the elements
-        //this.addHookBase("race_ixRace_version", updateElements); //No need for this, looks like
-        this._parent.compRace.addHookBase("race_ixRace_version", updateElements);
-  
+        const hkRace = () => {
+            $colRace.empty();
+            $colRace.append("<hr class=\"hr-2\"><div class=\"bold mb-2\">Race</div>");
+            let curRace = this.getRace_();
+            const n = curRace? curRace.name : "None";
+            $colRace.append(`<div>${n}</div>`);
+        };
+        this._parent.compRace.addHookBase("race_ixRace_version", hkRace);
+        hkRace();
+        
+        const sectionParent = $$`<div class="ve-flex-col w-100 h-100 px-1 overflow-y-auto ve-grow veapp__bg-foundry"></div>`;
+        
         $$`<div class="ve-flex w-100 h-100">
-        <div class="ve-flex-col w-100">
-            ${leftElement}
-        </div>
-        <div class="vr-1"></div>
-            ${sidebarElement}
-        </div>`.appendTo(wrptab);
+                <div class="ve-flex-col w-100">
+                    ${wrapper}
+                </div>
+                <div class="vr-1"></div>
+                ${sectionParent}
+        </div>`.appendTo(tabSheet);
+
+        
+       /*  this.setAdditionalFeatStateFromStatgen_();
+        const onBackgroundPulse = () => this._state.feat_availableFromBackground =
+            this._parent.compBackground.getFeatureCustomizedBackground_({'isAllowStub': false })?.["feats"];
+        this._parent.compBackground.addHookBase("background_pulseBackground", onBackgroundPulse);
+
+        this._state.feat_availableFromBackground = this._parent.compBackground.getFeatureCustomizedBackground_({
+          'isAllowStub': false
+        })?.["feats"]; */
     }
 
     renderRace({ $parentElement: parentElement, race: race }) {
         //parentElement.empty();
-        console.log("RENDERRACE", race);
         if (race) {
             //parentElement.showVe().append("<hr class=\"hr-2\"><div class=\"bold mb-2\">Hit Points</div>");
-            parentElement.append(`<div class="bold mb-2">racename</div>`);
+            parentElement.append(`<div class="bold mb-2">${race.name}</div>`);
         }
         else {
             parentElement.hideVe();
         }
     }
 
-    getRace_() {
-        console.log("sheet getrace", this._state);
-        const ixRace = this._parent.compRace.state.race_ixRace;
-        const curRace = this._data.race[ixRace];
-        if (!curRace) { return null; }
-        if (this._state.race_ixRace_version == null) { return curRace; }
-        const raceVersions = DataUtil.generic.getVersions(curRace);
-        return raceVersions[this._state.race_ixRace_version];
+    getRace_() { return this._parent.compRace.getRace_(); }
+    getClassData() {
+        const primaryClassIndex = this._parent.compClass._state.class_ixPrimaryClass;
+        //If we have 2 classes, this will be 1
+        const highestClassIndex = this._parent.compClass._state.class_ixMax;
+
+        const classList = [];
+        for(let i = 0; i <= highestClassIndex; ++i){
+            const isPrimary = i == primaryClassIndex;
+            //Get a string property that will help us grab actual class data
+            const { propIxClass: propIxClass, propIxSubclass: propIxSubclass } =
+            ActorCharactermancerBaseComponent.class_getProps(i);
+            //Grab actual class data
+            const cls = this._parent.compClass.getClass_({propIxClass: propIxClass});
+            if(!cls){continue;}
+            //Now we want to ask compClass if there is a subclass selected for this index
+            const sc = this._parent.compClass.getSubclass_({cls:cls, propIxSubclass:propIxSubclass});
+            if(sc != null) { classList.push({cls: cls, isPrimary: isPrimary, sc: sc}); }
+            else { classList.push({cls: cls, isPrimary: isPrimary }); }
+        }
+        return classList;
     }
 
     test_gatherExportInfo() {
@@ -14062,6 +14086,7 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
         const result = info.totals[info.mode];
         return {mode: info.mode, values: result};
     }
+
     /**
      * @param {ActorCharactermancerSpell} compSpells
      */
