@@ -13908,6 +13908,9 @@ class Charactermancer_AdditionalFeatsSelect extends BaseComponent {
 //#region Charactermancer Sheet
 class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
     
+    /**
+     * @param {{parent:CharacterBuilder}} parentInfo
+     */
     constructor(parentInfo) {
         parentInfo = parentInfo || {};
         super();
@@ -13959,6 +13962,18 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
         this._parent.compRace.addHookBase("race_ixRace_version", hkRace);
         hkRace();
         
+        const $colBackground = $$`<div></div>`.appendTo($wrpDisplay);
+        //When race version changes, redraw the elements
+        const hkBackground = () => {
+            $colBackground.empty();
+            $colBackground.append("<hr class=\"hr-2\"><div class=\"bold mb-2\">Background</div>");
+            let curBackground = this.getBackground();
+            const n = curBackground? curBackground.name : "None";
+            $colBackground.append(`<div>${n}</div>`);
+        };
+        this._parent.compBackground.addHookBase("background_pulseBackground", hkBackground);
+        hkBackground();
+
         const sectionParent = $$`<div class="ve-flex-col w-100 h-100 px-1 overflow-y-auto ve-grow veapp__bg-foundry"></div>`;
         
         $$`<div class="ve-flex w-100 h-100">
@@ -13978,17 +13993,6 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
         this._state.feat_availableFromBackground = this._parent.compBackground.getFeatureCustomizedBackground_({
           'isAllowStub': false
         })?.["feats"]; */
-    }
-
-    renderRace({ $parentElement: parentElement, race: race }) {
-        //parentElement.empty();
-        if (race) {
-            //parentElement.showVe().append("<hr class=\"hr-2\"><div class=\"bold mb-2\">Hit Points</div>");
-            parentElement.append(`<div class="bold mb-2">${race.name}</div>`);
-        }
-        else {
-            parentElement.hideVe();
-        }
     }
 
     getRace_() { return this._parent.compRace.getRace_(); }
@@ -14013,6 +14017,9 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
             else { classList.push({cls: cls, isPrimary: isPrimary, propIxSubclass:propIxSubclass, targetLevel:targetLevel}); }
         }
         return classList;
+    }
+    getBackground(){
+        return this._parent.compBackground.getBackground_(); 
     }
 
     test_gatherExportInfo() {
