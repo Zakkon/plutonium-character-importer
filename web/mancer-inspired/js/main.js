@@ -17,7 +17,7 @@ window.addEventListener('load', function () {
     //test_AddClassPage();
 });
 async function handleInit(){
-    //Config.prePreInit();
+    Config.prePreInit();
 }
 async function handleReady(){
  //mimics 'handleReady()' function
