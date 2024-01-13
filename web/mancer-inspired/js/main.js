@@ -17,7 +17,8 @@ window.addEventListener('load', function () {
     //test_AddClassPage();
 });
 async function handleInit(){
-    Config.prePreInit();
+  //Uncommenting this will cause this entire file to be ran twice. I think its because this function is async and needs to do something and not be empty
+  Config.prePreInit();
 }
 async function handleReady(){
  //mimics 'handleReady()' function
