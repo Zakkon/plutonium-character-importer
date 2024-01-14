@@ -8614,6 +8614,7 @@ Charactermancer_StartingEquipment.ComponentBase = class extends BaseComponent {
     }
 };
 
+/**A component for displaying choices related to default starting equipment */
 Charactermancer_StartingEquipment.ComponentDefault = class extends Charactermancer_StartingEquipment.ComponentBase {
     constructor(opts) {
         super(opts);
@@ -8633,6 +8634,8 @@ Charactermancer_StartingEquipment.ComponentDefault = class extends Charactermanc
         return $wrpTabInner;
     }
     _render_standard($wrpTabStandard) {
+
+        //Buttons for rolling or manually inputting gold
         const $btnRoll = this._$getBtnRollStartingGold();
         const $dispRollOrManual = $(`<i class="mx-1">\u2013 or \u2013</i>`);
         const $btnManual = this._$getBtnEnterStartingGold();
@@ -8683,35 +8686,44 @@ Charactermancer_StartingEquipment.ComponentDefault = class extends Charactermanc
             this._compCurrency.addHookCpRolled(hkOnChangeCurrency);
         }
 
+        //Now lets create some rows for the different choices we have
         const $wrpRows = $$`<div class="ve-flex-col w-100 h-100 min-h-0 overflow-y-auto"></div>`.appendTo($wrpTabStandard);
 
+        //Add a hook for when our starting equipment choices change
         const hkStartingEquipment = ()=>{
+            //Get the data
             const defaultData = this._compCurrency.startingEquipment?.defaultData || [];
 
+            //Call the unhook functions to let them know we are dropping them
             this._fnsUnhook.forEach(fn=>fn());
             this._fnsUnhook = [];
+            //Delete existing states relating to starting equipment
             Object.keys(this._state).filter(k=>k.startsWith(`std__`)).forEach(k=>delete this._state[k]);
+            //Clear the existing ui elements
             $wrpRows.empty();
 
+            //Create a row for each of the group sections
             const $rows = defaultData.map((group,ixGroup)=>{
                 const isSingleOption = Object.keys(group).length === 1;
                 const propGroup = `std__choice__${ixGroup}`;
                 this._state[propGroup] = 0;
                 const choices = Object.entries(group);
 
+
                 const $wrpsChoices = choices.map(([choiceName,choice],ixChoice)=>{
                     const children = [];
                     choice.forEach((equi,ixEqui)=>{
-                        if (typeof equi === "string")
-                            children.push(Renderer.get().render(`{@item ${equi}}`));
+                        if (typeof equi === "string"){children.push(Renderer.get().render(`{@item ${equi}}`));}
                         else if (equi.item) {
                             const itemId = this.constructor._getItemIdWithDisplayName(equi.item, equi.displayName);
 
                             children.push(Renderer.get().render(`${equi.quantity ? `${equi.quantity}× ` : ""}{@item ${itemId}}${equi.containsValue ? ` containing ${this.constructor._getHumanReadableCoinage(equi.containsValue)}` : ""}`));
-                        } else if (equi.equipmentType) {
+                        }
+                        //If the choice is of an equipment type, things get complicated as we need to show several sub-choices
+                        else if (equi.equipmentType) {
+                            //Get an array of string choices we have
                             const equiChoices = Charactermancer_StartingEquipment._EQUIPMENT_SETS[equi.equipmentType];
-                            if (!equiChoices)
-                                throw new Error(`Unhandled equipmentType "${equi.equipmentType}"`);
+                            if (!equiChoices) {throw new Error(`Unhandled equipmentType "${equi.equipmentType}"`);}
 
                             const num = equi.quantity || 1;
                             for (let i = 0; i < num; ++i) {
@@ -8730,9 +8742,10 @@ Charactermancer_StartingEquipment.ComponentDefault = class extends Charactermanc
                                 this._fnsUnhook.push(()=>this._removeHookBase(propEqui, hkDispEqui));
                                 hkDispEqui();
 
-                                const $btnPick = $(`<button class="btn btn-default btn-xxs" title="Choose an Item"><span class="fas fa-fw fa-search"></span></button>`).click(async()=>{
-                                    const equiChoicesName = Charactermancer_StartingEquipment._EQUIPMENT_SET_NAMES[equi.equipmentType];
-                                    const {$modalInner, doClose, doAutoResize: doAutoResizeModal} = await UtilApplications.pGetShowApplicationModal({
+                                const $btnPick = $(`<button class="btn btn-default btn-xxs" 
+                                title="Choose an Item"><span class="fas fa-fw fa-search"></span></button>`).click(async()=>{
+                                    //const equiChoicesName = Charactermancer_StartingEquipment._EQUIPMENT_SET_NAMES[equi.equipmentType];
+                                    /* const {$modalInner, doClose, doAutoResize: doAutoResizeModal} = await UtilApplications.pGetShowApplicationModal({
                                         title: `Choose Item${equiChoicesName ? ` \u2014 ${equiChoicesName}` : ""}`,
                                     });
 
@@ -8750,26 +8763,38 @@ Charactermancer_StartingEquipment.ComponentDefault = class extends Charactermanc
 
                                     $$($modalInner)`<div class="ve-flex-col h-100">${$rows}</div>`;
 
-                                    doAutoResizeModal();
-                                }
-                                );
+                                    doAutoResizeModal(); */
+                                    console.log("toggle subcomponent");
+                                });
 
-                                children.push($$`<div class="inline">${$btnPick} ${$dispEqui}</div>`);
+                                //Lets create a submenu
+                                const $listOptions = $$`<div class="col-2"></div>`;
+                                const sel = Charactermancer_StartingEquipment.ComponentDefault._createUiUtilDropdown(
+                                    this, propEqui, equiChoices, it=>{ const {name} = DataUtil.generic.unpackUid(it, "@item"); return name.toTitleCase()}); 
+                                //I want a callback function when this is selected
+                                sel.change(()=>{
+                                    const val = selMeta.$sel.val();
+                                    this._state[propGroup] = ixChoice;
+                                });
+                                sel.appendTo($listOptions);
 
-                                if (i < num - 1)
-                                    children.push(", ");
+                                //children.push($$`<div class="inline">${$btnPick} ${$dispEqui} ${$listOptions}</div>`);
+                                children.push($$`<div class="inline">${$listOptions} ${$dispEqui}</div>`);
+
+                                if (i < num - 1) {children.push(", ");}
                             }
-                        } else if (equi.special) {
+                        }
+                        else if (equi.special) {
                             children.push(Renderer.get().render(`${equi.quantity ? `${equi.quantity}× ` : ""}${equi.special}${equi.containsValue ? ` containing ${this.constructor._getHumanReadableCoinage(equi.containsValue)}` : ""}${equi.worthValue ? `, worth ${this.constructor._getHumanReadableCoinage(equi.worthValue)}` : ""}`));
-                        } else if (equi.value != null) {
+                        }
+                        else if (equi.value != null) {
                             children.push(this.constructor._getHumanReadableCoinage(equi.value));
-                        } else
+                        }
+                        else
                             throw new Error(`Unknown equipment data format: ${JSON.stringify(equi)}`);
 
-                        if (ixEqui < choice.length - 1)
-                            children.push(", ");
-                    }
-                    );
+                        if (ixEqui < choice.length - 1) {children.push(", ");}
+                    });
 
                     const $btnSelGroup = $(`<button class="btn btn-default btn-sm no-shrink ve-flex-vh-center imp-cls__disp-equi-choice-key mr-2 bold" ${isSingleOption ? "" 
                     : `title="Select Equipment Group ${choiceName}"`}>${isSingleOption ? "&nbsp;" : `(${choiceName})`}</button>`).click(async()=>{
@@ -8829,11 +8854,11 @@ Charactermancer_StartingEquipment.ComponentDefault = class extends Charactermanc
                 );
 
                 return $$`<div class="ve-flex-col w-100 p-1 my-1 imp-cls__wrp-equi-group">${$wrpsChoices}</div>`;
-            }
-            );
+            });
 
             $rows.forEach($row=>$wrpRows.append($row));
 
+            //If there are no rows available, just show a sad message
             if (!$rows.length) {
                 $wrpRows.append(`<div class="ve-flex-vh-center w-100 h-100 italic ve-muted">No starting equipment available.</div>`);
             }
@@ -8842,6 +8867,7 @@ Charactermancer_StartingEquipment.ComponentDefault = class extends Charactermanc
         this._compCurrency.addHookStartingEquipment(hkStartingEquipment);
         hkStartingEquipment();
 
+        //Add a hook for when the amount of coins we get to use with starting equipment changes
         const hkSetCoinsFromDefault = ()=>{
             if (Config.get("equipmentShop", "startingGold") != null) {
                 this._compCurrency.cpFromDefault = 0; return;
@@ -9053,6 +9079,36 @@ Charactermancer_StartingEquipment.ComponentDefault = class extends Charactermanc
         if (!a.ammoType && b.ammoType)
             return -1;
         return SortUtil.ascSortLower(a.name, b.name) || SortUtil.ascSortLower(Parser.sourceJsonToFull(a.source), Parser.sourceJsonToFull(b.source));
+    }
+
+    static _createUiUtilDropdown(component, prop, values, fnDisplay, displayNullAs=null, isAllowNull=true, asMeta=true){
+        const selMeta = ComponentUiUtil.$getSelEnum(component, prop, {
+            values: values,
+            isAllowNull: isAllowNull,
+            asMeta: asMeta,
+            displayNullAs: displayNullAs,
+            fnDisplay: fnDisplay
+        });
+        if(!asMeta){return selMeta};
+        return selMeta.$sel;
+    }
+    static _createCustomDropdown(values, fnDisplay, displayNullAs=null, isAllowNull=true){
+        const select = document.createElement("select");
+        select.className = "form-control input-xs";
+        const sel = $(select);
+        if(isAllowNull){
+            const opt = document.createElement("option");
+            opt.value = "-1";
+            opt.text = displayNullAs || "\u2014";
+            sel.append(opt);
+        }
+        values.forEach((it, i)=> {
+            const opt = document.createElement("option");
+            opt.value = `${i}`;
+            opt.text = fnDisplay ? fnDisplay(it) : it;
+            sel.append(opt);
+        });
+        return sel;
     }
 };
 
