@@ -358,6 +358,11 @@ class UtilDataSource {
         });
     }
 
+    /**
+     * @param {string[]} dirsHomebrew
+     * @param {{pPostLoad:Function}} nxtOpts
+     * @returns {Promise<any>}
+     */
     static async pGetSourcesBrew(dirsHomebrew, nxtOpts={}) {
         return this._pGetSourcesPrereleaseBrew({
             brewUtil: BrewUtil2,
@@ -369,6 +374,10 @@ class UtilDataSource {
         });
     }
 
+    /**
+     * @param {{localSources:any[], sources:{name:string, url:string, abbreviations:string[]}[], nxtOpts:{pPostLoad:Function}, brewUtil:any,
+     * filterTypesLocal:string[], filterTypes:string[]}}
+     */
     static async _pGetSourcesPrereleaseBrew({localSources, sources, nxtOpts, brewUtil, filterTypesLocal, filterTypes}) {
         return [...localSources.map(({name, url, abbreviations})=>new UtilDataSource.DataSourceUrl(name,url,{
             ...nxtOpts,
@@ -418,6 +427,10 @@ UtilDataSource.SOURCE_TYPE_ORDER = [UtilDataSource.SOURCE_TYP_OFFICIAL_ALL, Util
 UtilDataSource.SOURCE_TYPE_ORDER__FILTER = [UtilDataSource.SOURCE_TYP_OFFICIAL_ALL, UtilDataSource.SOURCE_TYP_OFFICIAL_SINGLE, UtilDataSource.SOURCE_TYP_EXTRAS, UtilDataSource.SOURCE_TYP_PRERELEASE_LOCAL, UtilDataSource.SOURCE_TYP_PRERELEASE, UtilDataSource.SOURCE_TYP_BREW_LOCAL, UtilDataSource.SOURCE_TYP_BREW, UtilDataSource.SOURCE_TYP_CUSTOM, UtilDataSource.SOURCE_TYP_UNKNOWN, ];
 
 UtilDataSource.DataSourceBase = class {
+    /**
+     * @param {string} name
+     * @param {{pPostLoad:Function, filterTypes:string[], abbreviations:string[], brewUtil:any, isExistingPrereleaseBrew:boolean}} opts
+     */
     constructor(name, opts) {
         this.name = name;
 
@@ -469,6 +482,11 @@ UtilDataSource.DataSourceBase = class {
 };
 
 UtilDataSource.DataSourceUrl = class extends UtilDataSource.DataSourceBase {
+    /**
+     * @param {string} name
+     * @param {string} url
+     * @param {{pPostLoad:Function, filterTypes:string[], abbreviations:string[], brewUtil:any, isExistingPrereleaseBrew:boolean}} opts
+     */
     constructor(name, url, opts) {
         opts = opts || {};
 
@@ -11464,6 +11482,32 @@ class UtilCompat {
     }
     ;
 }
+//#endregion
+
+//#region UtilHooks
+class UtilHooks {
+    static callAll(name, val) {
+        Hooks.callAll(this._getHookName(name), val);
+    }
+
+    static call(name, val) {
+        Hooks.callAll(this._getHookName(name), val);
+    }
+
+    static on(name, fn) {
+        Hooks.on(this._getHookName(name), fn);
+    }
+
+    static off(name, fn) {
+        Hooks.off(this._getHookName(name), fn);
+    }
+
+    static _getHookName(name) {
+        return `${SharedConsts.MODULE_ID_FAKE}.${name}`;
+    }
+}
+UtilHooks.HK_CONFIG_UPDATE = "configUpdate";
+UtilHooks.HK_IMPORT_COMPLETE = "importComplete";
 //#endregion
 
 //#region CryptUtil

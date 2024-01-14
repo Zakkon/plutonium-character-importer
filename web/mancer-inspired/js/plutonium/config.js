@@ -513,8 +513,8 @@ class ConfigConsts {
       }
     };
   }
-  static ["_DEFAULT_CONFIG"] = null;
-  static ["getDefaultConfig_"]() {
+  static _DEFAULT_CONFIG = null;
+  static getDefaultConfig_() {
     return this._DEFAULT_CONFIG = this._DEFAULT_CONFIG || {
       'ui': {
         'name': 'UI',
@@ -3012,19 +3012,23 @@ class ConfigConsts {
       }
     };
   }
-  static ["_DEFAULT_CONFIG_SORTED"] = null;
-  static ["getDefaultConfigSorted_"]() {
-    return this._DEFAULT_CONFIG_SORTED = this._DEFAULT_CONFIG_SORTED || Object.entries(this.getDefaultConfig_()).sort(([, _0xb7c8c5], [, _0x343b25]) => SortUtil.ascSortLower(_0xb7c8c5.name, _0x343b25.name));
+  static _DEFAULT_CONFIG_SORTED = null;
+  static getDefaultConfigSorted_() {
+    //Returns _DEFAULT_CONFIG_SORTED if it has already been set, if not, it sorts and sets _DEFAULT_CONFIG_SORTED
+    return this._DEFAULT_CONFIG_SORTED = this._DEFAULT_CONFIG_SORTED
+      || Object.entries(this.getDefaultConfig_()).sort(([, entry1], [, entry2]) => SortUtil.ascSortLower(entry1.name, entry2.name));
   }
-  static ["_DEFAULT_CONFIG_SORTED_FLAT"] = null;
-  static ["getDefaultConfigSortedFlat_"]() {
-    if (this._DEFAULT_CONFIG_SORTED_FLAT) {
-      return this._DEFAULT_CONFIG_SORTED_FLAT;
-    }
-    return this._DEFAULT_CONFIG_SORTED_FLAT = this._DEFAULT_CONFIG_SORTED_FLAT || this.getDefaultConfigSorted_().map(([_0x102f4b, _0x540fe5]) => {
+  static _DEFAULT_CONFIG_SORTED_FLAT = null;
+  static getDefaultConfigSortedFlat_() {
+    //Returns _DEFAULT_CONFIG_SORTED_FLAT if it has already been set
+    if (this._DEFAULT_CONFIG_SORTED_FLAT) { return this._DEFAULT_CONFIG_SORTED_FLAT; }
+
+    //If not, it sets _DEFAULT_CONFIG_SORTED_FLAT and returns itself
+    return this._DEFAULT_CONFIG_SORTED_FLAT = this._DEFAULT_CONFIG_SORTED_FLAT
+    || this.getDefaultConfigSorted_().map(([_0x102f4b, _0x540fe5]) => {
       const _0x417b84 = {};
-      this._KEYS_SETTINGS_METAS.forEach(_0x48a0c5 => {
-        Object.entries(_0x540fe5[_0x48a0c5] || {}).forEach(([_0x70d0f8, _0x41ed31]) => {
+      this._KEYS_SETTINGS_METAS.forEach(meta => {
+        Object.entries(_0x540fe5[meta] || {}).forEach(([_0x70d0f8, _0x41ed31]) => {
           _0x417b84[_0x70d0f8] = _0x41ed31;
         });
       });
@@ -3189,113 +3193,105 @@ class Consts {
 //#region Config
 class Config {
   
-  static ["_IS_INIT"] = false;
-  static ["_IS_INIT_SAVE_REQUIRED"] = false;
-  static get ['backendEndpoint']() {
+  static _IS_INIT = false;
+  static _IS_INIT_SAVE_REQUIRED = false;
+  static get backendEndpoint() {
     const _0xa1e040 = Config.get("misc", "backendEndpoint");
     if (_0xa1e040) {
       return _0xa1e040;
     }
     return ROUTE_PREFIX ? '/' + ROUTE_PREFIX + "/api/plutonium" : "/api/plutonium";
   }
-  static get isInit() {
-    return this._IS_INIT;
-  }
-  static prePreInit() {
-    this._preInit_doLoadConfig();
-  }
-  static _preInit_getLoadedConfig() {
-    let _0x4eb887 = UtilGameSettings.getSafe(SharedConsts.MODULE_ID, Config._SETTINGS_KEY);
-    if (_0x4eb887 == null || !Object.keys(_0x4eb887).length) {
-      return {
-        'isLoaded': false,
-        'config': Config._getDefaultGmConfig()
-      };
-    }
-    return {
-      'isLoaded': true,
-      'config': ConfigMigration.getMigrated({
-        'config': _0x4eb887
-      })
-    };
-  }
-  static _preInit_doLoadConfig() {
-      this._pPrePreInit_registerSettings();
-      const {
-        isLoaded: isLoaded,
-        config: config
-      } = this._preInit_getLoadedConfig();
-      Config._CONFIG = config;
-      if (isLoaded) {
-        const _0x4150fc = this._populateMissingConfigValues(Config._CONFIG, { 'isPlayer': false });
-        this._IS_INIT_SAVE_REQUIRED = this._IS_INIT_SAVE_REQUIRED || _0x4150fc;
-      }
-      //TEMPFIX
-     /*  game.socket.on(this._SOCKET_ID, _0x11513f => {
-        switch (_0x11513f.type) {
-          case "config.update":
-            {
-              const _0x2829e6 = _0x11513f.config;
-              const _0x218c03 = MiscUtil.copy(Config._CONFIG);
-              Object.assign(Config._CONFIG, _0x2829e6);
-              if (!UtilPrePreInit.isGM()) {
-                ConfigApp.handleGmConfigUpdate(_0x2829e6);
-              }
-              UtilHooks.callAll(UtilHooks.HK_CONFIG_UPDATE, {
-                'previous': _0x218c03,
-                'current': MiscUtil.copy(Config._CONFIG)
-              });
-              break;
-            }
-        }
-      });
-      if (!UtilPrePreInit.isGM()) {
-        const _0x2f835b = GameStorage.getClient(Config._CLIENT_SETTINGS_KEY);
-        if (_0x2f835b == null) {
-          Config._CONFIG_PLAYER = Config._getDefaultPlayerConfig();
-        } else {
-          Config._CONFIG_PLAYER = _0x2f835b;
-          const _0x2803d0 = this._populateMissingConfigValues(Config._CONFIG_PLAYER, {
-            'isPlayer': true
-          });
-          this._IS_INIT_SAVE_REQUIRED = this._IS_INIT_SAVE_REQUIRED || _0x2803d0;
-        }
-      } */
 
-      this._pInit_initCompatibilityTempOverrides();
-      this._IS_INIT = true;
+  static get isInit() { return this._IS_INIT; }
+
+  static prePreInit() { this._preInit_doLoadConfig(); }
+
+  static _preInit_getLoadedConfig() {
+    //Tries to ask foundry for existing game settings
+    let existingConfig = UtilGameSettings.getSafe(SharedConsts.MODULE_ID, Config._SETTINGS_KEY);
+    //If none are found, we create some new ones
+    if (existingConfig == null || !Object.keys(existingConfig).length) {
+      return { 'isLoaded': false, 'config': Config._getDefaultGmConfig() }; //Using the default gm config
+    }
+    //Or we load the config that was found, and make sure to migrate it incase it is an out of date version
+    return { 'isLoaded': true, 'config': ConfigMigration.getMigrated({ 'config': existingConfig }) };
   }
-  static ['_COMPATIBILITY_TEMP_OVERRIDES'] = null;
-  static ["_pInit_initCompatibilityTempOverrides"]() {
-    ConfigConsts.getDefaultConfigSortedFlat_().forEach(([_0x5f00ec, _0x5379fb]) => {
-      Object.entries(_0x5379fb).forEach(([_0x20a13a, _0x3eecc1]) => {
-        if (!_0x3eecc1.compatibilityModeValues) {
-          return;
-        }
-        Object.entries(_0x3eecc1.compatibilityModeValues).find(([_0x25d591, _0x5ef870]) => {
-          const _0x540a72 = _0x3eecc1.type === "enum" ? ConfigUtilsSettings.getEnumValueValue(_0x5ef870) : _0x5ef870;
-          const _0x2883d8 = _0x3eecc1.type === "enum" ? _0x5ef870.name || _0x540a72 : _0x540a72;
-          if (!UtilCompat.isModuleActive(_0x25d591)) {
-            return false;
+
+  static _preInit_doLoadConfig() {
+    this._pPrePreInit_registerSettings(); //Registers some settings into foundry
+    //Tries to load an existing config
+    const { isLoaded: isLoaded, config: config } = this._preInit_getLoadedConfig();
+    Config._CONFIG = config;
+    if (isLoaded) { //If we managed to load an existing config
+      const isSaveRequired = this._populateMissingConfigValues(Config._CONFIG, { 'isPlayer': false });
+      this._IS_INIT_SAVE_REQUIRED = this._IS_INIT_SAVE_REQUIRED || isSaveRequired;
+    }
+    //TEMPFIX some boring foundry stuff
+    /*  game.socket.on(this._SOCKET_ID, _0x11513f => {
+      switch (_0x11513f.type) {
+        case "config.update":
+          {
+            const _0x2829e6 = _0x11513f.config;
+            const _0x218c03 = MiscUtil.copy(Config._CONFIG);
+            Object.assign(Config._CONFIG, _0x2829e6);
+            if (!UtilPrePreInit.isGM()) {
+              ConfigApp.handleGmConfigUpdate(_0x2829e6);
+            }
+            UtilHooks.callAll(UtilHooks.HK_CONFIG_UPDATE, {
+              'previous': _0x218c03,
+              'current': MiscUtil.copy(Config._CONFIG)
+            });
+            break;
           }
-          const _0x4a4aec = Config.get(_0x5f00ec, _0x20a13a);
+      }
+    });
+    if (!UtilPrePreInit.isGM()) {
+      const _0x2f835b = GameStorage.getClient(Config._CLIENT_SETTINGS_KEY);
+      if (_0x2f835b == null) {
+        Config._CONFIG_PLAYER = Config._getDefaultPlayerConfig();
+      } else {
+        Config._CONFIG_PLAYER = _0x2f835b;
+        const _0x2803d0 = this._populateMissingConfigValues(Config._CONFIG_PLAYER, {
+          'isPlayer': true
+        });
+        this._IS_INIT_SAVE_REQUIRED = this._IS_INIT_SAVE_REQUIRED || _0x2803d0;
+      }
+    } */
+
+    //Do some check on compability to other modules
+    this._pInit_initCompatibilityTempOverrides();
+    this._IS_INIT = true;
+  }
+
+  static ['_COMPATIBILITY_TEMP_OVERRIDES'] = null;
+  static _pInit_initCompatibilityTempOverrides() {
+
+    ConfigConsts.getDefaultConfigSortedFlat_().forEach(([propName, propValue]) => {
+      Object.entries(propValue).forEach(([k, v]) => {
+        if (!v.compatibilityModeValues) { return; }
+        Object.entries(v.compatibilityModeValues).find(([_0x25d591, _0x5ef870]) => {
+          const _0x540a72 = v.type === "enum" ? ConfigUtilsSettings.getEnumValueValue(_0x5ef870) : _0x5ef870;
+          const _0x2883d8 = v.type === "enum" ? _0x5ef870.name || _0x540a72 : _0x540a72;
+          if (!UtilCompat.isModuleActive(_0x25d591)) { return false; }
+
+          const _0x4a4aec = Config.get(propName, k);
           const _0x486d1b = !CollectionUtil.deepEquals(_0x540a72, _0x4a4aec);
-          Config.setTemp(_0x5f00ec, _0x20a13a, _0x540a72, {
-            'isSkipPermissionCheck': true
-          });
+          Config.setTemp(propName, k, _0x540a72, { 'isSkipPermissionCheck': true });
           if (_0x486d1b) {
             const {
               displayGroup: _0x314d1c,
               displayKey: _0x4cabc2
-            } = Config._getDisplayLabels(_0x5f00ec, _0x20a13a);
+            } = Config._getDisplayLabels(propName, k);
             const _0x5d4132 = _0x4a4aec != null ? JSON.stringify(_0x4a4aec) : _0x4a4aec;
             const _0x4fb80d = _0x2883d8 != null ? JSON.stringify(_0x2883d8) : _0x2883d8;
             this._COMPATIBILITY_TEMP_OVERRIDES = this._COMPATIBILITY_TEMP_OVERRIDES || {};
-            MiscUtil.set(this._COMPATIBILITY_TEMP_OVERRIDES, _0x5f00ec, _0x20a13a, {
+            MiscUtil.set(this._COMPATIBILITY_TEMP_OVERRIDES, propName, k, {
               'value': _0x540a72,
               'message': "\"" + _0x314d1c + " -&gt; " + _0x4cabc2 + "\" value `" + _0x5d4132 + "` has compatibility issues with module \"" + game.modules.get(_0x25d591).title + "\" (must be set to `" + _0x4fb80d + '`)'
             });
-            console.warn(...LGT, game.modules.get(_0x25d591).title + " detected! Setting compatibility config: " + _0x5f00ec + '.' + _0x20a13a + " = " + _0x4fb80d + " (was " + _0x5d4132 + "). If you encounter unexpected issues, consider disabling either module.");
+            console.warn(...LGT, game.modules.get(_0x25d591).title + " detected! Setting compatibility config: " 
+            + propName + '.' + k + " = " + _0x4fb80d + " (was " + _0x5d4132 + "). If you encounter unexpected issues, consider disabling either module.");
           }
         });
       });
@@ -3329,7 +3325,7 @@ class Config {
       'onChange': _0x2cf485 => {}
     }); */
   }
-  static ["pOpen"]({
+  static pOpen({
     evt = null,
     initialVisibleGroup = null
   } = {}) {
@@ -3367,10 +3363,8 @@ class Config {
     }
     this._IS_INIT_SAVE_REQUIRED = false;
   }
-  static ["_getDefaultGmConfig"]() {
-    return this._getDefaultConfig({
-      'isPlayer': false
-    });
+  static _getDefaultGmConfig() {
+    return this._getDefaultConfig({ 'isPlayer': false });
   }
   static ["_getDefaultPlayerConfig"]() {
     return this._getDefaultConfig({
@@ -3382,8 +3376,8 @@ class Config {
     const isPlayer = opts.isPlayer;
     const configConsts = MiscUtil.copy(ConfigConsts.getDefaultConfigSorted_());
     const outputConfig = {};
-    configConsts.forEach(([_0x1e3fbb, _0x120dfe]) => {
-      const _0x5a892a = outputConfig[_0x1e3fbb] = {};
+    configConsts.forEach(([propName, propValue]) => {
+      const _0x5a892a = outputConfig[propName] = {};
       const _0x2a5160 = _0x1fa78d => Object.entries(_0x1fa78d).forEach(([_0x249b71, _0x38a295]) => {
         if (isPlayer) {
           if (_0x38a295.isPlayerEditable) {
@@ -3393,14 +3387,14 @@ class Config {
           _0x5a892a[_0x249b71] = _0x38a295["default"];
         }
       });
-      if (_0x120dfe.settings) {
-        _0x2a5160(_0x120dfe.settings);
+      if (propValue.settings) {
+        _0x2a5160(propValue.settings);
       }
-      if (_0x120dfe.settingsAdvanced) {
-        _0x2a5160(_0x120dfe.settingsAdvanced);
+      if (propValue.settingsAdvanced) {
+        _0x2a5160(propValue.settingsAdvanced);
       }
-      if (_0x120dfe.settingsHacks) {
-        _0x2a5160(_0x120dfe.settingsHacks);
+      if (propValue.settingsHacks) {
+        _0x2a5160(propValue.settingsHacks);
       }
     });
     outputConfig.version = ConfigMigration.CURRENT_VERSION;

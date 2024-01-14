@@ -6538,6 +6538,11 @@ class ActorCharactermancerRace extends ActorCharactermancerBaseComponent {
       }
       return _0x5858ca.name.toLowerCase().trim() === _0x10d38e || (PageFilterRaces.getInvertedName(_0x5858ca.name) || '').toLowerCase().trim() === _0x10d38e;
     }
+
+    /**
+     * @returns {{name:string, source:string, srd:boolean, _baseSrd:boolean, _baseName:string, raceName:string, raceSource:string, _isSubRace:boolean,
+     * _versionBase_name:string, _versionBase_source:string }}
+     */
     getRace_() {
         const curRace = this._data.race[this._state.race_ixRace];
         if (!curRace) { return null; }

@@ -65,10 +65,13 @@ class Vetools {
     static BREW_INDEX__META = {};
 
     static async pDoPreload() {
-        if (Config.get("dataSources", "isNoPrereleaseBrewIndexes"))
+        if (Config.get("dataSources", "isNoPrereleaseBrewIndexes")){
+            console.error(`Failed to get urlRoot from 'dataSources' with key 'isNoPrereleaseBrewIndexes'. Is config uninitialized?`);
             return;
+        }
 
-        Vetools._pGetPrereleaseBrewIndices().then(({propPrerelease, sourcePrerelease, metaPrerelease, sourceBrew, propBrew, metaBrew})=>{
+        //TEMPFIX adding await here
+        await Vetools._pGetPrereleaseBrewIndices().then(({propPrerelease, sourcePrerelease, metaPrerelease, sourceBrew, propBrew, metaBrew})=>{
             Vetools.PRERELEASE_INDEX__PROP = propPrerelease;
             Vetools.PRERELEASE_INDEX__SOURCE = sourcePrerelease;
             Vetools.PRERELEASE_INDEX__META = metaPrerelease;
@@ -88,13 +91,12 @@ class Vetools {
             Vetools.BREW_INDEX__SOURCE = {};
             Vetools.BREW_INDEX__META = {};
 
-            ui.notifications.error(`Failed to load prerelease/homebrew indexes! ${VeCt.STR_SEE_CONSOLE}`);
+            //ui.notifications
+            console.error(`Failed to load prerelease/homebrew indexes! ${VeCt.STR_SEE_CONSOLE}`);
             setTimeout(()=>{
                 throw e;
-            }
-            );
-        }
-        );
+            });
+        });
     }
 
     static withUnpatchedDiceRendering(fn) {
@@ -118,9 +120,10 @@ class Vetools {
     static doMonkeyPatchPreConfig() {
         VeCt.STR_SEE_CONSOLE = "See the console (F12 or CTRL+SHIFT+J) for details.";
 
-        StorageUtil.pSet = GameStorage.pSetClient.bind(GameStorage);
+        //TEMPFIX
+       /*  StorageUtil.pSet = GameStorage.pSetClient.bind(GameStorage);
         StorageUtil.pGet = GameStorage.pGetClient.bind(GameStorage);
-        StorageUtil.pRemove = GameStorage.pRemoveClient.bind(GameStorage);
+        StorageUtil.pRemove = GameStorage.pRemoveClient.bind(GameStorage); */
 
         ["monster", "vehicle", "object", "trap", "race", "background"].forEach(prop=>{
             const propFullName = `${prop}Name`;
@@ -130,10 +133,8 @@ class Vetools {
                 if (UrlUtil.URL_TO_HASH_BUILDER[propChildFull])
                     return;
                 UrlUtil.URL_TO_HASH_BUILDER[propChildFull] = it=>UrlUtil.encodeForHash([it.name, it[propFullName], it[propFullSource], it.source]);
-            }
-            );
-        }
-        );
+            });
+        });
     }
 
     static _CACHED_DATA_UTIL_LOAD_JSON = null;
@@ -143,7 +144,7 @@ class Vetools {
         JqueryExtension.init();
         this._initSourceLookup();
 
-        UtilsChangelog._RELEASE_URL = "https://github.com/TheGiddyLimit/plutonium-next/tags";
+        //TEMPFIX UtilsChangelog._RELEASE_URL = "https://github.com/TheGiddyLimit/plutonium-next/tags";
 
         const hkSetRendererUrls = ()=>{
             Renderer.get().setBaseUrl(Vetools.BASE_SITE_URL);
@@ -933,6 +934,10 @@ class Vetools {
         });
     }
 
+    /**
+     * @param {string[]} ...dirs
+     * @returns {Promise<{name:string, url:string, abbreviations:string[]}>}
+     */
     static async pGetBrewSources(...dirs) {
         return this._pGetPrereleaseBrewSources({
             dirs,
@@ -943,6 +948,10 @@ class Vetools {
         });
     }
 
+    /**
+     * @param {{dirs:string[], brewUtil:any, indexProp:any, indexMeta:any, configKey:string}}
+     * @returns {Promise<any>}
+     */
     static async _pGetPrereleaseBrewSources({dirs, brewUtil, indexProp, indexMeta, configKey}) {
         const urlRoot = Config.get("dataSources", configKey);
 
@@ -955,6 +964,7 @@ class Vetools {
 
         return paths.map((path)=>{
             const metaName = UrlUtil.getFilename(path);
+            //if(!urlRoot){console.error(`Failed to get urlRoot from 'dataSources' with key '${configKey}'. Is config uninitialized?`);}
             return ({
                 url: brewUtil.getFileUrl(path, urlRoot),
                 name: this._getPrereleaseBrewName(path),
@@ -995,7 +1005,6 @@ class Vetools {
             setSeenUrls: this._LOCAL_BREW_SOURCE_SEEN_URLS,
         });
     }
-
     static async _pGetLocalPrereleaseBrewSources({brewUtil, dirs, displayName, configKeyLocal, configKeyIsLoadIndex, configKeyIsUseIndex, configKeyDirectoryPath, setSeenUrls}) {
         try {
             const listLocal = await this._pGetLocalPrereleaseBrewList({

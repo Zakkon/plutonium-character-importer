@@ -3,28 +3,45 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 window.addEventListener('load', function () {
    
-    handleInit().then(() => handleReady()).then(() => SourceSelectorTest._pOpen({actor:null}))
-    
+    handleInit().then(() => handleReady().then(() => SourceSelectorTest._pOpen({actor:null})));
 });
 async function handleInit(){
-  //The below function  throws an error: UtilGameSettings is not defined
-  Config.prePreInit();
+  //UtilGameSettings.prePreInit();
+  //Vetools.doMonkeyPatchPreConfig();
+  Config.prePreInit(); //Important
+  //Vetools.doMonkeyPatchPostConfig();
 }
 async function handleReady(){
-  SideDataInterfaces.init();
+  await Config.pInit(); //Important
+  await Vetools.pDoPreload(); //Important
+  SideDataInterfaces.init(); //Important
 }
 
 class SourceSelectorTest {
 
+  static _BREW_DIRS = ["class", 'subclass', "race", "subrace", "background",
+    "item", 'baseitem', "magicvariant", "spell", "feat", "optionalfeature"];
+
+
+  /**
+   * Starting function for the source selector. Opens up a UI that lets us choose sources before character creation begins.
+   * Currently the UI is deactivated and sources are auto-chosen before the character builder UI is initialized
+   * @param {any} actor Can just be left as null, not used at the moment
+   */
   static async _pOpen({ actor: actor }) {
+
+    //Auto-choose sources for now
     const sources = await this._pGetSources({'actor': actor});
+
+    //Cache which sources we chose
+    CharacterBuilder._testLoadedSources = sources;
     const content = await SourceSelectorTest.getOutputEntities(sources, true);
     
-    //Create a window for the character builder, and feed it the data
     const postProcessedData = SourceSelectorTest._postProcessAllSelectedData(content);
     const mergedData = postProcessedData;
     CharacterBuilder._DATA_PROPS_EXPECTED.forEach(propExpected => mergedData[propExpected] = mergedData[propExpected] || []);
-    
+
+    //Create the character builder UI
     const window = new CharacterBuilder(mergedData);
   }
   static _postProcessAllSelectedData(data) {
@@ -41,12 +58,37 @@ class SourceSelectorTest {
   }
 
   /**
-   * Description
+   * Get objects containing information about sources, such as urls, abbreviations and names. Doesn't include any game content itself
    * @param {any} actor
    * @returns {{name:string, isDefault:boolean, cacheKey:string}[]}
    */
   static async _pGetSources({ actor: actor }) {
+
     const isStreamerMode = true;//Config.get('ui', 'isStreamerMode');
+    const officialSources = new UtilDataSource.DataSourceSpecial(
+      isStreamerMode? "SRD" : "5etools", this._pLoadVetoolsSource.bind(this),
+      {
+        cacheKey: '5etools-charactermancer',
+        filterTypes: [UtilDataSource.SOURCE_TYP_OFFICIAL_ALL],
+        isDefault: true,
+        pPostLoad: this._pPostLoad.bind(this, { actor: actor })
+    });
+
+    const allBrews = await Vetools.pGetBrewSources(...SourceSelectorTest._BREW_DIRS);
+    console.log("Allbrews", allBrews);
+    const chosenBrew = allBrews[202];
+    console.log("Adding brew ", chosenBrew);
+
+    const chosenBrewSourceUrl = new UtilDataSource.DataSourceUrl(chosenBrew.name, chosenBrew.url,{
+      pPostLoad: this._pPostLoad.bind(this, { isBrew: true, actor: actor }),
+      filterTypes: [UtilDataSource.SOURCE_TYP_BREW],
+      abbreviations: chosenBrew.abbreviations,
+      brewUtil: BrewUtil2,
+    });
+
+    return [officialSources, chosenBrewSourceUrl];
+
+    /* const isStreamerMode = true;//Config.get('ui', 'isStreamerMode');
     return [new UtilDataSource.DataSourceSpecial( isStreamerMode?
       "SRD" : "5etools", this._pLoadVetoolsSource.bind(this),
       {
@@ -54,7 +96,7 @@ class SourceSelectorTest {
         filterTypes: [UtilDataSource.SOURCE_TYP_OFFICIAL_ALL],
         isDefault: true,
         pPostLoad: this._pPostLoad.bind(this, { actor: actor })
-      })/* , ...UtilDataSource.getSourcesCustomUrl({
+      }) *//* , ...UtilDataSource.getSourcesCustomUrl({
       'pPostLoad': this._pPostLoad.bind(this, {
         'isBrewOrPrerelease': true,
         'actor': actor
@@ -75,7 +117,7 @@ class SourceSelectorTest {
         'actor': actor
       })
     })) */
-  ];
+  //];
   //TEMPFIX .filter(dataSource => !UtilWorldDataSourceSelector.isFiltered(dataSource));
   }
 
@@ -87,24 +129,23 @@ class SourceSelectorTest {
 
     //Should contain all spells, classes, etc from every source we provide
     const allContentMeta = await UtilDataSource.pGetAllContent({
-  sources,
-  /* uploadedFileMetas: this.uploadedFileMetas,
-  customUrls: this.getCustomUrls(),
-  isBackground,
+    sources,
+    /* uploadedFileMetas: this.uploadedFileMetas,
+    customUrls: this.getCustomUrls(),
+    isBackground,
 
-  page: this._page,
+    page: this._page,
 
-  isDedupable: this._isDedupable,
-  fnGetDedupedData: this._fnGetDedupedData,
+    isDedupable: this._isDedupable,
+    fnGetDedupedData: this._fnGetDedupedData,
 
-  fnGetBlocklistFilteredData: this._fnGetBlocklistFilteredData,
+    fnGetBlocklistFilteredData: this._fnGetBlocklistFilteredData,
 
-  isAutoSelectAll, */
-});
+    isAutoSelectAll, */
+    });
 
     const out = getDeduped? allContentMeta.dedupedAllContentMerged : allContentMeta;
-    //spells have their classes set already, thankfully
-    //however class feature's loadeds are not set
+
     //TEMPFIX
     /*  Renderer.spell.populatePrereleaseLookup(await PrereleaseUtil.pGetBrewProcessed(), {isForce: true});
 Renderer.spell.populateBrewLookup(await BrewUtil2.pGetBrewProcessed(), {isForce: true});
@@ -112,7 +153,7 @@ Renderer.spell.populateBrewLookup(await BrewUtil2.pGetBrewProcessed(), {isForce:
 (out.spell || []).forEach(sp => { Renderer.spell.uninitBrewSources(sp); Renderer.spell.initBrewSources(sp); }); */
 
     return out;
-}
+  }
   static async _pLoadVetoolsSource() {
       const combinedSource = {};
       const [classResult, raceResult, backgroundResult, itemResults, spellResults, featResults, optionalFeatureResults]
@@ -208,44 +249,45 @@ class CharacterBuilder {
     
     constructor(data){
 
-        this.parent = this;
-        this.createTabs(); //Create the small tab buttons
-        this.createPanels(); //Create the panels that hold components
+      this.parent = this;
+      this.createTabs(); //Create the small tab buttons
+      this.createPanels(); //Create the panels that hold components
 
-        this.data = data;
+      this.data = data;
 
-        //Create a feature source tracker (this one gets used alot by the components)
-        this._featureSourceTracker = new Charactermancer_FeatureSourceTracker();
+      //Create a feature source tracker (this one gets used alot by the components)
+      this._featureSourceTracker = new Charactermancer_FeatureSourceTracker();
 
-        //Create components
-        this.compClass = new ActorCharactermancerClass(this);
-        this.compRace = new ActorCharactermancerRace(this);
-        this.compAbility = new ActorCharactermancerAbility(this);
-        this.compBackground = new ActorCharactermancerBackground(this);
-        this.compEquipment = new ActorCharactermancerEquipment(this);
-        this.compSpell = new ActorCharactermancerSpell(this);
-        this.compFeat = new ActorCharactermancerFeat(this);
-        this.compSheet = new ActorCharactermancerSheet(this);
+      //Create components
+      this.compClass = new ActorCharactermancerClass(this);
+      this.compRace = new ActorCharactermancerRace(this);
+      this.compAbility = new ActorCharactermancerAbility(this);
+      this.compBackground = new ActorCharactermancerBackground(this);
+      this.compEquipment = new ActorCharactermancerEquipment(this);
+      this.compSpell = new ActorCharactermancerSpell(this);
+      this.compFeat = new ActorCharactermancerFeat(this);
+      this.compSheet = new ActorCharactermancerSheet(this);
 
-        //Configure the export button
-        const exportBtn = $("#btn_export");
-        exportBtn.click(() => {
-            this.compSheet.test_gatherExportInfo();
-        });
-        
-        //This is a test to only have certain sources selected as active in the filter
-        //Note that this does not delete the sources, and they can still be toggled on again via the filter
-        const DEFAULT_SOURCES = [Parser.SRC_PHB, Parser.SRC_DMG, Parser.SRC_XGE, Parser.SRC_VGM, Parser.SRC_MPMM];
-        const testApplyDefaultSources = () => {
-            HelperFunctions.setModalFilterSourcesStrings(this.compBackground.modalFilterBackgrounds, DEFAULT_SOURCES);
-            HelperFunctions.setModalFilterSourcesStrings(this.compRace.modalFilterRaces, DEFAULT_SOURCES);
-        }
-        
-        //Call this to let the components load some content before we start using them
-        this.pLoad()
-        .then(() => this.renderComponents()) //Then render the components
-        .then(() => testApplyDefaultSources()) //Use our test function to set only certain sources as active in the filter
-        .then(() => this.e_switchTab("class")); //Then switch to the tab we want to start off with
+      //Configure the export button
+      const exportBtn = $("#btn_export");
+      exportBtn.click(() => {
+          //this.compSheet.test_gatherExportInfo();
+          CharacterExportFvtt.exportCharacter(this);
+      });
+      
+      //This is a test to only have certain sources selected as active in the filter
+      //Note that this does not delete the sources, and they can still be toggled on again via the filter
+      const DEFAULT_SOURCES = [Parser.SRC_PHB, Parser.SRC_DMG, Parser.SRC_XGE, Parser.SRC_VGM, Parser.SRC_MPMM];
+      const testApplyDefaultSources = () => {
+          HelperFunctions.setModalFilterSourcesStrings(this.compBackground.modalFilterBackgrounds, DEFAULT_SOURCES);
+          HelperFunctions.setModalFilterSourcesStrings(this.compRace.modalFilterRaces, DEFAULT_SOURCES);
+      }
+      
+      //Call this to let the components load some content before we start using them
+      this.pLoad()
+      .then(() => this.renderComponents()) //Then render the components
+      .then(() => testApplyDefaultSources()) //Use our test function to set only certain sources as active in the filter
+      .then(() => this.e_switchTab("class")); //Then switch to the tab we want to start off with
     }
 
     createTabs(){

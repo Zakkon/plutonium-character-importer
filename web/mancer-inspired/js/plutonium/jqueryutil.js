@@ -278,3 +278,19 @@ globalThis.JqueryUtil = {
         return window.matchMedia("(max-width: 768px)").matches;
     },
 };
+
+class JqueryExtension {
+    static init() {
+        $.fn.extend({
+
+            swap: function($eleMap) {
+                Object.entries($eleMap).forEach(([k,$v])=>{
+                    this.find(`[data-r="${k}"]`).replaceWith($v);
+                }
+                );
+
+                return this;
+            },
+        });
+    }
+}
