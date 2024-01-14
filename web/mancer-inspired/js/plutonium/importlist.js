@@ -78,4 +78,5 @@ ImportListClass.Utils = class {
       });
       return dedupedAllContentMerged;
     }
-  };
+};
+

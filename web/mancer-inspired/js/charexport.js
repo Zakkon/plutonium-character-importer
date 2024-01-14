@@ -7,7 +7,7 @@ class CharacterExportFvtt{
     /**
      * @param {CharacterBuilder} builder
      */
-    static exportCharacter(builder){
+    static async exportCharacter(builder){
         //lets not be verbose here
 
         const brewSourcesLoaded = this.getBrewSources();
@@ -65,7 +65,8 @@ class CharacterExportFvtt{
         //ability scores (our choices, maybe not the total)
 
         //equipment (including gold, and bought items)
-
+        const equipment = await CharacterExportFvtt.getEquipmentData(builder.compEquipment);
+        console.log("Equipment: ", equipment);
         //known spells & cantrips
 
         //Feats
@@ -112,6 +113,37 @@ class CharacterExportFvtt{
             classList.push(block);
         }
         return classList;
+    }
+    /**
+     * @param {ActorCharactermancerEquipment} compEquipment
+     */
+    static async getEquipmentData(compEquipment){
+
+        //Get gold
+        const compGold = compEquipment._compEquipmentCurrency;
+        const remainingCp = compGold.getRemainingCp();
+        const out = {remainingCp: remainingCp};
+
+        const compDefault = compEquipment._compEquipmentStartingDefault;
+        //const validStandard = compDefault._isValid_standard();
+        //const isAvailable = compDefault.isAvailable;
+        const formDefault = await compDefault.pGetFormData();
+        if(!formDefault.isFormComplete){ console.error(formDefault.messageInvalid); return null;}
+        out.itemsDefault = formDefault.data.equipmentItemEntries;
+
+        const isStartingEquipmentActive = compEquipment.isStandardStartingEquipmentActive_();
+        if(isStartingEquipmentActive){
+            out.mode = "starting";
+        }
+        else{
+            out.mode = "shop";
+        }
+
+        const compShop = compEquipment._compEquipmentShopGold;
+        const formShop = await compShop.pGetFormData();
+        if(!formShop.isFormComplete){ console.error(formShop.messageInvalid); return null;}
+        out.itemsShop = formShop.data.equipmentItemEntries;
+        return out;
     }
 
     static test_getSourceFromSubclass(){
@@ -209,5 +241,5 @@ class CharacterExportFvtt{
 }
 
 class CharacterImportFvtt{
-    
+
 }

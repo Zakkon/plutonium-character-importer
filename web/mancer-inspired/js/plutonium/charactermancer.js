@@ -1273,6 +1273,9 @@ class Charactermancer_Class_HpIncreaseModeSelect extends BaseComponent {
         return Config.get("importClass", "hpIncreaseMode") != null;
     }
 
+    /**
+     * @returns {{isFormComplete:boolean, data{mode:number, customFormula:string}}}
+     */
     pGetFormData() {
         return {
             isFormComplete: true,
@@ -1344,6 +1347,11 @@ class Charactermancer_Class_HpInfo extends BaseComponent {
 		</div>`;
         we.appendTo($wrp);
     }
+
+    //Functions in case some external party wants to get some info
+    get hitDice(){return this._hitDice;} //How many faces, not how many dice
+    get hitPointsAtFirstLevel() { return Renderer.class.getHitPointsAtFirstLevel(this._hitDice); }
+   
 }
 class Charactermancer_AdditionalSpellsUtil {
     static getFlatData(additionalSpells) {
@@ -8906,8 +8914,6 @@ Charactermancer_StartingEquipment.ComponentDefault = class extends Charactermanc
         return itemIdParts.join("|");
     }
 
-    
-
     _iterChosenStartingEquipment(fnEqui) {
         const defaultData = (this._compCurrency.startingEquipment?.defaultData || []);
 
@@ -8932,8 +8938,6 @@ Charactermancer_StartingEquipment.ComponentDefault = class extends Charactermanc
             }
         }
     }
-
-   
 
     _isValid_standard() {
         if (!this.isAvailable || this._compCurrency.cpRolled != null)
@@ -9027,16 +9031,28 @@ Charactermancer_StartingEquipment.ComponentDefault = class extends Charactermanc
                 quantity: itemUidMeta.quantity,
             });
         }
-        const {ImportListItem} = await Promise.resolve().then(function() {
+        //TEMPFIX
+        /* const {ImportListItem} = await Promise.resolve().then(function() {
             return ImportListItem;
         });
-        const outFromUids = loadedItems.sort((a,b)=>ImportListItem.sortEntries(a.item, b.item));
+        const outFromUids = loadedItems.sort((a,b)=>ImportListItem.sortEntries(a.item, b.item)); */
+
+        
+        const outFromUids = loadedItems.sort((a,b)=>Charactermancer_StartingEquipment.ComponentDefault.sortEntries(a.item, b.item));
 
         return [...outFromUids, ...outPreloaded];
     }
 
     _getDefaultState() {
         return {};
+    }
+
+    static sortEntries(a, b) {
+        if (a.ammoType && !b.ammoType)
+            return 1;
+        if (!a.ammoType && b.ammoType)
+            return -1;
+        return SortUtil.ascSortLower(a.name, b.name) || SortUtil.ascSortLower(Parser.sourceJsonToFull(a.source), Parser.sourceJsonToFull(b.source));
     }
 };
 
@@ -13934,12 +13950,13 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
         
         const $wrpDisplay = $(`<div class="ve-flex-col min-h-0 ve-small"></div>`).appendTo(wrapper);
         
+        //#region Class
         const $colClass = $$`<div></div>`.appendTo($wrpDisplay);
         //When class changes, redraw the elements
         const hkClass = () => {
             $colClass.empty();
             $colClass.append("<hr class=\"hr-2\"><div class=\"bold mb-2\">Class</div>");
-            let classData = this.getClassData();
+            let classData = this.getClassData(this._parent.compClass);
             //If there are no classes selected, just print none and return
             if(!classData?.length){ $colClass.append(`<div>None</div>`); return; }
             for(let i = 0; i < classData.length; ++i){
@@ -13954,7 +13971,9 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
         this._parent.compClass.addHookBase("class_totalLevels", hkClass);
         this._parent.compClass.addHookBase("class_pulseChange", hkClass); //This also senses when subclass is changed
         hkClass();
+        //#endregion
 
+        //#region Race
         const $colRace = $$`<div></div>`.appendTo($wrpDisplay);
         //When race version changes, redraw the elements
         const hkRace = () => {
@@ -13966,7 +13985,9 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
         };
         this._parent.compRace.addHookBase("race_ixRace_version", hkRace);
         hkRace();
+        //#endregion
         
+        //#region Background
         const $colBackground = $$`<div></div>`.appendTo($wrpDisplay);
         //When race version changes, redraw the elements
         const hkBackground = () => {
@@ -13978,6 +13999,87 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
         };
         this._parent.compBackground.addHookBase("background_pulseBackground", hkBackground);
         hkBackground();
+        //#endregion
+
+        //#region Ability Scores
+        const $colAbilityScores = $$`<div></div>`.appendTo($wrpDisplay);
+        //When race version changes, redraw the elements
+        const hkAbilities = () => {
+            $colAbilityScores.empty();
+            $colAbilityScores.append("<hr class=\"hr-2\"><div class=\"bold mb-2\">Ability Scores</div>");
+            let totals = this.test_grabAbilityScoreTotals(this._parent.compAbility);
+            $colAbilityScores.append(`<div>STR: ${totals.values.str}</div>`);
+            $colAbilityScores.append(`<div>DEX: ${totals.values.dex}</div>`);
+            $colAbilityScores.append(`<div>CON: ${totals.values.con}</div>`);
+            $colAbilityScores.append(`<div>INT: ${totals.values.int}</div>`);
+            $colAbilityScores.append(`<div>WIS: ${totals.values.wis}</div>`);
+            $colAbilityScores.append(`<div>CHA: ${totals.values.cha}</div>`);
+        };
+        this._parent.compAbility.compStatgen.addHookBase("common_export_str", hkAbilities);
+        this._parent.compAbility.compStatgen.addHookBase("common_export_dex", hkAbilities);
+        this._parent.compAbility.compStatgen.addHookBase("common_export_con", hkAbilities);
+        this._parent.compAbility.compStatgen.addHookBase("common_export_int", hkAbilities);
+        this._parent.compAbility.compStatgen.addHookBase("common_export_wis", hkAbilities);
+        this._parent.compAbility.compStatgen.addHookBase("common_export_cha", hkAbilities);
+        hkAbilities();
+        //#endregion
+
+        //#region HP, Speed
+        const $colHpSpeed = $$`<div></div>`.appendTo($wrpDisplay);
+        //When race version changes, redraw the elements
+        const hkHpSpeed = () => {
+            $colHpSpeed.empty();
+            $colHpSpeed.append("<hr class=\"hr-2\"><div class=\"bold mb-2\">Hit Points</div>");
+            let totals = this.test_grabAbilityScoreTotals(this._parent.compAbility);
+            //Let's try to estimate HP
+            //Grab constitution score
+            const constitution = this.test_grabAbilityScoreTotals(this._parent.compAbility).values.con;
+            //Grab HP increase mode from class component (from each of the classes!)
+            const classList = this.getClassData(this._parent.compClass);
+            let hpTotal = 0;
+            let levelTotal = 0;
+            for(let ix = 0; ix < classList.length; ++ix){
+                const data = classList[ix];
+                if(!data.cls){continue;}
+                //A problem is we dont know what hp increase mode the class is using when a class is first picked (and this hook fires)
+                //This is because the components that handle that choice arent built yet
+                //So we will need a backup
+                let hpMode = -1; let customFormula = "";
+                const hpModeComp = this._parent.compClass._compsClassHpIncreaseMode[ix];
+                const hpInfoComp = this._parent.compClass._compsClassHpInfo[ix];
+                const targetLevel = data.targetLevel || 1;
+                
+                if(hpModeComp && hpInfoComp){
+                    const formData = hpModeComp.pGetFormData();
+                    if(formData.isFormComplete){
+                        hpMode = formData.data.mode;
+                        customFormula = formData.data.formula;
+                    }
+                }
+                if(hpMode<0){ //Fallback
+                    hpMode = Config.get("importClass", "hpIncreaseMode") ?? ConfigConsts.C_IMPORT_CLASS_HP_INCREASE_MODE__TAKE_AVERAGE;
+                    customFormula = Config.get("importClass", "hpIncreaseModeCustomRollFormula") ?? "(2 * @hd.number)d(@hd.faces / 2)";
+                }
+                
+                const hp = ActorCharactermancerSheet.calcHitPointsAtLevel(data.cls.hd.number, data.cls.hd.faces, targetLevel, hpMode, customFormula);
+                console.log("HP", hp, hpMode, constitution);
+                hpTotal += hp;
+                levelTotal += targetLevel;
+            }
+
+            hpTotal += (constitution * levelTotal);
+
+            $colHpSpeed.append(`<div>HP: ${hpTotal}</div>`);
+        };
+        this._parent.compClass.addHookBase("class_ixMax", hkHpSpeed); 
+        this._parent.compClass.addHookBase("class_totalLevels", hkHpSpeed);
+        this._parent.compAbility.compStatgen.addHookBase("common_export_con", hkHpSpeed);
+        this._parent.compClass.addHookBase("class_pulseChange", hkHpSpeed);
+        //needs a hook here in case any of the classes change their HP mode
+        hkHpSpeed();
+        //#endregion
+
+        
 
         const sectionParent = $$`<div class="ve-flex-col w-100 h-100 px-1 overflow-y-auto ve-grow veapp__bg-foundry"></div>`;
         
@@ -14001,10 +14103,10 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
     }
 
     getRace_() { return this._parent.compRace.getRace_(); }
-    getClassData() {
-        const primaryClassIndex = this._parent.compClass._state.class_ixPrimaryClass;
+    getClassData(compClass) {
+        const primaryClassIndex = compClass._state.class_ixPrimaryClass;
         //If we have 2 classes, this will be 1
-        const highestClassIndex = this._parent.compClass._state.class_ixMax;
+        const highestClassIndex = compClass._state.class_ixMax;
 
         const classList = [];
         for(let i = 0; i <= highestClassIndex; ++i){
@@ -14013,15 +14115,25 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
             const { propIxClass: propIxClass, propIxSubclass: propIxSubclass, propCurLevel:propCurLevel, propTargetLevel: propTargetLevel } =
             ActorCharactermancerBaseComponent.class_getProps(i);
             //Grab actual class data
-            const cls = this._parent.compClass.getClass_({propIxClass: propIxClass});
+            const cls = compClass.getClass_({propIxClass: propIxClass});
             if(!cls){continue;}
-            const targetLevel = this._parent.compClass._state[propTargetLevel];
+            const targetLevel = compClass._state[propTargetLevel];
+            const block = {
+                cls: cls,
+                isPrimary: isPrimary,
+                propIxClass: propIxClass,
+                propIxSubclass:propIxSubclass,
+                targetLevel:targetLevel
+            }
             //Now we want to ask compClass if there is a subclass selected for this index
-            const sc = this._parent.compClass.getSubclass_({cls:cls, propIxSubclass:propIxSubclass});
-            if(sc != null) { classList.push({cls: cls, isPrimary: isPrimary, sc: sc, targetLevel:targetLevel, propIxSubclass: propIxSubclass}); }
-            else { classList.push({cls: cls, isPrimary: isPrimary, propIxSubclass:propIxSubclass, targetLevel:targetLevel}); }
+            const sc = compClass.getSubclass_({cls:cls, propIxSubclass:propIxSubclass});
+            if(sc != null) { block.sc = sc; }
+            classList.push(block);
         }
         return classList;
+    }
+    getClassHpInfo(compClass){
+
     }
     getBackground(){
         return this._parent.compBackground.getBackground_(); 
@@ -14077,8 +14189,7 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
         if(b==null){return "no background";}
         return b.name;
     }
-    test_grabAbilityScoreTotals(compAbility){
-
+    test_grabAbilityScoreTotals(compAbility) {
         const info = compAbility.getTotals();
         if(info.mode == "none"){return {mode: info.mode, values: {str:0,dex:0, con:0, int:0, wis:0, cha:0}};}
         const result = info.totals[info.mode];
@@ -14102,6 +14213,32 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
                     spellsKnown[spellLevelIx].push(arrayEntry.spell.name);
                 }
             }
+        }
+    }
+
+    /**
+     * * @param {number} hitDiceNumber
+     * @param {number} hitDiceFaces
+     * @param {number} level
+     * @param {number} mode
+     * @param {string} customFormula
+     * @returns {number}
+     */
+    static calcHitPointsAtLevel(hitDiceNumber, hitDiceFaces, level, mode, customFormula){
+        switch(mode){
+            case 0: //Take Average
+                return (hitDiceFaces * hitDiceNumber) + (((hitDiceFaces * hitDiceNumber) / 2) * (level-1));
+            case 1: //Minimum Value
+                return (hitDiceFaces * hitDiceNumber) + ((1) * (level-1));
+            case 2: //Maximum Value
+                return (hitDiceFaces * hitDiceNumber) + (((hitDiceFaces * hitDiceNumber)) * (level-1));
+            case 3: //Roll
+                console.error("Roll mode not yet implemented!"); return;
+            case 4: //Custom Formula
+                console.error("Custom Formula mode not yet implemented!"); return;
+            case 5: //Do Not Increase HP
+                return (hitDiceFaces * hitDiceNumber);
+            default: console.error("Unimplemented!"); return 0;
         }
     }
 }
