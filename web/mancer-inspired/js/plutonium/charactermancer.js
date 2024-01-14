@@ -8741,39 +8741,14 @@ Charactermancer_StartingEquipment.ComponentDefault = class extends Charactermanc
                                 this._addHookBase(propEqui, hkDispEqui);
                                 this._fnsUnhook.push(()=>this._removeHookBase(propEqui, hkDispEqui));
                                 hkDispEqui();
-
-                                const $btnPick = $(`<button class="btn btn-default btn-xxs" 
-                                title="Choose an Item"><span class="fas fa-fw fa-search"></span></button>`).click(async()=>{
-                                    //const equiChoicesName = Charactermancer_StartingEquipment._EQUIPMENT_SET_NAMES[equi.equipmentType];
-                                    /* const {$modalInner, doClose, doAutoResize: doAutoResizeModal} = await UtilApplications.pGetShowApplicationModal({
-                                        title: `Choose Item${equiChoicesName ? ` \u2014 ${equiChoicesName}` : ""}`,
-                                    });
-
-                                    const $rows = equiChoices.map(itemUid=>{
-                                        const $btnChoose = $(`<button class="btn btn-xs btn-default mr-2"><span class="fas fa-fw fa-check"></span></button>`).click(()=>{
-                                            this._state[propEqui] = itemUid;
-                                            doClose(true);
-                                            this._state[propGroup] = ixChoice;
-                                        }
-                                        );
-
-                                        return $$`<div class="ve-flex-v-center py-1 stripe-even">${$btnChoose}${Renderer.get().render(`{@item ${itemUid.uppercaseFirst()}}`)}</div>`;
-                                    }
-                                    );
-
-                                    $$($modalInner)`<div class="ve-flex-col h-100">${$rows}</div>`;
-
-                                    doAutoResizeModal(); */
-                                    console.log("toggle subcomponent");
-                                });
-
+                                
                                 //Lets create a submenu
                                 const $listOptions = $$`<div class="col-2"></div>`;
                                 const sel = Charactermancer_StartingEquipment.ComponentDefault._createUiUtilDropdown(
                                     this, propEqui, equiChoices, it=>{ const {name} = DataUtil.generic.unpackUid(it, "@item"); return name.toTitleCase()}); 
                                 //I want a callback function when this is selected
                                 sel.change(()=>{
-                                    const val = selMeta.$sel.val();
+                                    const val = sel.val();
                                     this._state[propGroup] = ixChoice;
                                 });
                                 sel.appendTo($listOptions);
