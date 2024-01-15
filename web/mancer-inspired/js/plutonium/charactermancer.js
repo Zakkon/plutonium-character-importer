@@ -13963,6 +13963,52 @@ class Charactermancer_AdditionalFeatsSelect extends BaseComponent {
 class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
     
     /**
+     * What to display on the sheet:
+     * 
+     * Character name
+     * Class
+     * Race
+     * Size
+     * Background - Just the name, right? So custom background is just "Custom Background", nothing else
+     * Ability scores (and modifiers) - Not sure if we can get ability score improvements from items, feats (and maybe subclass features?) to work
+     * Hit points - This needs CON modifier. Not sure if items, feats (and maybe subclass features?) can be considered
+     * Speed - Should be pulled from race. Not sure if we can consider items, class features, feats etc
+     * AC - Not sure if we can consider armor, features, items, etc. Unarmored defense?
+     * Darkvision
+     * Proficiency bonus
+     * Inititative bonus - Not sure if we can consider items, class features, feats
+     * Proficiencies - armor, weapons, tools, saves, skills
+     * Passive proficiency
+     * Languages
+     * Skills (and their modifiers, with * for proficient, and ** for expertise) (what about half proficiency?)
+     * Saves (modifiers, with * for proficient)
+     * Encumberance (lift & carry)
+     * Item list - (armor has AC in parenthesis) - then total weight
+     * Coins + total weight
+     * Spell list (known cantrips, lvl1, lvl2, etc. each category shows number of spell slots)
+     * 
+     * Things we probably can't display on the sheet:
+     * 
+     * Race features (too long, not sure what would be useful info)
+     * Class features (too long, not sure what would be useful info)
+     * Subclass features (too long, not sure what would be useful info)
+     * Warlock pact magic
+     * Battle master manouvers
+     * Resistances (comes from items and subclass features, needs serious parsing)
+     * Immunities
+     * Vulnerabilities
+     * Ranger pets
+     * Druid shapes
+     * Cleric channel divinity
+     * Rogue sneak attack
+     * Any mystic related stuff
+     * Any artificer related stuff
+     * Extra attacks
+     * Ki points
+     * 
+    */
+
+    /**
      * @param {{parent:CharacterBuilder}} parentInfo
      */
     constructor(parentInfo) {
