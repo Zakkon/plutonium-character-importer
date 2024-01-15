@@ -6911,7 +6911,7 @@ class ActorCharactermancerBackground extends ActorCharactermancerBaseComponent {
     get modalFilterBackgrounds() {
       return this._modalFilterBackgrounds;
     }
-    get ["compBackgroundFeatures"]() {
+    get compBackgroundFeatures() {
       return this._metaCompBackgroundFeatures?.["comp"];
     }
     get ["compBackgroundSkillProficiencies"]() {
@@ -6926,7 +6926,7 @@ class ActorCharactermancerBackground extends ActorCharactermancerBaseComponent {
     get ["compBackgroundLanguageToolProficiencies"]() {
       return this._compBackgroundLanguageToolProficiencies;
     }
-    get ['compBackgroundCharacteristics']() {
+    get compBackgroundCharacteristics() {
       return this._compBackgroundCharacteristics;
     }
     get ["compBackgroundExpertise"]() {
@@ -6950,13 +6950,13 @@ class ActorCharactermancerBackground extends ActorCharactermancerBaseComponent {
     get ["compBackgroundConditionImmunity"]() {
       return this._compBackgroundConditionImmunity;
     }
-    get ['isCustomizeLanguagesTools']() {
+    get isCustomizeLanguagesTools() {
       return this._state.background_isCustomizeLanguagesTools;
     }
     async pLoad() {
       await this._modalFilterBackgrounds.pPreloadHidden();
     }
-    ['getFeatureCustomizedBackground_']({
+    getFeatureCustomizedBackground_({
       ix: _0x40e6e0,
       isAllowStub = true
     } = {}) {
@@ -7119,7 +7119,7 @@ class ActorCharactermancerBackground extends ActorCharactermancerBaseComponent {
       }
       else { parentDiv.hideVe(); this._compBackgroundLanguageToolProficiencies = null; }
     }
-    ["_background_hk_showCustomizingRules"]({
+    _background_hk_showCustomizingRules({
       $stgRulesCustomize: _0x77fbe7
     }) {
       const _0x283f3d = this._data.background[this._state.background_ixBackground];
@@ -7313,8 +7313,9 @@ class Charactermancer_Background_Characteristics extends BaseComponent {
 				</div>`;
 
                 const tbl = this._tables[propMeta.prop];
+                console.log("TABLE", tbl);
 
-                const $rendered = Vetools.withCustomDiceRenderingPatch(()=>{
+                const $rendered = Vetools.withCustomDiceRenderingPatch(()=>{ //fn
                     const $rendered = $(`${Renderer.get().render(tbl)}`);
 
                     $rendered.find(`[data-plut-temp-dice]`).each((i,e)=>{
@@ -7355,15 +7356,16 @@ class Charactermancer_Background_Characteristics extends BaseComponent {
                         ).title(count > 1 ? `Left-click to set the first field; CTRL-click to set the second field.` : null).appendTo($e.empty());
                     });
                     return $rendered;
-                }, ()=>{ return `<span data-plut-temp-dice="true"></span>`; }, );
+                },
+                ()=>{ return `<span data-plut-temp-dice="true"></span>`; }, //fnRender
+                );
 
                 $stgStandard = $$`<div class="ve-flex-col w-100 ve-small">${$rendered}</div>`;
 
                 const hkMode = ()=>{
                     $btnToggleMode.toggleClass("active", this._state[propMode] === "standard");
                     $stgStandard.toggleVe(this._state[propMode] === "standard");
-                }
-                ;
+                };
                 this._addHookBase(propMode, hkMode);
                 hkMode();
             }
@@ -8741,7 +8743,7 @@ Charactermancer_StartingEquipment.ComponentDefault = class extends Charactermanc
                                 this._addHookBase(propEqui, hkDispEqui);
                                 this._fnsUnhook.push(()=>this._removeHookBase(propEqui, hkDispEqui));
                                 hkDispEqui();
-                                
+
                                 //Lets create a submenu
                                 const $listOptions = $$`<div class="col-2"></div>`;
                                 const sel = Charactermancer_StartingEquipment.ComponentDefault._createUiUtilDropdown(

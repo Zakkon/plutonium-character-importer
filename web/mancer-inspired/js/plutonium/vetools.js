@@ -165,7 +165,7 @@ class Vetools {
         ;
         hkSetRendererUrls();
 
-        UtilHooks.on(UtilHooks.HK_CONFIG_UPDATE, hkSetRendererUrls);
+        if(SETTINGS.USE_FVTT){UtilHooks.on(UtilHooks.HK_CONFIG_UPDATE, hkSetRendererUrls);}
 
         Renderer.hover.MIN_Z_INDEX = Consts.Z_INDEX_MAX_FOUNDRY + 1;
         Renderer.hover._MAX_Z_INDEX = Renderer.hover.MIN_Z_INDEX + 10;
@@ -256,15 +256,17 @@ class Vetools {
         }
         ;
 
-        Vetools._CACHED_MONSTER_DO_BIND_COMPACT_CONTENT_HANDLERS = Renderer.monster.doBindCompactContentHandlers;
-        Renderer.monster.doBindCompactContentHandlers = (opts)=>{
+        if(SETTINGS.USE_FVTT){
+            Vetools._CACHED_MONSTER_DO_BIND_COMPACT_CONTENT_HANDLERS = Renderer.monster.doBindCompactContentHandlers;
+            Renderer.monster.doBindCompactContentHandlers = (opts)=>{
             const nxtOpts = {
                 ...opts
             };
             nxtOpts.fnRender = (...args)=>Vetools.withUnpatchedDiceRendering(()=>opts.fnRender(...args));
             return Vetools._CACHED_MONSTER_DO_BIND_COMPACT_CONTENT_HANDLERS(nxtOpts);
+            };
         }
-        ;
+        
 
         JqueryUtil.doToast = (options)=>{
             if (typeof options === "string") {
@@ -283,8 +285,7 @@ class Vetools {
             default:
                 return ui.notifications.info(options.content);
             }
-        }
-        ;
+        };
 
         UiUtil.pGetShowModal = opts=>UtilApplications.pGetShowApplicationModal(opts);
         InputUiUtil._pGetShowModal = opts=>UtilApplications.pGetShowApplicationModal(opts);

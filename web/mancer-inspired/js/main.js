@@ -9,7 +9,13 @@ async function handleInit(){
   //UtilGameSettings.prePreInit();
   //Vetools.doMonkeyPatchPreConfig();
   Config.prePreInit(); //Important
-  //Vetools.doMonkeyPatchPostConfig();
+  Vetools.doMonkeyPatchPostConfig(); //Makes roll buttons work
+
+  //We need this to be true, since BrewUtil freaks out otherwise and tries to grab json from a url that is 404
+  Object.defineProperty(globalThis, "IS_DEPLOYED", {
+    get() { return true; },
+    set(val) {},
+  });
 }
 async function handleReady(){
   await Config.pInit(); //Important
@@ -222,6 +228,7 @@ class SETTINGS{
     static DO_RENDER_DICE = false;
     static USE_EXISTING = false;
     static LOCALPATH_REDIRECT = true;
+    static USE_FVTT = false;
 }
 class CharacterBuilder {
   static _DATA_PROPS_EXPECTED = ['class', "subclass", 'classFeature', "subclassFeature",

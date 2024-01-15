@@ -2,10 +2,11 @@ CLASS
 - Make subclass dropdown be locked until high enough level
 - Make swapping between classes preserve level
 - Race image import
-- Fix Background roll tables, personality trait (2nd field) and make dice rollable
+- Fix Background roll tables, and make dice rollable
 - fix starting equipment choices
 - spell menu reacts on class change, creating error
 - Create exportable .json with character build info
 - Create a foundry dialog that json can be inputted into
 - Create a foundry script that parses through the json and understands which sources are used, then builds the character
 - Stop classes from sailing to the top of the list of selectable classes just because we applied some homebrew subclasses to it
+- Make active buttons look prettier (right now they look bad because i had to fix a bug where they wouldnt show box shadow when active)

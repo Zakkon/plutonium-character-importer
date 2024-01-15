@@ -11883,6 +11883,885 @@ class UtilWorldDataSourceSelector {
 }
 //#endregion
 
+//#region InputUIUtil
+class InputUiUtil {
+    static async _pGetShowModal(getShowModalOpts) {
+        return UiUtil$1.getShowModal(getShowModalOpts);
+    }
+
+    static _$getBtnOk({comp=null, opts, doClose}) {
+        return $(`<button class="btn btn-primary mr-2">${opts.buttonText || "OK"}</button>`).click(evt=>{
+            evt.stopPropagation();
+            if (comp && !comp._state.isValid)
+                return JqueryUtil.doToast({
+                    content: `Please enter valid input!`,
+                    type: "warning"
+                });
+            doClose(true);
+        }
+        );
+    }
+
+    static _$getBtnCancel({comp=null, opts, doClose}) {
+        return $(`<button class="btn btn-default">Cancel</button>`).click(evt=>{
+            evt.stopPropagation();
+            doClose(false);
+        }
+        );
+    }
+
+    static _$getBtnSkip({comp=null, opts, doClose}) {
+        return !opts.isSkippable ? null : $(`<button class="btn btn-default ml-3">Skip</button>`).click(evt=>{
+            evt.stopPropagation();
+            doClose(VeCt.SYM_UI_SKIP);
+        }
+        );
+    }
+
+    static async pGetUserNumber(opts) {
+        opts = opts || {};
+
+        let defaultVal = opts.default !== undefined ? opts.default : null;
+        if (opts.storageKey_default) {
+            const prev = await (opts.isGlobal_default ? StorageUtil.pGet(opts.storageKey_default) : StorageUtil.pGetForPage(opts.storageKey_default));
+            if (prev != null)
+                defaultVal = prev;
+        }
+
+        const $iptNumber = $(`<input class="form-control mb-2 text-right" ${opts.min ? `min="${opts.min}"` : ""} ${opts.max ? `max="${opts.max}"` : ""}>`).keydown(evt=>{
+            if (evt.key === "Escape") {
+                $iptNumber.blur();
+                return;
+            }
+
+            evt.stopPropagation();
+            if (evt.key === "Enter") {
+                evt.preventDefault();
+                doClose(true);
+            }
+        }
+        );
+        if (defaultVal !== undefined)
+            $iptNumber.val(defaultVal);
+
+        const {$modalInner, doClose, pGetResolved, doAutoResize: doAutoResizeModal} = await InputUiUtil$1._pGetShowModal({
+            title: opts.title || "Enter a Number",
+            isMinHeight0: true,
+        });
+
+        const $btnOk = this._$getBtnOk({
+            opts,
+            doClose
+        });
+        const $btnCancel = this._$getBtnCancel({
+            opts,
+            doClose
+        });
+        const $btnSkip = this._$getBtnSkip({
+            opts,
+            doClose
+        });
+
+        if (opts.$elePre)
+            opts.$elePre.appendTo($modalInner);
+        $iptNumber.appendTo($modalInner);
+        if (opts.$elePost)
+            opts.$elePost.appendTo($modalInner);
+        $$`<div class="ve-flex-v-center ve-flex-h-right pb-1 px-1">${$btnOk}${$btnCancel}${$btnSkip}</div>`.appendTo($modalInner);
+
+        if (doAutoResizeModal)
+            doAutoResizeModal();
+
+        $iptNumber.focus();
+        $iptNumber.select();
+
+        const [isDataEntered] = await pGetResolved();
+
+        if (typeof isDataEntered === "symbol")
+            return isDataEntered;
+
+        if (!isDataEntered)
+            return null;
+        const outRaw = $iptNumber.val();
+        if (!outRaw.trim())
+            return null;
+        let out = UiUtil$1.strToInt(outRaw);
+        if (opts.min)
+            out = Math.max(opts.min, out);
+        if (opts.max)
+            out = Math.min(opts.max, out);
+        if (opts.int)
+            out = Math.round(out);
+
+        if (opts.storageKey_default) {
+            opts.isGlobal_default ? StorageUtil.pSet(opts.storageKey_default, out).then(null) : StorageUtil.pSetForPage(opts.storageKey_default, out).then(null);
+        }
+
+        return out;
+    }
+
+    static async pGetUserBoolean(opts) {
+        opts = opts || {};
+
+        if (opts.storageKey) {
+            const prev = await (opts.isGlobal ? StorageUtil.pGet(opts.storageKey) : StorageUtil.pGetForPage(opts.storageKey));
+            if (prev != null)
+                return prev;
+        }
+
+        const $btnTrueRemember = opts.textYesRemember ? $(`<button class="btn btn-primary ve-flex-v-center mr-2"><span class="glyphicon glyphicon-ok mr-2"></span><span>${opts.textYesRemember}</span></button>`).click(()=>{
+            doClose(true, true);
+            if (opts.fnRemember) {
+                opts.fnRemember(true);
+            } else {
+                opts.isGlobal ? StorageUtil.pSet(opts.storageKey, true) : StorageUtil.pSetForPage(opts.storageKey, true);
+            }
+        }
+        ) : null;
+
+        const $btnTrue = $(`<button class="btn btn-primary ve-flex-v-center mr-3"><span class="glyphicon glyphicon-ok mr-2"></span><span>${opts.textYes || "OK"}</span></button>`).click(evt=>{
+            evt.stopPropagation();
+            doClose(true, true);
+        }
+        );
+
+        const $btnFalse = opts.isAlert ? null : $(`<button class="btn btn-default btn-sm ve-flex-v-center"><span class="glyphicon glyphicon-remove mr-2"></span><span>${opts.textNo || "Cancel"}</span></button>`).click(evt=>{
+            evt.stopPropagation();
+            doClose(true, false);
+        }
+        );
+
+        const $btnSkip = !opts.isSkippable ? null : $(`<button class="btn btn-default btn-sm ml-3"><span class="glyphicon glyphicon-forward"></span><span>${opts.textSkip || "Skip"}</span></button>`).click(evt=>{
+            evt.stopPropagation();
+            doClose(VeCt.SYM_UI_SKIP);
+        }
+        );
+
+        const {$modalInner, doClose, pGetResolved, doAutoResize: doAutoResizeModal} = await InputUiUtil$1._pGetShowModal({
+            title: opts.title || "Choose",
+            isMinHeight0: true,
+        });
+
+        if (opts.$eleDescription?.length)
+            $$`<div class="ve-flex w-100 mb-1">${opts.$eleDescription}</div>`.appendTo($modalInner);
+        else if (opts.htmlDescription && opts.htmlDescription.trim())
+            $$`<div class="ve-flex w-100 mb-1">${opts.htmlDescription}</div>`.appendTo($modalInner);
+        $$`<div class="ve-flex-v-center ve-flex-h-right py-1 px-1">${$btnTrueRemember}${$btnTrue}${$btnFalse}${$btnSkip}</div>`.appendTo($modalInner);
+
+        if (doAutoResizeModal)
+            doAutoResizeModal();
+
+        $btnTrue.focus();
+        $btnTrue.select();
+
+        const [isDataEntered,out] = await pGetResolved();
+
+        if (typeof isDataEntered === "symbol")
+            return isDataEntered;
+
+        if (!isDataEntered)
+            return null;
+        if (out == null)
+            throw new Error(`Callback must receive a value!`);
+        return out;
+    }
+
+    static async pGetUserEnum(opts) {
+        opts = opts || {};
+
+        const $selEnum = $(`<select class="form-control mb-2"><option value="-1" disabled>${opts.placeholder || "Select..."}</option></select>`).keydown(async evt=>{
+            evt.stopPropagation();
+            if (evt.key === "Enter") {
+                evt.preventDefault();
+                doClose(true);
+            }
+        }
+        );
+
+        if (opts.isAllowNull)
+            $(`<option value="-1"></option>`).text(opts.fnDisplay ? opts.fnDisplay(null, -1) : "(None)").appendTo($selEnum);
+
+        opts.values.forEach((v,i)=>$(`<option value="${i}"></option>`).text(opts.fnDisplay ? opts.fnDisplay(v, i) : v).appendTo($selEnum));
+        if (opts.default != null)
+            $selEnum.val(opts.default);
+        else
+            $selEnum[0].selectedIndex = 0;
+
+        const {$modalInner, doClose, pGetResolved, doAutoResize: doAutoResizeModal} = await InputUiUtil$1._pGetShowModal({
+            title: opts.title || "Select an Option",
+            isMinHeight0: true,
+        });
+
+        const $btnOk = this._$getBtnOk({
+            opts,
+            doClose
+        });
+        const $btnCancel = this._$getBtnCancel({
+            opts,
+            doClose
+        });
+        const $btnSkip = this._$getBtnSkip({
+            opts,
+            doClose
+        });
+
+        $selEnum.appendTo($modalInner);
+        if (opts.$elePost)
+            opts.$elePost.appendTo($modalInner);
+        $$`<div class="ve-flex-v-center ve-flex-h-right pb-1 px-1">${$btnOk}${$btnCancel}${$btnSkip}</div>`.appendTo($modalInner);
+
+        if (doAutoResizeModal)
+            doAutoResizeModal();
+
+        $selEnum.focus();
+
+        const [isDataEntered] = await pGetResolved();
+        if (typeof isDataEntered === "symbol")
+            return isDataEntered;
+
+        if (!isDataEntered)
+            return null;
+        const ix = Number($selEnum.val());
+        if (!~ix)
+            return null;
+        if (opts.fnGetExtraState) {
+            const out = {
+                extraState: opts.fnGetExtraState()
+            };
+            if (opts.isResolveItem)
+                out.item = opts.values[ix];
+            else
+                out.ix = ix;
+            return out;
+        }
+
+        return opts.isResolveItem ? opts.values[ix] : ix;
+    }
+
+    static async pGetUserMultipleChoice(opts) {
+        const prop = "formData";
+
+        const initialState = {};
+        if (opts.defaults)
+            opts.defaults.forEach(ix=>initialState[ComponentUiUtil$1.getMetaWrpMultipleChoice_getPropIsActive(prop, ix)] = true);
+        if (opts.required) {
+            opts.required.forEach(ix=>{
+                initialState[ComponentUiUtil$1.getMetaWrpMultipleChoice_getPropIsActive(prop, ix)] = true;
+                initialState[ComponentUiUtil$1.getMetaWrpMultipleChoice_getPropIsRequired(prop, ix)] = true;
+            }
+            );
+        }
+
+        const comp = BaseComponent$1.fromObject(initialState);
+
+        let title = opts.title;
+        if (!title) {
+            if (opts.count != null)
+                title = `Choose ${Parser.numberToText(opts.count).uppercaseFirst()}`;
+            else if (opts.min != null && opts.max != null)
+                title = `Choose Between ${Parser.numberToText(opts.min).uppercaseFirst()} and ${Parser.numberToText(opts.max).uppercaseFirst()} Options`;
+            else if (opts.min != null)
+                title = `Choose At Least ${Parser.numberToText(opts.min).uppercaseFirst()}`;
+            else
+                title = `Choose At Most ${Parser.numberToText(opts.max).uppercaseFirst()}`;
+        }
+
+        const {$ele: $wrpList, $iptSearch, propIsAcceptable} = ComponentUiUtil$1.getMetaWrpMultipleChoice(comp, prop, opts);
+        $wrpList.addClass(`mb-1`);
+
+        const {$modalInner, doClose, pGetResolved, doAutoResize: doAutoResizeModal} = await InputUiUtil$1._pGetShowModal({
+            ...(opts.modalOpts || {}),
+            title,
+            isMinHeight0: true,
+            isUncappedHeight: true,
+        });
+
+        const $btnOk = this._$getBtnOk({
+            opts,
+            doClose
+        });
+        const $btnCancel = this._$getBtnCancel({
+            opts,
+            doClose
+        });
+        const $btnSkip = this._$getBtnSkip({
+            opts,
+            doClose
+        });
+
+        const hkIsAcceptable = ()=>$btnOk.attr("disabled", !comp._state[propIsAcceptable]);
+        comp._addHookBase(propIsAcceptable, hkIsAcceptable);
+        hkIsAcceptable();
+
+        if (opts.htmlDescription)
+            $modalInner.append(opts.htmlDescription);
+        if ($iptSearch) {
+            $$`<label class="mb-1">
+				${$iptSearch}
+			</label>`.appendTo($modalInner);
+        }
+        $wrpList.appendTo($modalInner);
+        $$`<div class="ve-flex-v-center ve-flex-h-right no-shrink pb-1 px-1">${$btnOk}${$btnCancel}${$btnSkip}</div>`.appendTo($modalInner);
+
+        if (doAutoResizeModal)
+            doAutoResizeModal();
+
+        $wrpList.focus();
+
+        const [isDataEntered] = await pGetResolved();
+
+        if (typeof isDataEntered === "symbol")
+            return isDataEntered;
+
+        if (!isDataEntered)
+            return null;
+
+        const ixs = ComponentUiUtil$1.getMetaWrpMultipleChoice_getSelectedIxs(comp, prop);
+
+        if (!opts.isResolveItems)
+            return ixs;
+
+        if (opts.values)
+            return ixs.map(ix=>opts.values[ix]);
+
+        if (opts.valueGroups) {
+            const allValues = opts.valueGroups.map(it=>it.values).flat();
+            return ixs.map(ix=>allValues[ix]);
+        }
+
+        throw new Error(`Should never occur!`);
+    }
+
+    static async pGetUserIcon(opts) {
+        opts = opts || {};
+
+        let lastIx = opts.default != null ? opts.default : -1;
+        const onclicks = [];
+
+        const {$modalInner, doClose, pGetResolved, doAutoResize: doAutoResizeModal} = await InputUiUtil$1._pGetShowModal({
+            title: opts.title || "Select an Option",
+            isMinHeight0: true,
+        });
+
+        $$`<div class="ve-flex ve-flex-wrap ve-flex-h-center mb-2">${opts.values.map((v,i)=>{
+            const $btn = $$`<div class="m-2 btn ${v.buttonClass || "btn-default"} ui__btn-xxl-square ve-flex-col ve-flex-h-center">
+					${v.iconClass ? `<div class="ui-icn__wrp-icon ${v.iconClass} mb-1"></div>` : ""}
+					${v.iconContent ? v.iconContent : ""}
+					<div class="whitespace-normal w-100">${v.name}</div>
+				</div>`.click(()=>{
+                lastIx = i;
+                onclicks.forEach(it=>it());
+            }
+            ).toggleClass(v.buttonClassActive || "active", opts.default === i);
+            if (v.buttonClassActive && opts.default === i) {
+                $btn.removeClass("btn-default").addClass(v.buttonClassActive);
+            }
+
+            onclicks.push(()=>{
+                $btn.toggleClass(v.buttonClassActive || "active", lastIx === i);
+                if (v.buttonClassActive)
+                    $btn.toggleClass("btn-default", lastIx !== i);
+            }
+            );
+            return $btn;
+        }
+        )}</div>`.appendTo($modalInner);
+
+        const $btnOk = this._$getBtnOk({
+            opts,
+            doClose
+        });
+        const $btnCancel = this._$getBtnCancel({
+            opts,
+            doClose
+        });
+        const $btnSkip = this._$getBtnSkip({
+            opts,
+            doClose
+        });
+
+        $$`<div class="ve-flex-v-center ve-flex-h-right pb-1 px-1">${$btnOk}${$btnCancel}${$btnSkip}</div>`.appendTo($modalInner);
+
+        const [isDataEntered] = await pGetResolved();
+
+        if (typeof isDataEntered === "symbol")
+            return isDataEntered;
+        if (!isDataEntered)
+            return null;
+        return ~lastIx ? lastIx : null;
+    }
+
+    static async pGetUserString(opts) {
+        opts = opts || {};
+
+        const propValue = "text";
+        const comp = BaseComponent$1.fromObject({
+            [propValue]: opts.default || "",
+            isValid: true,
+        });
+
+        const $iptStr = ComponentUiUtil$1.$getIptStr(comp, propValue, {
+            html: `<input class="form-control mb-2" type="text">`,
+            autocomplete: opts.autocomplete,
+        }, ).keydown(async evt=>{
+            if (evt.key === "Escape")
+                return;
+            if (opts.autocomplete) {
+                await MiscUtil.pDelay(17);
+                if ($modalInner.find(`.typeahead.dropdown-menu`).is(":visible"))
+                    return;
+            }
+
+            evt.stopPropagation();
+            if (evt.key === "Enter") {
+                evt.preventDefault();
+                doClose(true);
+            }
+        }
+        );
+        if (opts.isCode)
+            $iptStr.addClass("code");
+
+        if (opts.fnIsValid) {
+            const hkText = ()=>comp._state.isValid = !comp._state.text.trim() || !!opts.fnIsValid(comp._state.text);
+            comp._addHookBase(propValue, hkText);
+            hkText();
+
+            const hkIsValid = ()=>$iptStr.toggleClass("form-control--error", !comp._state.isValid);
+            comp._addHookBase("isValid", hkIsValid);
+            hkIsValid();
+        }
+
+        const {$modalInner, doClose, pGetResolved, doAutoResize: doAutoResizeModal} = await InputUiUtil$1._pGetShowModal({
+            title: opts.title || "Enter Text",
+            isMinHeight0: true,
+            isWidth100: true,
+        });
+
+        const $btnOk = this._$getBtnOk({
+            comp,
+            opts,
+            doClose
+        });
+        const $btnCancel = this._$getBtnCancel({
+            comp,
+            opts,
+            doClose
+        });
+        const $btnSkip = this._$getBtnSkip({
+            comp,
+            opts,
+            doClose
+        });
+
+        if (opts.$elePre)
+            opts.$elePre.appendTo($modalInner);
+        if (opts.$eleDescription?.length)
+            $$`<div class="ve-flex w-100 mb-1">${opts.$eleDescription}</div>`.appendTo($modalInner);
+        else if (opts.htmlDescription && opts.htmlDescription.trim())
+            $$`<div class="ve-flex w-100 mb-1">${opts.htmlDescription}</div>`.appendTo($modalInner);
+        $iptStr.appendTo($modalInner);
+        if (opts.$elePost)
+            opts.$elePost.appendTo($modalInner);
+        $$`<div class="ve-flex-v-center ve-flex-h-right pb-1 px-1">${$btnOk}${$btnCancel}${$btnSkip}</div>`.appendTo($modalInner);
+
+        if (doAutoResizeModal)
+            doAutoResizeModal();
+
+        $iptStr.focus();
+        $iptStr.select();
+
+        if (opts.cbPostRender) {
+            opts.cbPostRender({
+                comp,
+                $iptStr,
+                propValue,
+            });
+        }
+
+        const [isDataEntered] = await pGetResolved();
+
+        if (typeof isDataEntered === "symbol")
+            return isDataEntered;
+        if (!isDataEntered)
+            return null;
+        const raw = $iptStr.val();
+        return raw;
+    }
+
+    static async pGetUserText(opts) {
+        opts = opts || {};
+
+        const $iptStr = $(`<textarea class="form-control mb-2 resize-vertical w-100" ${opts.disabled ? "disabled" : ""}></textarea>`).val(opts.default);
+        if (opts.isCode)
+            $iptStr.addClass("code");
+
+        const {$modalInner, doClose, pGetResolved, doAutoResize: doAutoResizeModal} = await InputUiUtil$1._pGetShowModal({
+            title: opts.title || "Enter Text",
+            isMinHeight0: true,
+        });
+
+        const $btnOk = this._$getBtnOk({
+            opts,
+            doClose
+        });
+        const $btnCancel = this._$getBtnCancel({
+            opts,
+            doClose
+        });
+        const $btnSkip = this._$getBtnSkip({
+            opts,
+            doClose
+        });
+
+        $iptStr.appendTo($modalInner);
+        $$`<div class="ve-flex-v-center ve-flex-h-right pb-1 px-1">${$btnOk}${$btnCancel}${$btnSkip}</div>`.appendTo($modalInner);
+
+        if (doAutoResizeModal)
+            doAutoResizeModal();
+
+        $iptStr.focus();
+        $iptStr.select();
+
+        const [isDataEntered] = await pGetResolved();
+
+        if (typeof isDataEntered === "symbol")
+            return isDataEntered;
+        if (!isDataEntered)
+            return null;
+        const raw = $iptStr.val();
+        if (!raw.trim())
+            return null;
+        else
+            return raw;
+    }
+
+    static async pGetUserColor(opts) {
+        opts = opts || {};
+
+        const $iptRgb = $(`<input class="form-control mb-2" ${opts.default != null ? `value="${opts.default}"` : ""} type="color">`);
+
+        const {$modalInner, doClose, pGetResolved, doAutoResize: doAutoResizeModal} = await InputUiUtil$1._pGetShowModal({
+            title: opts.title || "Choose Color",
+            isMinHeight0: true,
+        });
+
+        const $btnOk = this._$getBtnOk({
+            opts,
+            doClose
+        });
+        const $btnCancel = this._$getBtnCancel({
+            opts,
+            doClose
+        });
+        const $btnSkip = this._$getBtnSkip({
+            opts,
+            doClose
+        });
+
+        $iptRgb.appendTo($modalInner);
+        $$`<div class="ve-flex-v-center ve-flex-h-right pb-1 px-1">${$btnOk}${$btnCancel}${$btnSkip}</div>`.appendTo($modalInner);
+
+        if (doAutoResizeModal)
+            doAutoResizeModal();
+
+        $iptRgb.focus();
+        $iptRgb.select();
+
+        const [isDataEntered] = await pGetResolved();
+
+        if (typeof isDataEntered === "symbol")
+            return isDataEntered;
+        if (!isDataEntered)
+            return null;
+        const raw = $iptRgb.val();
+        if (!raw.trim())
+            return null;
+        else
+            return raw;
+    }
+
+    static async pGetUserDirection(opts) {
+        const X = 0;
+        const Y = 1;
+        const DEG_CIRCLE = 360;
+
+        opts = opts || {};
+        const step = Math.max(2, Math.min(DEG_CIRCLE, opts.step || DEG_CIRCLE));
+        const stepDeg = DEG_CIRCLE / step;
+
+        function getAngle(p1, p2) {
+            return Math.atan2(p2[Y] - p1[Y], p2[X] - p1[X]) * 180 / Math.PI;
+        }
+
+        let active = false;
+        let curAngle = Math.min(DEG_CIRCLE, opts.default) || 0;
+
+        const $arm = $(`<div class="ui-dir__arm"></div>`);
+        const handleAngle = ()=>$arm.css({
+            transform: `rotate(${curAngle + 180}deg)`
+        });
+        handleAngle();
+
+        const $pad = $$`<div class="ui-dir__face">${$arm}</div>`.on("mousedown touchstart", evt=>{
+            active = true;
+            handleEvent(evt);
+        }
+        );
+
+        const $document = $(document);
+        const evtId = `ui_user_dir_${CryptUtil.uid()}`;
+        $document.on(`mousemove.${evtId} touchmove${evtId}`, evt=>{
+            handleEvent(evt);
+        }
+        ).on(`mouseup.${evtId} touchend${evtId} touchcancel${evtId}`, evt=>{
+            evt.preventDefault();
+            evt.stopPropagation();
+            active = false;
+        }
+        );
+        const handleEvent = (evt)=>{
+            if (!active)
+                return;
+
+            const coords = [EventUtil.getClientX(evt), EventUtil.getClientY(evt)];
+
+            const {top, left} = $pad.offset();
+            const center = [left + ($pad.width() / 2), top + ($pad.height() / 2)];
+            curAngle = getAngle(center, coords) + 90;
+            if (step !== DEG_CIRCLE)
+                curAngle = Math.round(curAngle / stepDeg) * stepDeg;
+            else
+                curAngle = Math.round(curAngle);
+            handleAngle();
+        }
+        ;
+
+        const BTN_STEP_SIZE = 26;
+        const BORDER_PAD = 16;
+        const CONTROLS_RADIUS = (92 + BTN_STEP_SIZE + BORDER_PAD) / 2;
+        const $padOuter = opts.stepButtons ? (()=>{
+            const steps = opts.stepButtons;
+            const SEG_ANGLE = 360 / steps.length;
+
+            const $btns = [];
+
+            for (let i = 0; i < steps.length; ++i) {
+                const theta = (SEG_ANGLE * i * (Math.PI / 180)) - (1.5708);
+                const x = CONTROLS_RADIUS * Math.cos(theta);
+                const y = CONTROLS_RADIUS * Math.sin(theta);
+                $btns.push($(`<button class="btn btn-default btn-xxs absolute">${steps[i]}</button>`).css({
+                    top: y + CONTROLS_RADIUS - (BTN_STEP_SIZE / 2),
+                    left: x + CONTROLS_RADIUS - (BTN_STEP_SIZE / 2),
+                    width: BTN_STEP_SIZE,
+                    height: BTN_STEP_SIZE,
+                    zIndex: 1002,
+                }).click(()=>{
+                    curAngle = SEG_ANGLE * i;
+                    handleAngle();
+                }
+                ), );
+            }
+
+            const $wrpInner = $$`<div class="ve-flex-vh-center relative">${$btns}${$pad}</div>`.css({
+                width: CONTROLS_RADIUS * 2,
+                height: CONTROLS_RADIUS * 2,
+            });
+
+            return $$`<div class="ve-flex-vh-center">${$wrpInner}</div>`.css({
+                width: (CONTROLS_RADIUS * 2) + BTN_STEP_SIZE + BORDER_PAD,
+                height: (CONTROLS_RADIUS * 2) + BTN_STEP_SIZE + BORDER_PAD,
+            });
+        }
+        )() : null;
+
+        const {$modalInner, doClose, pGetResolved, doAutoResize: doAutoResizeModal} = await InputUiUtil$1._pGetShowModal({
+            title: opts.title || "Select Direction",
+            isMinHeight0: true,
+        });
+
+        const $btnOk = this._$getBtnOk({
+            opts,
+            doClose
+        });
+        const $btnCancel = this._$getBtnCancel({
+            opts,
+            doClose
+        });
+        const $btnSkip = this._$getBtnSkip({
+            opts,
+            doClose
+        });
+
+        $$`<div class="ve-flex-vh-center mb-3">
+				${$padOuter || $pad}
+			</div>`.appendTo($modalInner);
+        $$`<div class="ve-flex-v-center ve-flex-h-right pb-1 px-1">${$btnOk}${$btnCancel}${$btnSkip}</div>`.appendTo($modalInner);
+
+        if (doAutoResizeModal)
+            doAutoResizeModal();
+
+        const [isDataEntered] = await pGetResolved();
+
+        if (typeof isDataEntered === "symbol")
+            return isDataEntered;
+        $document.off(`mousemove.${evtId} touchmove${evtId} mouseup.${evtId} touchend${evtId} touchcancel${evtId}`);
+        if (!isDataEntered)
+            return null;
+        if (curAngle < 0)
+            curAngle += 360;
+        return curAngle;
+    }
+
+    static async pGetUserDice(opts) {
+        opts = opts || {};
+
+        const comp = BaseComponent$1.fromObject({
+            num: (opts.default && opts.default.num) || 1,
+            faces: (opts.default && opts.default.faces) || 6,
+            bonus: (opts.default && opts.default.bonus) || null,
+        });
+
+        comp.render = function($parent) {
+            $parent.empty();
+
+            const $iptNum = ComponentUiUtil$1.$getIptInt(this, "num", 0, {
+                $ele: $(`<input class="form-control input-xs form-control--minimal ve-text-center mr-1">`)
+            }).appendTo($parent).keydown(evt=>{
+                if (evt.key === "Escape") {
+                    $iptNum.blur();
+                    return;
+                }
+                if (evt.which === 13)
+                    doClose(true);
+                evt.stopPropagation();
+            }
+            );
+            const $selFaces = ComponentUiUtil$1.$getSelEnum(this, "faces", {
+                values: Renderer.dice.DICE
+            }).addClass("mr-2").addClass("ve-text-center").css("textAlignLast", "center");
+
+            const $iptBonus = $(`<input class="form-control input-xs form-control--minimal ve-text-center">`).change(()=>this._state.bonus = UiUtil$1.strToInt($iptBonus.val(), null, {
+                fallbackOnNaN: null
+            })).keydown(evt=>{
+                if (evt.key === "Escape") {
+                    $iptBonus.blur();
+                    return;
+                }
+                if (evt.which === 13)
+                    doClose(true);
+                evt.stopPropagation();
+            }
+            );
+            const hook = ()=>$iptBonus.val(this._state.bonus != null ? UiUtil$1.intToBonus(this._state.bonus) : this._state.bonus);
+            comp._addHookBase("bonus", hook);
+            hook();
+
+            $$`<div class="ve-flex-vh-center">${$iptNum}<div class="mr-1">d</div>${$selFaces}${$iptBonus}</div>`.appendTo($parent);
+        }
+        ;
+
+        comp.getAsString = function() {
+            return `${this._state.num}d${this._state.faces}${this._state.bonus ? UiUtil$1.intToBonus(this._state.bonus) : ""}`;
+        }
+        ;
+
+        const {$modalInner, doClose, pGetResolved, doAutoResize: doAutoResizeModal} = await InputUiUtil$1._pGetShowModal({
+            title: opts.title || "Enter Dice",
+            isMinHeight0: true,
+        });
+
+        const $btnOk = this._$getBtnOk({
+            opts,
+            doClose
+        });
+        const $btnCancel = this._$getBtnCancel({
+            opts,
+            doClose
+        });
+        const $btnSkip = this._$getBtnSkip({
+            opts,
+            doClose
+        });
+
+        comp.render($modalInner);
+
+        $$`<div class="ve-flex-v-center ve-flex-h-right pb-1 px-1 mt-2">${$btnOk}${$btnCancel}${$btnSkip}</div>`.appendTo($modalInner);
+
+        if (doAutoResizeModal)
+            doAutoResizeModal();
+
+        const [isDataEntered] = await pGetResolved();
+
+        if (typeof isDataEntered === "symbol")
+            return isDataEntered;
+        if (!isDataEntered)
+            return null;
+        return comp.getAsString();
+    }
+
+    static async pGetUserScaleCr(opts={}) {
+        const crDefault = opts.default || "1";
+
+        let slider;
+
+        const {$modalInner, doClose, pGetResolved, doAutoResize: doAutoResizeModal} = await InputUiUtil$1._pGetShowModal({
+            title: opts.title || "Select Challenge Rating",
+            isMinHeight0: true,
+            cbClose: ()=>{
+                slider.destroy();
+            }
+            ,
+        });
+
+        const cur = Parser.CRS.indexOf(crDefault);
+        if (!~cur)
+            throw new Error(`Initial CR ${crDefault} was not valid!`);
+
+        const comp = BaseComponent$1.fromObject({
+            min: 0,
+            max: Parser.CRS.length - 1,
+            cur,
+        });
+        slider = new ComponentUiUtil$1.RangeSlider({
+            comp,
+            propMin: "min",
+            propMax: "max",
+            propCurMin: "cur",
+            fnDisplay: ix=>Parser.CRS[ix],
+        });
+        $$`<div class="ve-flex-col w-640p">${slider.$get()}</div>`.appendTo($modalInner);
+
+        const $btnOk = this._$getBtnOk({
+            opts,
+            doClose
+        });
+        const $btnCancel = this._$getBtnCancel({
+            opts,
+            doClose
+        });
+        const $btnSkip = this._$getBtnSkip({
+            opts,
+            doClose
+        });
+
+        $$`<div class="ve-flex-v-center ve-flex-h-right pb-1 px-1">${$btnOk}${$btnCancel}${$btnSkip}</div>`.appendTo($modalInner);
+
+        if (doAutoResizeModal)
+            doAutoResizeModal();
+
+        const [isDataEntered] = await pGetResolved();
+
+        if (typeof isDataEntered === "symbol")
+            return isDataEntered;
+        if (!isDataEntered)
+            return null;
+
+        return Parser.CRS[comp._state.cur];
+    }
+}
+//#endregion
+
 //#region Hist
 let Hist = class Hist {
     static hashChange({isForceLoad, isBlankFilterLoad=false}={}) {
