@@ -6488,63 +6488,48 @@ class ActorCharactermancerRace extends ActorCharactermancerBaseComponent {
     }
     /**This function grabs existing race from a foundryVTT actor */
     _pLoad_pDoHandleExistingRace() {
-      const _0x5554e3 = this._actor.system.details?.race;
-      if (!_0x5554e3) { return; }
-      const {
-        ixRace: _0x554aa1,
-        ixRaceVersion: _0x5a66c0,
-        isRacePresent: _0x6e3758
-      } = this._pLoad_getExistingRaceIndex(_0x5554e3);
-      if (_0x6e3758 && _0x554aa1 == null) {
-        const _0x5ac201 = "Could not find race \"" + _0x5554e3 + "\" in loaded data. " + Charactermancer_Util.STR_WARN_SOURCE_SELECTION;
-        ui.notifications.warn(_0x5ac201);
-        console.warn(...LGT, _0x5ac201, "Strict source matching is: " + Config.get('import', "isStrictMatching") + '.');
-      }
-      this._state.race_ixRace = _0x554aa1;
-      this._state.race_ixRace_version = _0x5a66c0;
-    }
-    ["_pLoad_getExistingRaceIndex"](_0x41543f) {
-      const _0x56fc39 = (IntegrationBabele.getOriginalName(_0x41543f) || '').trim().toLowerCase();
-      const _0x2c50e0 = _0x41543f?.["flags"]?.[SharedConsts.MODULE_ID];
-      const _0x4a05d9 = _0x2c50e0?.["propDroppable"] === "race" && _0x2c50e0?.["source"] && _0x2c50e0?.["hash"];
-      let _0x50dc0a = null;
-      let _0x21f4a5 = null;
-      _0x343967: for (let _0x353561 = 0x0; _0x353561 < this._data.race.length; ++_0x353561) {
-        const _0x626e38 = this._data.race[_0x353561];
-        if (_0x4a05d9 && _0x2c50e0.source === _0x626e38.source && _0x2c50e0.hash === UrlUtil.URL_TO_HASH_BUILDER.race(_0x626e38) || this._pLoad_pDoHandleExistingRace_isMatch({
-          'race': _0x626e38,
-          'existingRaceClean': _0x56fc39
-        })) {
-          _0x50dc0a = _0x353561;
-          break;
+        const myRace = this._actor.system.details?.race;
+        if (!myRace) { return; }
+        const { ixRace: ixRace, ixRaceVersion: ixRaceVersion, isRacePresent: isRacePresent }
+        = this._pLoad_getExistingRaceIndex(myRace);
+        if (isRacePresent && ixRace == null) {
+            const errorStr = "Could not find race \"" + myRace + "\" in loaded data. " + Charactermancer_Util.STR_WARN_SOURCE_SELECTION;
+            ui.notifications.warn(errorStr);
+            console.warn(...LGT, errorStr, "Strict source matching is: " + Config.get('import', "isStrictMatching") + '.');
         }
-        const _0x5adcb4 = DataUtil.generic.getVersions(_0x626e38);
-        for (let _0x1a6bb8 = 0x0; _0x1a6bb8 < _0x5adcb4.length; ++_0x1a6bb8) {
-          const _0x24cafe = _0x5adcb4[_0x1a6bb8];
-          if (_0x4a05d9 && _0x2c50e0.source === _0x24cafe.source && _0x2c50e0.hash === UrlUtil.URL_TO_HASH_BUILDER.race(_0x24cafe) || this._pLoad_pDoHandleExistingRace_isMatch({
-            'race': _0x24cafe,
-            'existingRaceClean': _0x56fc39
-          })) {
-            _0x50dc0a = _0x353561;
-            _0x21f4a5 = _0x1a6bb8;
-            break _0x343967;
-          }
-        }
-      }
-      return {
-        'ixRace': _0x50dc0a,
-        'ixRaceVersion': _0x21f4a5,
-        'isRacePresent': _0x56fc39 || _0x4a05d9
-      };
+        this._state.race_ixRace = ixRace;
+        this._state.race_ixRace_version = ixRaceVersion;
     }
-    ["_pLoad_pDoHandleExistingRace_isMatch"]({
-      race: _0x5858ca,
-      existingRaceClean: _0x10d38e
-    }) {
-      if (!_0x10d38e) {
-        return false;
-      }
-      return _0x5858ca.name.toLowerCase().trim() === _0x10d38e || (PageFilterRaces.getInvertedName(_0x5858ca.name) || '').toLowerCase().trim() === _0x10d38e;
+    _pLoad_getExistingRaceIndex(race) {
+        const raceNameLower = (IntegrationBabele.getOriginalName(race) || '').trim().toLowerCase();
+        const moduleRaceFlag = race?.flags?.[SharedConsts.MODULE_ID];
+        const hasModuleInfo = moduleRaceFlag?.propDroppable === "race" && moduleRaceFlag?.source && moduleRaceFlag?.hash;
+        let outIxRace = null;
+        let outIxRaceVersion = null;
+        topLoop: for (let ix = 0; ix < this._data.race.length; ++ix) {
+            const ourDataRace = this._data.race[ix];
+            if (hasModuleInfo && moduleRaceFlag.source === ourDataRace.source && moduleRaceFlag.hash 
+                === UrlUtil.URL_TO_HASH_BUILDER.race(ourDataRace) ||
+                this._pLoad_pDoHandleExistingRace_isMatch({race: ourDataRace, existingRaceClean: raceNameLower}))
+            {
+                outIxRace = ix; break;
+            }
+            const versions = DataUtil.generic.getVersions(ourDataRace);
+            for (let j = 0; j < versions.length; ++j) {
+                const version = versions[j];
+                if (hasModuleInfo && moduleRaceFlag.source === version.source && moduleRaceFlag.hash
+                    === UrlUtil.URL_TO_HASH_BUILDER.race(version) ||
+                    this._pLoad_pDoHandleExistingRace_isMatch({ race: version, existingRaceClean: raceNameLower })) {
+                    outIxRace = ix; outIxRaceVersion = j; break topLoop;
+                }
+            }
+        }
+        return { ixRace: outIxRace, ixRaceVersion: outIxRaceVersion, isRacePresent: raceNameLower || hasModuleInfo };
+    }
+    _pLoad_pDoHandleExistingRace_isMatch({ race: race, existingRaceClean: existingRaceNameLower }) {
+        if (!existingRaceNameLower) { return false; }
+        return race.name.toLowerCase().trim() === existingRaceNameLower || (PageFilterRaces.getInvertedName(race.name) 
+        || '').toLowerCase().trim() === existingRaceNameLower;
     }
 
     /**
