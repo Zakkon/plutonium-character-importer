@@ -15,8 +15,8 @@ class CharacterExportFvtt{
         const _meta = {};
         const _char = {race:null, classes:null};
 
-        let isOfficialContentUsed = false;
-        const brewSourcesUsed = []; //Needs to be cleaned of duplicates later
+        //probably needs to be cleaned of duplicates later
+        let metaDataStack = [];
 
         //Lets start by getting the character race
         const race = builder.compRace.getRace_();
@@ -24,8 +24,8 @@ class CharacterExportFvtt{
             _char.race = {name:race.name, source:race.source, srd:race.srd,
                 isSubRace: race._isSubRace, raceName:race.raceName, raceSource:race.raceSource, isBaseSrd:race._baseSrd,
                 versionBaseName:race._versionBase_name, versionBaseSource:race._versionBase_source };
-            if(race.srd || this.isFromOfficialSource(race)){isOfficialContentUsed=true;}
-            else{ const match = this.matchToBrewSource(race, brewSourcesLoaded); if(match){brewSourcesUsed.push(match);} }
+            metaDataStack.push({uid: race.name+"|"+race.source, _data:CharacterExportFvtt.getSourceMetaData(race)});
+
         }
 
         //Now lets get the class information
@@ -42,27 +42,29 @@ class CharacterExportFvtt{
                 level: data.targetLevel,
                 isPrimary: data.isPrimary
             };
-            if(data.cls.srd || this.isFromOfficialSource(data.cls)){isOfficialContentUsed=true;}
-            else{ const match = this.matchToBrewSource(data.cls, brewSourcesLoaded); if(match){brewSourcesUsed.push(match);} }
+            metaDataStack.push({uid: data.cls.name+"|"+data.cls.source, _data:CharacterExportFvtt.getSourceMetaData(data.cls)});
 
             //Check if high enough level for subclass here?
             if(data.sc){
-                console.log(data.sc);
                 block.subclass = {
                     name: data.sc.name,
                     source: data.sc.source //maybe we should include some info here (and in class, race, etc) if this is brewed content
                 }
                 //subclasses generally dont have the 'srd' property
-                if(data.sc.srd || this.isFromOfficialSource(data.sc)){isOfficialContentUsed=true;}
-                else{ const match = this.matchToBrewSource(data.sc, brewSourcesLoaded); if(match){brewSourcesUsed.push(match);} }
+                metaDataStack.push({uid: data.sc.name+"|"+data.sc.source, _data:CharacterExportFvtt.getSourceMetaData(data.sc)});
             }
             classArray.push(block);
         }
         _char.classes = classArray;
 
         //Background information time
+        const background = await CharacterExportFvtt.getBackground(builder.compBackground);
+        console.log("Background: ", background);
+        if(!!background){metaDataStack.push({uid: background.name+"|"+background.source, _data:CharacterExportFvtt.getSourceMetaData(background)});}
+        _char.background = background;
 
         //ability scores (our choices, maybe not the total)
+
 
         //equipment (including gold, and bought items)
         const equipment = await CharacterExportFvtt.getEquipmentData(builder.compEquipment);
@@ -70,12 +72,31 @@ class CharacterExportFvtt{
         //known spells & cantrips
         const spells = await CharacterExportFvtt.getAllSpells(builder.compSpell);
         console.log("Spells: ", spells);
+        for(let srcIx = 0; srcIx < spells.length; ++srcIx){
+            let src = spells[srcIx];
+            for(let lvlix = 0; lvlix < src.spellsByLvl.length; ++lvlix){
+                let lvl = src.spellsByLvl[lvlix];
+                for(let spix = 0; spix < lvl.length; ++spix){
+                    let sp = lvl[spix];
+                    metaDataStack.push({uid: sp.spell.name+"|"+sp.spell.source, _data:CharacterExportFvtt.getSourceMetaData(sp.spell)});
+                }
+            }
+        }
+        _char.spellsBySource = spells;
 
         //Feats
 
         //optional feature stuff?
 
         //Build meta
+        let isOfficialContentUsed = false;
+        let brewSourcesUsed = [];
+        for(let meta of metaDataStack){
+            if(meta._data.isOfficialContent){isOfficialContentUsed = true;}
+            else{
+                brewSourcesUsed.push(meta._data.brewSource);
+            }
+        }
         _meta.isOfficialContentUsed = isOfficialContentUsed;
         _meta.brewSourcesUsed = brewSourcesUsed;
 
@@ -150,7 +171,7 @@ class CharacterExportFvtt{
     }
     /**
      * @param {ActorCharactermancerSpell} compSpell
-     * @returns {{className:string, classSource:string, spellsByLvl:any[][]}}
+     * @returns {{className:string, classSource:string, spellsByLvl:any[][]}[]}
      */
     static getAllSpells(compSpell){
 
@@ -158,6 +179,7 @@ class CharacterExportFvtt{
         for(let j = 0; j < compSpell.compsSpellSpells.length; ++j){
             //Assume this component handles spells for a certain class
             let comp = compSpell.compsSpellSpells[j];
+            if(!comp){continue;}
             let className = comp._className;
             let classSource = comp._classSource;
             let spellsByLvl = compSpell.compsSpellSpells[j]._test_getKnownSpells();
@@ -165,43 +187,29 @@ class CharacterExportFvtt{
         }
         return spellsBySource;
     }
+    static getBackground(compBackground){
+        return compBackground.getBackground_(); 
+    }
     //#endregion
 
-    static test_getSourceFromSubclass(){
-        const item = {
-            className: "Sorcerer",
-            classSource: "PHB",
-            name: "Blood Magic",
-            shortName: "Blood Magic",
-            source: "FFBloodSorc",
-            __diagnostic: {filename: "Foxfire94; Blood Magic Sorcerous Origin.json" },
-            __prop: "subclass"
-        };
-
-         //First of all, try to figure out if this is a brewed subclass
-        //one easy way (maybe?) of doing this is to check the __diagnostic property (only brewed (and maybe prerelease?) stuff has this)
-        const isBrewedContent = CharacterExportFvtt.isFromOfficialSource(item);
-
-        if(!isBrewedContent){
-            const sourceNameFull = this.matchToOfficialSource(item);
-            const meta = {
-                isOfficial: true,
-                source: item.source,
-                sourceFull: sourceNameFull
-            };
-            return meta;
-        }
-
-
-        const brewSources = CharacterExportFvtt.getBrewSources();
-        console.log("BREW SOURCES", brewSources);
-
-        const matchedBrewSources = brewSources.filter(src => this.doesMatchToBrewSource(item, src));
-        if(matchedBrewSources.length<1){}
-        console.log("Matched? ", matchedBrewSources.length==1);
-    }
-
+    //#region Get Source Metadata
     /**
+     * Gets source metadata for an object (race/class/subclass/spell/etc)
+     * @param {{srd:boolean}} item
+     * @returns {{isOfficialContent:boolean, brewSource:any}}
+     */
+    static getSourceMetaData(item){
+        //This is not a trustable way to confirm if something is from official sources or not. Yet.
+        if(item.srd || this.isFromOfficialSource(item)){
+            return {isOfficialContent:true};
+        }
+        else{ 
+            const match = this.matchToBrewSource(item, brewSourcesLoaded);
+            if(!match){throw new Error("Failed to get brew source for ", item);}
+            return {isOfficialContent:false, brewSource:match};
+        }
+    }
+     /**
      * @returns {{name:string, url:string, isDefault:boolean, isWorldSelectable:boolean, cacheKey:string, _brewUtil: any
      * filterTypes:string[], _pPostLoad:Function, _isExistingPrereleaseBrew:boolean, _isAutoDetectPrereleaseBrew:boolean,
      * abbreviations:string[] _isAutoDetectPrereleaseBrew:boolean, _isExistingPrereleaseBrew:boolean}[]}
@@ -246,6 +254,11 @@ class CharacterExportFvtt{
         if(matchedBrewSources.length > 1){ console.error("Matched item to multiple brew sources", item, matchedBrewSources); } //something went wrong
         return matchedBrewSources[0];
     }
+    /**
+     * Checks if an object(race/class/subclass/etc) is from an official source 
+     * @param {{__diagnostic:any}} item
+     * @returns {boolean}
+     */
     static isFromOfficialSource(item){
         //We can either check for a diagnostic property
         if(!item.__diagnostic){return true;}
@@ -258,9 +271,66 @@ class CharacterExportFvtt{
     static matchToOfficialSource(item){
         return Parser.sourceJsonToFull(item.source);
     }
+    //#endregion
+
+    static test_getSourceFromSubclass(){
+        const item = {
+            className: "Sorcerer",
+            classSource: "PHB",
+            name: "Blood Magic",
+            shortName: "Blood Magic",
+            source: "FFBloodSorc",
+            __diagnostic: {filename: "Foxfire94; Blood Magic Sorcerous Origin.json" },
+            __prop: "subclass"
+        };
+
+         //First of all, try to figure out if this is a brewed subclass
+        //one easy way (maybe?) of doing this is to check the __diagnostic property (only brewed (and maybe prerelease?) stuff has this)
+        const isBrewedContent = CharacterExportFvtt.isFromOfficialSource(item);
+
+        if(!isBrewedContent){
+            const sourceNameFull = this.matchToOfficialSource(item);
+            const meta = {
+                isOfficial: true,
+                source: item.source,
+                sourceFull: sourceNameFull
+            };
+            return meta;
+        }
+
+
+        const brewSources = CharacterExportFvtt.getBrewSources();
+        console.log("BREW SOURCES", brewSources);
+
+        const matchedBrewSources = brewSources.filter(src => this.doesMatchToBrewSource(item, src));
+        if(matchedBrewSources.length<1){}
+        console.log("Matched? ", matchedBrewSources.length==1);
+    }
+
+    static test_printExportJsonAsString(exportJson){
+        
+    }
     
 }
 
-class CharacterImportFvtt{
+class CharacterImportFvtt {
 
+    //Useful for loading a savefile
+    static importAsJsonString(jsonString){
+
+        let data = {};
+        for(let clData of data._char.classes){
+            let clsState = this.loadClassState(clData);
+        }
+    }
+
+    /**
+     * @param {{name:string, source:string, srd:boolean, level:number, isPrimary:boolean,
+     * subclass:{name:string, source:string}}} data
+     * @returns {any}
+     */
+    static loadClassState(data){
+        //Assume we have already loaded the needed soures into memory
+        //Now we have to use the class name and the class source to create an UID so we can get the needed object
+    }    
 }
