@@ -68,6 +68,8 @@ class CharacterExportFvtt{
         const equipment = await CharacterExportFvtt.getEquipmentData(builder.compEquipment);
         console.log("Equipment: ", equipment);
         //known spells & cantrips
+        const spells = await CharacterExportFvtt.getAllSpells(builder.compSpell);
+        console.log("Spells: ", spells);
 
         //Feats
 
@@ -82,6 +84,7 @@ class CharacterExportFvtt{
         console.log("Export Character", output);
     }
 
+    //#region Pull Info From Builder
     /**
      * @param {ActorCharactermancerClass} compClass
      * @returns {{cls: any, isPrimary: boolean, propIxSubclass:string, targetLevel:number, sc:any}[]}
@@ -145,6 +148,24 @@ class CharacterExportFvtt{
         out.itemsShop = formShop.data.equipmentItemEntries;
         return out;
     }
+    /**
+     * @param {ActorCharactermancerSpell} compSpell
+     * @returns {{className:string, classSource:string, spellsByLvl:any[][]}}
+     */
+    static getAllSpells(compSpell){
+
+        let spellsBySource = [];
+        for(let j = 0; j < compSpell.compsSpellSpells.length; ++j){
+            //Assume this component handles spells for a certain class
+            let comp = compSpell.compsSpellSpells[j];
+            let className = comp._className;
+            let classSource = comp._classSource;
+            let spellsByLvl = compSpell.compsSpellSpells[j]._test_getKnownSpells();
+            spellsBySource.push({className: className, classSource:classSource, spellsByLvl: spellsByLvl});
+        }
+        return spellsBySource;
+    }
+    //#endregion
 
     static test_getSourceFromSubclass(){
         const item = {
