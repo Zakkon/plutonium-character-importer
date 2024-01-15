@@ -8345,7 +8345,7 @@ class Charactermancer_StartingEquipment // extends Application
     static getComponents(actor, opts) {
         opts = opts || {};
 
-        const compCurrency = actor ? Charactermancer_StartingEquipment.Currency.fromActor(actor) : new Charactermancer_StartingEquipment.Currency();
+        const compCurrency = actor?.currency ? Charactermancer_StartingEquipment.Currency.fromActor(actor) : new Charactermancer_StartingEquipment.Currency();
         compCurrency.init();
 
         const compDefault = new Charactermancer_StartingEquipment.ComponentDefault({
@@ -11795,10 +11795,10 @@ class Charactermancer_Spell extends BaseComponent {
     }
 
     _getExistingSpellLookup() {
-        if (!this._existingClass || !this._existingCasterMeta)
-            return null;
+        if (!this._existingClass || !this._existingCasterMeta) { return null; }
 
-        const spItems = this._actor.items.filter(it=>it.type === "spell");
+        //TEMPFIX
+        const spItems = []; //this._actor.items.filter(it=>it.type === "spell");
 
         const cntsSeenLearnedPerLevel = {};
         const cntsSeenPreparedPerLevel = {};
