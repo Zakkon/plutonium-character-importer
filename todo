@@ -10,3 +10,35 @@ CLASS
 - Create a foundry script that parses through the json and understands which sources are used, then builds the character
 - Stop classes from sailing to the top of the list of selectable classes just because we applied some homebrew subclasses to it
 - Make active buttons look prettier (right now they look bad because i had to fix a bug where they wouldnt show box shadow when active)
+- 
+
+EXPORTABLE INFORMATION (json format is good enough)
+- Equipment - done
+- Coins - done
+- Classes (with level and subclasses) - done
+- Race - done
+- Background
+- Ability Scores
+- Spells
+- Feats
+- Optional Features
+- 
+
+SHEET DISPLAYABLE INFORMATION
+- Classes (with level and subclasses) - done
+- Race - done
+- Ability Scores
+- Background - done
+- HP
+- AC
+- Speed
+- Items + weight
+- Coins + weight
+- Spells
+- Proficiency Bonus
+- Initiative
+- Proficiencies (armor, weapon, tools, saves, skills)
+- Languages
+- Skills (show modifiers + proficiency & expertise)
+- Saves (show modifiers + proficiency)
+- Encumberance
