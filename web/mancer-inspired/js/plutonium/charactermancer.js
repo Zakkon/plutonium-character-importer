@@ -156,7 +156,7 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
         } = this.constructor._class_getLocks(ix);
 
         this._addHookBase(propIxClass, () => this._state.class_pulseChange = !this._state.class_pulseChange);
-        //TESTFIX, add a hook for when subclass is changed. This is so sheets can sense when we change subclass
+        //TEMPFIX, add a hook for when subclass is changed. This is so sheets can sense when we change subclass
         this._addHookBase(propIxSubclass, () => this._state.class_pulseChange = !this._state.class_pulseChange);
 
         //Create a searchable select field for choosing a class
@@ -588,11 +588,11 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
       //Collect metas
       this._existingClassMetas = classes.map(cls => {
         const _clsIx = this._test_getExistingClassIndex(cls);
-        let _scIx = this._pLoad_getExistingSubclassIndex(_clsIx, cls.subclass);
+        let _scIx = this.test_getExistingSubclassIndex(_clsIx, cls.subclass);
         const isPrimaryClass = cls.isPrimary || false;
 
         const failMatchCls = ~_clsIx ? null : "Could not find class \"" + cls.name + "\" (\"" 
-        + UtilDocumentSource.getDocumentSourceDisplayString(cls) + "\") in loaded data. " + Charactermancer_Util.STR_WARN_SOURCE_SELECTION;
+            + UtilDocumentSource.getDocumentSourceDisplayString(cls) + "\") in loaded data. " + Charactermancer_Util.STR_WARN_SOURCE_SELECTION;
         if (failMatchCls) {
             //ui.notifications.warn(failMatchCls);
             console.warn(...LGT, failMatchCls, "Strict source matching is: " + Config.get("import", "isStrictMatching") + '.');
@@ -602,13 +602,16 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
             //ui.notifications.warn(failMatchSc);
             console.warn(...LGT, failMatchSc, "Strict source matching is: " + Config.get("import", "isStrictMatching") + '.');
         }
+
+        //Should be (class level - 1) or 0, whichever is higher
+        const classLevel = Math.max((cls.level||0) - 1, 0); //Keep in mind that our save file schema currently stores levels with base 1, whereas in this program we could 0 as lvl 1
         return new ActorCharactermancerClass.ExistingClassMeta({
             'item': cls,
             'ixClass': _clsIx,
             'isUnknownClass': !~_clsIx,
             'ixSubclass': _scIx,
             'isUnknownSubclass': _scIx == null && !~_scIx,
-            'level': Number(cls.level|| 0),
+            'level': classLevel,
             'isPrimary': isPrimaryClass,
             //TEMPFIX 'spellSlotLevelSelection': cls?.flags?.[SharedConsts.MODULE_ID]?.['spellSlotLevelSelection']
         });
@@ -858,13 +861,18 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
             const filteredFeatures = this._class_getFilteredFeatures(cls, sc);
 
             //TEMPFIX
-            const existingClassMeta = SETTINGS.USE_EXISTING? this._class_getExistingClassMeta(ix) : null;
+            const existingClassMeta = (SETTINGS.USE_EXISTING || SETTINGS.USE_EXISTING_WEB)? this._class_getExistingClassMeta(ix) : null;
+            //Any level <= this will be forcefully locked in, and we cannot choose them as options Default is 0
+            const maxPrevLevel = existingClassMeta?.level || 0;
+            //Are we going to forcefully select a level?
+            //Default is true
+            const isForceSelect = true; //!existingClassMeta || (this.getExistingClassTotalLevels_() === 0 && SETTINGS.LOCK_EXISTING_CHOICES);
             this._compsClassLevelSelect[ix] = new Charactermancer_Class_LevelSelect({
-                'features': filteredFeatures,
-                'isRadio': true,
-                'isForceSelect': this.getExistingClassTotalLevels_() === 0 || !existingClassMeta,
-                'maxPreviousLevel': existingClassMeta?.["level"],
-                'isSubclass': true
+                features: filteredFeatures,
+                isRadio: true,
+                isForceSelect: isForceSelect,
+                maxPreviousLevel: maxPrevLevel,
+                isSubclass: true
             });
             this._compsClassLevelSelect[ix].render(ele_levelSelect);
 
@@ -2754,59 +2762,68 @@ class Charactermancer_Class_LevelSelect extends BaseComponent {
     }
 
     _render_$getCbRow(ix) {
-        if (!this._isRadio)
-            return $(`<input type="checkbox" class="no-events">`);
+        if (!this._isRadio) { return $(`<input type="checkbox" class="no-events">`); }
 
         const $cb = $(`<input type="radio" class="no-events">`);
-        if (ix === this._maxPreviousLevel && this._isForceSelect)
-            $cb.prop("checked", true);
-        else if (ix < this._maxPreviousLevel)
-            $cb.prop("disabled", true);
+
+        if(!SETTINGS.LOCK_EXISTING_CHOICES){
+            //If we dont want to be hardlocked into a level after we loaded a save file, we can avoid disabling checkboxes of a lower level
+            if (ix === this._maxPreviousLevel && this._isForceSelect) {$cb.prop("checked", true); }
+
+            return $cb; 
+        }
+
+        if (ix === this._maxPreviousLevel && this._isForceSelect) {$cb.prop("checked", true); }
+        else if (ix < this._maxPreviousLevel){$cb.prop("disabled", true);}
 
         return $cb;
     }
 
     _handleSelectClick(listItem, evt) {
-        if (!this._isRadio)
-            return this._listSelectClickHandler.handleSelectClick(listItem, evt);
+        if (!this._isRadio) { return this._listSelectClickHandler.handleSelectClick(listItem, evt);}
 
         const isCheckedOld = listItem.data.cbSel.checked;
 
         const isDisabled = this._handleSelectClickRadio(this._list, listItem, evt);
-        if (isDisabled)
-            return;
+        if (isDisabled) { return; }
 
-        const isCheckedNu = listItem.data.cbSel.checked;
-        if (isCheckedOld !== isCheckedNu)
-            this._doRunFnsOnchange();
+        const isCheckedNew = listItem.data.cbSel.checked;
+        if (isCheckedOld !== isCheckedNew) {this._doRunFnsOnchange();}
     }
 
+    /**
+     * @param {any} list list of elements, each one has a radio button
+     * @param {any} item the element with our radio button
+     * @param {any} evt the click event
+     * @returns {boolean} true if the radio button is disabled
+     */
     _handleSelectClickRadio(list, item, evt) {
         evt.preventDefault();
         evt.stopPropagation();
 
-        if (item.data.cbSel.disabled)
-            return true;
+        if (item.data.cbSel.disabled) { return true; }
 
         list.items.forEach(it=>{
-            if (it === item) {
+            if (it === item) { //For the radio button we clicked
+                //You can uncheck radio buttons if forceSelect is off
                 if (it.data.cbSel.checked && !this._isForceSelect) {
                     it.data.cbSel.checked = false;
                     it.ele.removeClass("list-multi-selected");
                     return;
                 }
 
+                //Otherwise just check button
                 it.data.cbSel.checked = true;
                 it.ele.addClass("list-multi-selected");
-            } else {
-                it.data.cbSel.checked = false;
-                if (it.ix < item.ix)
-                    it.ele.addClass("list-multi-selected");
-                else
-                    it.ele.removeClass("list-multi-selected");
             }
-        }
-        );
+            else { //For the radio buttons we didnt click
+                //Make sure they are unchecked
+                it.data.cbSel.checked = false;
+                //But also mark all levels lower than the one we clicked as selected (grayed)
+                if (it.ix < item.ix) { it.ele.addClass("list-multi-selected");}
+                else { it.ele.removeClass("list-multi-selected"); }
+            }
+        });
     }
 
     pGetFormData() {
@@ -2826,15 +2843,13 @@ class Charactermancer_Class_LevelSelect extends BaseComponent {
     }
 
     getCurLevel() {
-        if (this._maxPreviousLevel)
-            return this._maxPreviousLevel;
+        if (this._maxPreviousLevel) { return this._maxPreviousLevel; }
         return 0;
     }
 
     getTargetLevel() {
         const ixs = this._list.items.filter(it=>it.data.cbSel.checked).map(it=>it.ix);
-        if (!ixs.length)
-            return null;
+        if (!ixs.length) { return null; }
         return Math.max(...ixs) + 1;
     }
 

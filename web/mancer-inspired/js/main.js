@@ -227,6 +227,7 @@ class SETTINGS{
     static PARENTLESS_MODE = true;
     static DO_RENDER_DICE = false;
     static USE_EXISTING = false;
+    static LOCK_EXISTING_CHOICES = false;
     static USE_EXISTING_WEB = true;
     static LOCALPATH_REDIRECT = true;
     static USE_FVTT = false;
