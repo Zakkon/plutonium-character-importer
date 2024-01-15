@@ -548,7 +548,7 @@ UtilDataSource.DataSourceUrl = class extends UtilDataSource.DataSourceBase {
                 data = await this._pPostLoad(data, this.userData);
         } catch (e) {
             const msg = `Failed to load URL "${this.url}"!`;
-            ui.notifications.error(`${msg} ${VeCt.STR_SEE_CONSOLE}`);
+            //console.ui.notifications.error(`${msg} ${VeCt.STR_SEE_CONSOLE}`);
             console.error(msg);
             throw e;
         }

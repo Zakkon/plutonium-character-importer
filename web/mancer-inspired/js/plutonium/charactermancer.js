@@ -86,6 +86,7 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
       parentInfo = parentInfo || {};
       super();
       this._actor = parentInfo.actor;
+      this._cachedCharacter = parentInfo.cachedCharacter;
       this._data = parentInfo.data; //data is an object containing information about all classes, subclasses, feats, etc
       this._parent = parentInfo.parent;
       this._tabClass = parentInfo.tabClass;
@@ -481,80 +482,85 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
     /**Load some information prior to first rendering. Just to do with loading from the modal and loading existing data from actor */
     async pLoad() {
       await this._modalFilterClasses.pPreloadHidden();
-      if(!SETTINGS.USE_EXISTING){return;} //TEMPFIX
-      await this._pLoad_pDoHandleExistingClassItems();
-    }
-    async _pLoad_pDoHandleExistingClassItems() {
-      const _0x1c249f = this._actor.items.filter(_0x5de464 => _0x5de464.type === 'class');
-      const _0x3dab8a = this._actor.items.filter(_0x248afa => _0x248afa.type === 'subclass');
-      this._existingClassMetas = _0x1c249f.map(_0x122387 => {
-        const _0x39760a = this._pLoad_getExistingClassIndex(_0x122387);
-        const _0x56b925 = _0x3dab8a.find(_0x162fde => _0x162fde.system.classIdentifier === _0x122387.system.identifier);
-        let _0xa0d172 = this._pLoad_getExistingSubclassIndex(_0x39760a, _0x56b925);
-        const _0x5372b3 = this._actor.system?.details?.['originalClass'] ? this._actor.system?.details?.originalClass === _0x122387.id : !!_0x122387.flags?.[SharedConsts.MODULE_ID]?.['isPrimaryClass'];
-        const _0x55c437 = ~_0x39760a ? null : "Could not find class \"" + _0x122387.name + "\" (\"" + UtilDocumentSource.getDocumentSourceDisplayString(_0x122387) + "\") in loaded data. " + Charactermancer_Util.STR_WARN_SOURCE_SELECTION;
-        if (_0x55c437) {
-          ui.notifications.warn(_0x55c437);
-          console.warn(...LGT, _0x55c437, "Strict source matching is: " + Config.get("import", "isStrictMatching") + '.');
-        }
-        const _0x530b46 = _0x56b925 == null || ~_0xa0d172 ? null : "Could not find subclass \"" + _0x56b925.name + "\" in loaded data. " + Charactermancer_Util.STR_WARN_SOURCE_SELECTION;
-        if (_0x530b46) {
-          ui.notifications.warn(_0x530b46);
-          console.warn(...LGT, _0x530b46, "Strict source matching is: " + Config.get("import", "isStrictMatching") + '.');
-        }
-        return new ActorCharactermancerClass.ExistingClassMeta({
-          'item': _0x122387,
-          'ixClass': _0x39760a,
-          'isUnknownClass': !~_0x39760a,
-          'ixSubclass': _0xa0d172,
-          'isUnknownSubclass': _0xa0d172 == null && !~_0xa0d172,
-          'level': Number(_0x122387.system.levels || 0x0),
-          'isPrimary': _0x5372b3,
-          'spellSlotLevelSelection': _0x122387?.flags?.[SharedConsts.MODULE_ID]?.['spellSlotLevelSelection']
-        });
-      });
-      if (!this._existingClassMetas.length) {
+      if(SETTINGS.USE_EXISTING_WEB){
+        await this._test_doHandleExistingClassItems(this._cachedCharacter?.classes);
         return;
       }
-      this._state.class_ixMax = this._existingClassMetas.length - 0x1;
-      for (let _0xfaa7c6 = 0x0; _0xfaa7c6 < this._existingClassMetas.length; ++_0xfaa7c6) {
-        const _0x325547 = this._existingClassMetas[_0xfaa7c6];
-        const {
-          propIxClass: _0x57fec3,
-          propIxSubclass: _0x4335dc
-        } = ActorCharactermancerBaseComponent.class_getProps(_0xfaa7c6);
-        await this._pDoProxySetBase(_0x57fec3, _0x325547.ixClass);
-        await this._pDoProxySetBase(_0x4335dc, _0x325547.ixSubclass);
-        if (_0x325547.isPrimary) {
-          this._state.class_ixPrimaryClass = _0xfaa7c6;
-        }
-      }
-      if (!this._existingClassMetas.some(_0x34ec7d => _0x34ec7d.isPrimary)) {
-        this._state.class_ixPrimaryClass = 0x0;
-      }
+      if(!SETTINGS.USE_EXISTING){return;}
+      await this._pLoad_pDoHandleExistingClassItems();
     }
-    _pLoad_getExistingClassIndex(_0x31ccce) {
-      const _0x9c6a99 = _0x31ccce.flags?.[SharedConsts.MODULE_ID];
-      if (_0x9c6a99?.propDroppable === 'class' && _0x9c6a99?.source && _0x9c6a99?.hash) {
-        const _0x4fb2d3 = this._data["class"].findIndex(_0xc280a8 => _0x9c6a99.source === _0xc280a8.source && _0x9c6a99.hash === UrlUtil.URL_TO_HASH_BUILDER[UrlUtil.PG_CLASSES](_0xc280a8));
-        if (~_0x4fb2d3) {
-          return _0x4fb2d3;
+    //#region Loading Existing
+    //#region FVTT
+    async _pLoad_pDoHandleExistingClassItems() {
+      const classItems = this._actor.items.filter(cls => cls.type === 'class');
+      const subclassItems = this._actor.items.filter(sc => sc.type === 'subclass');
+
+      //Collect metas
+      this._existingClassMetas = classItems.map(cls => {
+        const _clsIx = this._pLoad_getExistingClassIndex(cls);
+        const matchingSubclasses = subclassItems.find(sc => sc.system.classIdentifier === cls.system.identifier);
+        let _scIx = this._pLoad_getExistingSubclassIndex(_clsIx, matchingSubclasses);
+        const isPrimaryClass = this._actor.system?.details?.originalClass ? this._actor.system?.details?.originalClass === cls.id
+        : !!cls.flags?.[SharedConsts.MODULE_ID]?.isPrimaryClass;
+        const failMatchCls = ~_clsIx ? null : "Could not find class \"" + cls.name + "\" (\"" + UtilDocumentSource.getDocumentSourceDisplayString(cls) + "\") in loaded data. " + Charactermancer_Util.STR_WARN_SOURCE_SELECTION;
+        if (failMatchCls) {
+        ui.notifications.warn(failMatchCls);
+        console.warn(...LGT, failMatchCls, "Strict source matching is: " + Config.get("import", "isStrictMatching") + '.');
         }
-      }
-      const _0x22658f = (IntegrationBabele.getOriginalName(_0x31ccce) || '').toLowerCase().trim();
-      const _0xf5d9aa = this._data['class'].findIndex(_0x5112df => {
-        return _0x22658f === _0x5112df.name.toLowerCase().trim() && (!Config.get("import", "isStrictMatching") || (UtilDocumentSource.getDocumentSource(_0x31ccce).source || '').toLowerCase() === Parser.sourceJsonToAbv(_0x5112df.source).toLowerCase());
+        const failMatchSc = matchingSubclasses == null || ~_scIx ? null : "Could not find subclass \"" + matchingSubclasses.name + "\" in loaded data. " + Charactermancer_Util.STR_WARN_SOURCE_SELECTION;
+        if (failMatchSc) {
+        ui.notifications.warn(failMatchSc);
+        console.warn(...LGT, failMatchSc, "Strict source matching is: " + Config.get("import", "isStrictMatching") + '.');
+        }
+        return new ActorCharactermancerClass.ExistingClassMeta({
+        'item': cls,
+        'ixClass': _clsIx,
+        'isUnknownClass': !~_clsIx,
+        'ixSubclass': _scIx,
+        'isUnknownSubclass': _scIx == null && !~_scIx,
+        'level': Number(cls.system.levels || 0x0),
+        'isPrimary': isPrimaryClass,
+        'spellSlotLevelSelection': cls?.flags?.[SharedConsts.MODULE_ID]?.['spellSlotLevelSelection']
+        });
       });
-      if (~_0xf5d9aa) {
-        return _0xf5d9aa;
+
+      if (!this._existingClassMetas.length) { return; }
+
+      //Write to state
+      this._state.class_ixMax = this._existingClassMetas.length - 1;
+      for (let i = 0; i < this._existingClassMetas.length; ++i) {
+        const meta = this._existingClassMetas[i];
+        const { propIxClass: propIxClass, propIxSubclass: propIxSubclass } = ActorCharactermancerBaseComponent.class_getProps(i);
+        await this._pDoProxySetBase(propIxClass, meta.ixClass);
+        await this._pDoProxySetBase(propIxSubclass, meta.ixSubclass);
+        if (meta.isPrimary) { this._state.class_ixPrimaryClass = i; }
       }
-      const _0x4d5c9d = /^(.*?)\(.*\)$/.exec(_0x22658f);
-      if (!_0x4d5c9d) {
-        return -0x1;
-      }
-      return this._data["class"].findIndex(_0x12f0b7 => {
-        return _0x4d5c9d[0x1].trim() === _0x12f0b7.name.toLowerCase().trim() && (!Config.get("import", "isStrictMatching") || (UtilDocumentSource.getDocumentSource(_0x31ccce).source || '').toLowerCase() === Parser.sourceJsonToAbv(_0x12f0b7.source).toLowerCase());
-      });
+      //Set first class as primary, if none is marked already
+      if (!this._existingClassMetas.some(meta => meta.isPrimary)) { this._state.class_ixPrimaryClass = 0; }
+    }
+    _pLoad_getExistingClassIndex(cls) {
+        const moduleFlags = cls.flags?.[SharedConsts.MODULE_ID];
+        if (moduleFlags?.propDroppable === 'class' && moduleFlags?.source && moduleFlags?.hash) {
+            const ix = this._data.class.findIndex(_cls => moduleFlags.source === _cls.source
+                && moduleFlags.hash === UrlUtil.URL_TO_HASH_BUILDER[UrlUtil.PG_CLASSES](_cls));
+            if (~ix) { return ix; }
+        }
+        const _classNameLower = (IntegrationBabele.getOriginalName(cls) || '').toLowerCase().trim();
+
+        const clsIndex = this._data.class.findIndex(_cls => {
+            return _classNameLower === _cls.name.toLowerCase().trim() &&
+            (!Config.get("import", "isStrictMatching") ||
+            (UtilDocumentSource.getDocumentSource(cls).source || '').toLowerCase() === Parser.sourceJsonToAbv(_cls.source).toLowerCase());
+        });
+        if (~clsIndex) { return clsIndex; }
+
+        const filteredName = /^(.*?)\(.*\)$/.exec(_classNameLower);
+        if (!filteredName) { return -1; }
+        return this._data.class.findIndex(_cls => {
+            return filteredName[1].trim() === _cls.name.toLowerCase().trim()
+            && (!Config.get("import", "isStrictMatching") ||
+            (UtilDocumentSource.getDocumentSource(cls).source || '').toLowerCase() === Parser.sourceJsonToAbv(_cls.source).toLowerCase());
+        });
     }
     _pLoad_getExistingSubclassIndex(_0x161fa4, _0x3e14d4) {
       if (!_0x3e14d4 || !~_0x161fa4) {
@@ -570,9 +576,107 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
       }
       return _0x10558f.subclasses.findIndex(_0x54c0e7 => (IntegrationBabele.getOriginalName(_0x3e14d4) || '').toLowerCase().trim() === _0x54c0e7.name.toLowerCase().trim() && (!Config.get("import", 'isStrictMatching') || (UtilDocumentSource.getDocumentSource(_0x3e14d4).source || '').toLowerCase() === Parser.sourceJsonToAbv(_0x54c0e7.source).toLowerCase()));
     }
+    //#endregion
+    //#region WEB
+    /**
+     * Description
+     * @param {{name:string, source:string, hash:string, isPrimary:boolean, subclass:{name:string, source:string, hash:string}}[]} classes
+     * @returns {any}
+     */
+    async _test_doHandleExistingClassItems(classes){
+
+      //Collect metas
+      this._existingClassMetas = classes.map(cls => {
+        const _clsIx = this._test_getExistingClassIndex(cls);
+        let _scIx = this._pLoad_getExistingSubclassIndex(_clsIx, cls.subclass);
+        const isPrimaryClass = cls.isPrimary || false;
+
+        const failMatchCls = ~_clsIx ? null : "Could not find class \"" + cls.name + "\" (\"" 
+        + UtilDocumentSource.getDocumentSourceDisplayString(cls) + "\") in loaded data. " + Charactermancer_Util.STR_WARN_SOURCE_SELECTION;
+        if (failMatchCls) {
+            //ui.notifications.warn(failMatchCls);
+            console.warn(...LGT, failMatchCls, "Strict source matching is: " + Config.get("import", "isStrictMatching") + '.');
+        }
+        const failMatchSc = ~_scIx ? null : "Could not find subclass \"" + cls.subclass.name + "\" in loaded data. " + Charactermancer_Util.STR_WARN_SOURCE_SELECTION;
+        if (failMatchSc) {
+            //ui.notifications.warn(failMatchSc);
+            console.warn(...LGT, failMatchSc, "Strict source matching is: " + Config.get("import", "isStrictMatching") + '.');
+        }
+        return new ActorCharactermancerClass.ExistingClassMeta({
+            'item': cls,
+            'ixClass': _clsIx,
+            'isUnknownClass': !~_clsIx,
+            'ixSubclass': _scIx,
+            'isUnknownSubclass': _scIx == null && !~_scIx,
+            'level': Number(cls.level|| 0),
+            'isPrimary': isPrimaryClass,
+            //TEMPFIX 'spellSlotLevelSelection': cls?.flags?.[SharedConsts.MODULE_ID]?.['spellSlotLevelSelection']
+        });
+      });
+
+      if (!this._existingClassMetas.length) { return; }
+      
+      //Write to state
+      this._state.class_ixMax = this._existingClassMetas.length - 1;
+      for (let i = 0; i < this._existingClassMetas.length; ++i) {
+        const meta = this._existingClassMetas[i];
+        const { propIxClass: propIxClass, propIxSubclass: propIxSubclass } = ActorCharactermancerBaseComponent.class_getProps(i);
+        await this._pDoProxySetBase(propIxClass, meta.ixClass);
+        await this._pDoProxySetBase(propIxSubclass, meta.ixSubclass);
+        if (meta.isPrimary) { this._state.class_ixPrimaryClass = i; }
+      }
+      //Set first class as primary, if none is marked already
+      if (!this._existingClassMetas.some(meta => meta.isPrimary)) { this._state.class_ixPrimaryClass = 0; }
+    }
+    _test_getExistingClassIndex(cls){
+        if (cls.source && cls.hash) {
+            const ix = this._data.class.findIndex(ourDataClass => cls.source === ourDataClass.source
+                && cls.hash === UrlUtil.URL_TO_HASH_BUILDER[UrlUtil.PG_CLASSES](ourDataClass));
+            if (~ix) { return ix; }
+        }
+        const _classNameLower = cls.name.toLowerCase().trim(); //(IntegrationBabele.getOriginalName(cls) || '').toLowerCase().trim();
+
+        //FALLBACK 1
+        /* const clsIndex = this._data.class.findIndex(ourDataClass => {
+            return _classNameLower === ourDataClass.name.toLowerCase().trim() &&
+            (!Config.get("import", "isStrictMatching") ||
+            (UtilDocumentSource.getDocumentSource(cls).source || '').toLowerCase() === Parser.sourceJsonToAbv(ourDataClass.source).toLowerCase());
+        });
+        if (~clsIndex) { return clsIndex; } */
+
+        return this._data.class.findIndex(c => c.name.toLowerCase().trim() === cls.name.toLowerCase().trim());
+
+        return false;
+
+        //FALLBACK 2
+        /* const filteredName = /^(.*?)\(.*\)$/.exec(_classNameLower);
+        if (!filteredName) { return -1; }
+        return this._data.class.findIndex(_cls => {
+            return filteredName[1].trim() === _cls.name.toLowerCase().trim()
+            && (!Config.get("import", "isStrictMatching") ||
+            (UtilDocumentSource.getDocumentSource(cls).source || '').toLowerCase() === Parser.sourceJsonToAbv(_cls.source).toLowerCase());
+        }); */
+    }
+    test_getExistingSubclassIndex(classIx, subclass) {
+        if (!subclass || !~classIx) { return null; }
+        const ourDataClass = this._data.class[classIx]; //Grab our class from data
+        if (subclass.source && subclass.hash) {
+          const subclassIx = ourDataClass.subclasses.findIndex(ourDataSubclass => subclass.source === ourDataSubclass.source
+            && subclass.hash === UrlUtil.URL_TO_HASH_BUILDER.subclass(ourDataSubclass));
+          if (~subclassIx) { return subclassIx; }
+        }
+        //FALLBACK
+        /* return ourDataClass.subclasses.findIndex(sc => 
+            (IntegrationBabele.getOriginalName(subclass) || '').toLowerCase().trim() 
+            === sc.name.toLowerCase().trim() && (!Config.get("import", 'isStrictMatching') 
+            || (UtilDocumentSource.getDocumentSource(subclass).source || '').toLowerCase() 
+            === Parser.sourceJsonToAbv(sc.source).toLowerCase())); */
+
+        return ourDataClass.subclasses.findIndex(sc => sc.name.toLowerCase().trim() === subclass.name.toLowerCase().trim());
+    }
+    //#endregion
     getExistingClassTotalLevels_() {
-        //TEMPFIX
-        if(!SETTINGS.USE_EXISTING){return 0;}
+        if(!this.existingClassMetas?.length){return 0;}
         return this._existingClassMetas.filter(Boolean).map(cls => cls.level).sum();
     }
     _getExistingClassCount() {
@@ -1102,7 +1206,7 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
         const selElement = this._compsClassFeatureOptionsSelect[ix] || [];
         selElement.forEach(e => this._parent.featureSourceTracker_.unregister(e));
         stgFeatureOptions.empty();
-        const existingFeatureChecker = this._existingClassMetas[ix] ? new Charactermancer_Class_Util.ExistingFeatureChecker(this._actor) : null;
+        const existingFeatureChecker = this._existingClassMetas[ix] ? new Charactermancer_Class_Util.ExistingFeatureChecker(this._actor, this._cachedCharacter) : null;
         const importableFeatures = Charactermancer_Util.getImportableFeatures(filteredFeatures);
         const features = MiscUtil.copy(importableFeatures);
         if(SETTINGS.FILTERS){ //TEMPFIX
@@ -3224,6 +3328,28 @@ class Charactermancer_Class_StartingProficiencies extends BaseComponent {
     }
 }
 
+ActorCharactermancerClass.ExistingClassMeta = class {
+    constructor({
+      item: item,
+      ixClass: ixClass,
+      isUnknownClass: isUnknownClass,
+      ixSubclass: ixSubclass,
+      isUnknownSubclass: isUnknownSubclass,
+      level: level,
+      isPrimary: isPrimary,
+      spellSlotLevelSelection: spellSlotLevelSelection
+    }) {
+      this.item = item;
+      this.ixClass = ixClass;
+      this.isUnknownClass = isUnknownClass;
+      this.ixSubclass = ixSubclass;
+      this.isUnknownSubclass = isUnknownSubclass;
+      this.level = level;
+      this.isPrimary = isPrimary;
+      this.spellSlotLevelSelection = spellSlotLevelSelection;
+      if (isNaN(this.level)) { this.level = 0; }
+    }
+  };
 
 //#endregion
 
@@ -6446,9 +6572,7 @@ class ActorCharactermancerRace extends ActorCharactermancerBaseComponent {
     }
     
     get modalFilterRaces() { return this._modalFilterRaces; }
-    get ['compRaceSize']() {
-      return this._compRaceSize;
-    }
+    get compRaceSize() { return this._compRaceSize; }
     get ["compRaceSkillToolLanguageProficiencies"]() {
       return this._compRaceSkillToolLanguageProficiencies;
     }
@@ -6542,7 +6666,6 @@ class ActorCharactermancerRace extends ActorCharactermancerBaseComponent {
     //#endregion
     //#region WEB
     _test_DoHandleExistingRace(existingRace){
-        console.log("do handle existing", existingRace);
         if(!existingRace){return;}
         const { ixRace: ixRace, ixRaceVersion: ixRaceVersion } = this._test_getExistingRaceIndex(existingRace);
         const isRacePresent = !!ixRace;
@@ -13814,8 +13937,7 @@ class Charactermancer_AdditionalFeatsSelect extends BaseComponent {
 
         $stgFeatureOptions.empty();
 
-        //TEMPFIX
-        //const existingFeatureChecker = new Charactermancer_Class_Util.ExistingFeatureChecker(this._actor);
+        const existingFeatureChecker = new Charactermancer_Class_Util.ExistingFeatureChecker(this._actor, this._cachedCharacter);
 
         const importableFeatures = Charactermancer_Util.getImportableFeatures(filteredFeatures);
         const cpyImportableFeatures = MiscUtil.copy(importableFeatures);
@@ -13830,7 +13952,7 @@ class Charactermancer_AdditionalFeatsSelect extends BaseComponent {
             for (const optionsSet of optionsSets) {
                 const compFeatureOptionsSelect = new Charactermancer_FeatureOptionsSelect({
                     featureSourceTracker: this._featureSourceTracker,
-                    //TEMPFIX existingFeatureChecker,
+                    existingFeatureChecker,
                     //actor: this._actor,
                     optionsSet,
                     level: topLevelFeature.level,
@@ -13843,9 +13965,7 @@ class Charactermancer_AdditionalFeatsSelect extends BaseComponent {
             }
         }
 
-        await this._feat_pRenderFeatureComps(ix, type, {
-            $stgFeatureOptions
-        });
+        await this._feat_pRenderFeatureComps(ix, type, { $stgFeatureOptions });
     }
 
     _feat_unregisterFeatureSourceTrackingFeatureComps(ix, type) {
@@ -15383,21 +15503,35 @@ class Charactermancer_Class_Util {
 }
 
 Charactermancer_Class_Util.ExistingFeatureChecker = class {
-    constructor(actor) {
+    constructor(actor, cachedCharacter) {
         this._actor = actor;
+        this._cachedCharacter = cachedCharacter;
 
         this._existingSheetFeatures = {};
         this._existingImportFeatures = {};
 
-        actor.items.filter(it=>it.type === "feat").forEach(it=>{
-            const cleanSource = (UtilDocumentSource.getDocumentSource(it).source || "").trim().toLowerCase();
-            Charactermancer_Class_Util.ExistingFeatureChecker._getNameAliases(it.name).forEach(alias=>this._existingSheetFeatures[alias] = cleanSource);
-
-            const {page, source, hash} = it.flags?.[SharedConsts.MODULE_ID] || {};
-            if (page && source && hash)
-                this.addImportFeature(page, source, hash);
+        if(SETTINGS.USE_EXISTING_WEB){
+            //TODO: Fix this
+            if(!cachedCharacter?.feats){return;}
+            cachedCharacter.feats.forEach(it=>{
+                const cleanSource = (UtilDocumentSource.getDocumentSource(it).source || "").trim().toLowerCase();
+                Charactermancer_Class_Util.ExistingFeatureChecker._getNameAliases(it.name).forEach(alias=>this._existingSheetFeatures[alias] = cleanSource);
+    
+                const {page, source, hash} = it.flags?.[SharedConsts.MODULE_ID] || {};
+                if (page && source && hash) { this.addImportFeature(page, source, hash); }
+            });
+            return;
         }
-        );
+        if(SETTINGS.USE_EXISTING){
+            actor.items.filter(it=>it.type === "feat").forEach(it=>{
+                const cleanSource = (UtilDocumentSource.getDocumentSource(it).source || "").trim().toLowerCase();
+                Charactermancer_Class_Util.ExistingFeatureChecker._getNameAliases(it.name).forEach(alias=>this._existingSheetFeatures[alias] = cleanSource);
+    
+                const {page, source, hash} = it.flags?.[SharedConsts.MODULE_ID] || {};
+                if (page && source && hash)
+                    this.addImportFeature(page, source, hash);
+            });
+        }
     }
 
     static _getNameAliases(name) {

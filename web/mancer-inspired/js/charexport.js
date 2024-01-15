@@ -35,10 +35,12 @@ class CharacterExportFvtt{
         for(let i = 0; i < classData.length; ++i){
             const data = classData[i];
             if(!data.cls){continue;}
+            const hash = UrlUtil.URL_TO_HASH_BUILDER.class(data.cls);
             if(!classArray){classArray = [];}
             const block = {
                 name: data.cls.name,
                 source: data.cls.source,
+                hash: hash,
                 srd: data.cls.srd,
                 level: data.targetLevel,
                 isPrimary: data.isPrimary
@@ -47,9 +49,11 @@ class CharacterExportFvtt{
 
             //Check if high enough level for subclass here?
             if(data.sc){
+                const schash = UrlUtil.URL_TO_HASH_BUILDER.subclass(data.sc);
                 block.subclass = {
                     name: data.sc.name,
-                    source: data.sc.source //maybe we should include some info here (and in class, race, etc) if this is brewed content
+                    source: data.sc.source, //maybe we should include some info here (and in class, race, etc) if this is brewed content
+                    hash: data.schash
                 }
                 //subclasses generally dont have the 'srd' property
                 metaDataStack.push({uid: data.sc.name+"|"+data.sc.source, _data:CharacterExportFvtt.getSourceMetaData(data.sc)});
