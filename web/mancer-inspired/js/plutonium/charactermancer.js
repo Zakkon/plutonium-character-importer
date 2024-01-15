@@ -86,7 +86,6 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
       parentInfo = parentInfo || {};
       super();
       this._actor = parentInfo.actor;
-      this._cachedCharacter = parentInfo.cachedCharacter;
       this._data = parentInfo.data; //data is an object containing information about all classes, subclasses, feats, etc
       this._parent = parentInfo.parent;
       this._tabClass = parentInfo.tabClass;
@@ -483,7 +482,7 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
     async pLoad() {
       await this._modalFilterClasses.pPreloadHidden();
       if(SETTINGS.USE_EXISTING_WEB){
-        await this._test_doHandleExistingClassItems(this._cachedCharacter?.classes);
+        await this._test_doHandleExistingClassItems(this._actor?.classes);
         return;
       }
       if(!SETTINGS.USE_EXISTING){return;}
@@ -578,6 +577,7 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
     }
     //#endregion
     //#region WEB
+    //#endregion
     /**
      * Description
      * @param {{name:string, source:string, hash:string, isPrimary:boolean, subclass:{name:string, source:string, hash:string}}[]} classes
@@ -1206,7 +1206,7 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
         const selElement = this._compsClassFeatureOptionsSelect[ix] || [];
         selElement.forEach(e => this._parent.featureSourceTracker_.unregister(e));
         stgFeatureOptions.empty();
-        const existingFeatureChecker = this._existingClassMetas[ix] ? new Charactermancer_Class_Util.ExistingFeatureChecker(this._actor, this._cachedCharacter) : null;
+        const existingFeatureChecker = this._existingClassMetas[ix] ? new Charactermancer_Class_Util.ExistingFeatureChecker(this._actor) : null;
         const importableFeatures = Charactermancer_Util.getImportableFeatures(filteredFeatures);
         const features = MiscUtil.copy(importableFeatures);
         if(SETTINGS.FILTERS){ //TEMPFIX
@@ -6342,7 +6342,6 @@ class ActorCharactermancerRace extends ActorCharactermancerBaseComponent {
       parentInfo = parentInfo || {};
       super();
       this._actor = parentInfo.actor;
-      this._cachedCharacter = parentInfo.cachedCharacter;
       this._data = parentInfo.data;
       this._parent = parentInfo.parent;
       this._tabRace = parentInfo.tabRace;
@@ -6609,8 +6608,7 @@ class ActorCharactermancerRace extends ActorCharactermancerBaseComponent {
     async pLoad() {
       await this._modalFilterRaces.pPreloadHidden();
       if(SETTINGS.USE_EXISTING_WEB){
-        console.log("do handle existing", this._cachedCharacter);
-        this._test_DoHandleExistingRace(this._cachedCharacter?.race);
+        this._test_DoHandleExistingRace(this._actor?.race);
         return;
       }
       if(!SETTINGS.USE_EXISTING){return;}
@@ -13937,7 +13935,7 @@ class Charactermancer_AdditionalFeatsSelect extends BaseComponent {
 
         $stgFeatureOptions.empty();
 
-        const existingFeatureChecker = new Charactermancer_Class_Util.ExistingFeatureChecker(this._actor, this._cachedCharacter);
+        const existingFeatureChecker = new Charactermancer_Class_Util.ExistingFeatureChecker(this._actor);
 
         const importableFeatures = Charactermancer_Util.getImportableFeatures(filteredFeatures);
         const cpyImportableFeatures = MiscUtil.copy(importableFeatures);

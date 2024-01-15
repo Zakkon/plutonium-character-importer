@@ -268,7 +268,7 @@ class CharacterBuilder {
         console.log("cachedData", cachedStr);
         let json = JSON.parse(cachedStr);
         if(!!json){
-          this.cachedCharacter = json.character;
+          this.actor = json.character;
         }
       }
 
