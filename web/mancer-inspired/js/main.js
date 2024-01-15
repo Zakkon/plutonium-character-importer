@@ -227,6 +227,7 @@ class SETTINGS{
     static PARENTLESS_MODE = true;
     static DO_RENDER_DICE = false;
     static USE_EXISTING = false;
+    static USE_EXISTING_WEB = true;
     static LOCALPATH_REDIRECT = true;
     static USE_FVTT = false;
 }
@@ -261,6 +262,15 @@ class CharacterBuilder {
       this.createPanels(); //Create the panels that hold components
 
       this.data = data;
+
+      let cachedStr = localStorage.getItem("lastCharacter");
+      if(!!cachedStr){
+        console.log("cachedData", cachedStr);
+        let json = JSON.parse(cachedStr);
+        if(!!json){
+          this.cachedCharacter = json.character;
+        }
+      }
 
       //Create a feature source tracker (this one gets used alot by the components)
       this._featureSourceTracker = new Charactermancer_FeatureSourceTracker();

@@ -6216,6 +6216,7 @@ class ActorCharactermancerRace extends ActorCharactermancerBaseComponent {
       parentInfo = parentInfo || {};
       super();
       this._actor = parentInfo.actor;
+      this._cachedCharacter = parentInfo.cachedCharacter;
       this._data = parentInfo.data;
       this._parent = parentInfo.parent;
       this._tabRace = parentInfo.tabRace;
@@ -6483,9 +6484,16 @@ class ActorCharactermancerRace extends ActorCharactermancerBaseComponent {
     }
     async pLoad() {
       await this._modalFilterRaces.pPreloadHidden();
+      if(SETTINGS.USE_EXISTING_WEB){
+        console.log("do handle existing", this._cachedCharacter);
+        this._test_DoHandleExistingRace(this._cachedCharacter?.race);
+        return;
+      }
       if(!SETTINGS.USE_EXISTING){return;}
       this._pLoad_pDoHandleExistingRace();
     }
+    //#region Handle Loading Existing
+    //#region FVTT
     /**This function grabs existing race from a foundryVTT actor */
     _pLoad_pDoHandleExistingRace() {
         const myRace = this._actor.system.details?.race;
@@ -6531,6 +6539,45 @@ class ActorCharactermancerRace extends ActorCharactermancerBaseComponent {
         return race.name.toLowerCase().trim() === existingRaceNameLower || (PageFilterRaces.getInvertedName(race.name) 
         || '').toLowerCase().trim() === existingRaceNameLower;
     }
+    //#endregion
+    //#region WEB
+    _test_DoHandleExistingRace(existingRace){
+        console.log("do handle existing", existingRace);
+        if(!existingRace){return;}
+        const { ixRace: ixRace, ixRaceVersion: ixRaceVersion } = this._test_getExistingRaceIndex(existingRace);
+        const isRacePresent = !!ixRace;
+        if(!isRacePresent){
+            //throw error
+            throw new Error("Could not match cached race to any race in data", existingRace);
+            return;
+        }
+        this._state.race_ixRace = ixRace;
+        this._state.race_ixRace_version = ixRaceVersion;
+    }
+    _test_getExistingRaceIndex(race){
+        const raceNameLower = race.name.trim().toLowerCase();//(IntegrationBabele.getOriginalName(race) || '').trim().toLowerCase();
+        let outIxRace = null;
+        let outIxRaceVersion = null;
+        topLoop: for (let ix = 0; ix < this._data.race.length; ++ix) {
+            const ourDataRace = this._data.race[ix];
+            if (race.source === ourDataRace.source && race.hash === UrlUtil.URL_TO_HASH_BUILDER.race(ourDataRace) ||
+                this._pLoad_pDoHandleExistingRace_isMatch({race: ourDataRace, existingRaceClean: raceNameLower}))
+            {
+                outIxRace = ix; break;
+            }
+            const versions = DataUtil.generic.getVersions(ourDataRace);
+            for (let j = 0; j < versions.length; ++j) {
+                const version = versions[j];
+                if (race.source === version.source && race.hash === UrlUtil.URL_TO_HASH_BUILDER.race(version) ||
+                    this._pLoad_pDoHandleExistingRace_isMatch({ race: version, existingRaceClean: raceNameLower })) {
+                    outIxRace = ix; outIxRaceVersion = j; break topLoop;
+                }
+            }
+        }
+        return { ixRace: outIxRace, ixRaceVersion: outIxRaceVersion };
+    }
+    //#endregion
+    //#endregion
 
     /**
      * @returns {{name:string, source:string, srd:boolean, _baseSrd:boolean, _baseName:string, raceName:string, raceSource:string, _isSubRace:boolean,

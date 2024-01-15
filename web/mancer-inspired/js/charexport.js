@@ -21,7 +21,8 @@ class CharacterExportFvtt{
         //Lets start by getting the character race
         const race = builder.compRace.getRace_();
         if(!!race){
-            _char.race = {name:race.name, source:race.source, srd:race.srd,
+            const hash = UrlUtil.URL_TO_HASH_BUILDER.race(race);
+            _char.race = {name:race.name, source:race.source, hash: hash, srd:race.srd,
                 isSubRace: race._isSubRace, raceName:race.raceName, raceSource:race.raceSource, isBaseSrd:race._baseSrd,
                 versionBaseName:race._versionBase_name, versionBaseSource:race._versionBase_source };
             metaDataStack.push({uid: race.name+"|"+race.source, _data:CharacterExportFvtt.getSourceMetaData(race)});
@@ -103,6 +104,10 @@ class CharacterExportFvtt{
         const output = {character: _char, _meta:_meta};
 
         console.log("Export Character", output);
+        let importStr = this.test_printExportJsonAsString(output);
+
+        //test
+        localStorage.setItem("lastCharacter", importStr);
     }
 
     //#region Pull Info From Builder
@@ -308,13 +313,17 @@ class CharacterExportFvtt{
     }
 
     static test_printExportJsonAsString(exportJson){
-        
+        const str = JSON.stringify(exportJson);
+        console.log(str);
+        return str;
     }
     
 }
 
 class CharacterImportFvtt {
 
+
+    static test_string = `{"character":{"race":{"name":"Dragonborn","source":"PHB","hash":"dragonborn_phb","srd":true,"isSubRace":true,"raceName":"Dragonborn","raceSource":"PHB","isBaseSrd":true},"classes":null,"spellsBySource":[]},"_meta":{"isOfficialContentUsed":true,"brewSourcesUsed":[]}}`;
     //Useful for loading a savefile
     static importAsJsonString(jsonString){
 
@@ -332,5 +341,7 @@ class CharacterImportFvtt {
     static loadClassState(data){
         //Assume we have already loaded the needed soures into memory
         //Now we have to use the class name and the class source to create an UID so we can get the needed object
+
+
     }    
 }
