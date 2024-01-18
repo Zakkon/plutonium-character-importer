@@ -10,7 +10,8 @@ CLASS
 - Create a foundry script that parses through the json and understands which sources are used, then builds the character
 - Stop classes from sailing to the top of the list of selectable classes just because we applied some homebrew subclasses to it
 - Make active buttons look prettier (right now they look bad because i had to fix a bug where they wouldnt show box shadow when active)
-- Create a settings boolean that can toggle if switching away from a class that was part of the loaded save file will wipe all settings for that saved class (right now it doesnt, so if you load a ranger and change it to a rogue, it will keep proficiencies selected)
+- Setting for wiping class load info completely, if that class is changed OR, setting for wiping all loaded data after UI elements have been set
+- Functionality for removing a class and all their states
 
 EXPORTABLE INFORMATION (json format is good enough)
 - Equipment - done

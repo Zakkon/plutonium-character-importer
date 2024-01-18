@@ -382,14 +382,34 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
         const holder_tools = $(`<div class="ve-flex-col"></div>`).hideVe();
 
         let primaryBtn = null;
-        if (!this._existingClassMetas.length) {
+        let removeClassBtn = null;
+        if (!this._existingClassMetas.length || !SETTINGS.LOCK_EXISTING_CHOICES) {
             primaryBtn = $("<button class=\"btn btn-5et btn-xs mr-2\"></button>").click(() => this._state.class_ixPrimaryClass = ix);
-            const primaryBtnHover = () => {
-            primaryBtn.text(this._state.class_ixPrimaryClass === ix ? "Primary Class" : "Make Primary").title(this._state.class_ixPrimaryClass === ix ? "This is your primary class, i.e. the one you chose at level 1 for the purposes of proficiencies/etc." : "Make this your primary class, i.e. the one you chose at level 1 for the purposes of proficiencies/etc.").prop("disabled", this._state.class_ixPrimaryClass === ix);
+            const primaryBtnHook = () => {
+                primaryBtn.text(this._state.class_ixPrimaryClass === ix ? "Primary Class" : "Make Primary")
+                .title(this._state.class_ixPrimaryClass === ix ? "This is your primary class, i.e. the one you chose at level 1 for the purposes of proficiencies/etc." 
+                : "Make this your primary class, i.e. the one you chose at level 1 for the purposes of proficiencies/etc.")
+                .prop("disabled", this._state.class_ixPrimaryClass === ix);
             };
-            this._addHookBase("class_ixPrimaryClass", primaryBtnHover);
-            primaryBtnHover();
+            this._addHookBase("class_ixPrimaryClass", primaryBtnHook);
+            primaryBtnHook();
+
+            removeClassBtn = $("<button class=\"btn btn-5et btn-xs mr-2\"></button>").click(() => {console.log("Remove class " + ix);
+
+                this.wipeClassState(ix);
+        
+            });
+            const removeClassBtnHook = () => {
+                removeClassBtn.text("Remove Class")
+                .title(this._state.class_ixPrimaryClass === ix ? "Cannot remove your primary class." 
+                : "Remove this class and all features and abilities gained from it.")
+                .prop("disabled", this._state.class_ixPrimaryClass === ix);
+            };
+            this._addHookBase("class_ixPrimaryClass", removeClassBtnHook);
+            removeClassBtnHook();
         }
+
+       
 
         const minimizerToggle = $("<div class=\"py-1 clickable ve-muted\">[‒]</div>").click(() => {
             const isMinimized = minimizerToggle.text() === '[+]';
@@ -435,6 +455,7 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
             <div class="split-v-center">
                 ${header}
                 <div class="ve-flex-v-center">
+                    ${removeClassBtn}
                     ${primaryBtn}
                     ${minimizerToggle}
                 </div>
@@ -1408,6 +1429,39 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
         'isAnyCantrips': _0x8a1dd5
       };
     }
+
+    wipeClassState(ix){
+        const wipe = (comp) => {
+            if(comp){
+                try {
+                    //We need to loop through each value in state
+                    const propNames = Object.keys(comp._state);
+                    for(let prop of propNames){
+                        comp._setStateValue(prop, null, {isForceTriggerHooks: true});
+                    }
+                    //console.log(propNames);
+                    //_setStateValue
+                    //comp._setState(comp._getDefaultState());
+                }
+                catch (e){
+                    console.error("Failed to wipe component ", comp, comp.constructor.name, "belonging to ix ", ix);
+                    throw e;
+                }
+                
+            }
+        } 
+        //Wipe states in each subcomponent belonging to the ix of my class
+        wipe(this.compsClassSkillProficiencies[ix]);
+        wipe(this.compsClassToolProficiencies[ix]);
+        wipe(this.compsClassLevelSelect[ix]);
+        wipe(this.compsClassHpIncreaseMode[ix]);
+        wipe(this.compsClassStartingProficiencies[ix]);
+        for(let comp of this.compsClassFeatureOptionsSelect[ix]){
+            if(comp){wipe(comp);}
+        }
+        //We need hooks to be fired so that other components realize that these components just had their states reset
+    }
+
     /**Defines the starting default values of our _state proxy  */
     _getDefaultState() {
       return {
@@ -16243,6 +16297,9 @@ class Charactermancer_OtherProficiencySelect extends Charactermancer_Proficiency
 
             //Get information about choices or if static
             const selProfs = this._available[this._state.ixSet];
+            
+             //This should only occur when we completely wipe the component state as part of 'remove class' button
+            if(!selProfs){ return; }
 
             if (this._featureSourceTracker){this._doSetTrackerState();}
 
@@ -16791,6 +16848,9 @@ class Charactermancer_OtherProficiencySelect extends Charactermancer_Proficiency
         const out = {};
 
         const selProfs = this._available[this._state.ixSet];
+
+        //This should only occur when we completely wipe the component state as part of 'remove class' button
+        if(!selProfs){ return {isFormComplete:false, data:null};}
 
         (selProfs.static || []).forEach(({prop, name})=>MiscUtil.set(out, prop, name, Charactermancer_OtherProficiencySelect._PROFICIENT));
 
