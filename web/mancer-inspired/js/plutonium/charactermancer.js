@@ -82,6 +82,10 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
     _tabClass;
     _actor;
 
+    /**
+     * @param {{parent:CharacterBuilder}} parentInfo
+     * @returns {any}
+     */
     constructor(parentInfo) {
       parentInfo = parentInfo || {};
       super();
@@ -394,10 +398,11 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
             this._addHookBase("class_ixPrimaryClass", primaryBtnHook);
             primaryBtnHook();
 
-            removeClassBtn = $("<button class=\"btn btn-5et btn-xs mr-2\"></button>").click(() => {console.log("Remove class " + ix);
+           /*  removeClassBtn = $("<button class=\"btn btn-5et btn-xs mr-2\"></button>").click(() => {console.log("Remove class " + ix);
 
                 this.wipeClassState(ix);
-        
+                //Honestly, we might just have to re-render all the class components
+                //If we delete class of index 1, that means class of inded 2 should become 1, and that breaks so many hooks
             });
             const removeClassBtnHook = () => {
                 removeClassBtn.text("Remove Class")
@@ -406,7 +411,7 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
                 .prop("disabled", this._state.class_ixPrimaryClass === ix);
             };
             this._addHookBase("class_ixPrimaryClass", removeClassBtnHook);
-            removeClassBtnHook();
+            removeClassBtnHook(); */
         }
 
        
@@ -763,7 +768,8 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
     }
     _class_isSubclassSelectionDisabled({ ix: ix }) {
         //TEMPFIX
-      return SETTINGS.LOCK_EXISTING_CHOICES && this._existingClassMetas[ix] && (this._existingClassMetas[ix].ixSubclass != null || this._existingClassMetas[ix].isUnknownClass);
+      return SETTINGS.LOCK_EXISTING_CHOICES && this._existingClassMetas[ix]
+      && (this._existingClassMetas[ix].ixSubclass != null || this._existingClassMetas[ix].isUnknownClass);
     }
     
     static _class_getLocks(ix) {
@@ -1434,14 +1440,18 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
         const wipe = (comp) => {
             if(comp){
                 try {
+                    
                     //We need to loop through each value in state and set it to null
                     //This should fire some hooks
                     const propNames = Object.keys(comp._state);
                     for(let prop of propNames){
-                        //comp._setStateValue(prop, null, {isForceTriggerHooks: true});
+                        comp._setStateValue(prop, null, {isForceTriggerHooks: true});
                     }
                     //Then we can go in and completely reset the _state, wiping hooks
                     comp._setState(comp._getDefaultState());
+
+                    //Needs to be called last
+                    this._parent.featureSourceTracker_.unregister(comp);
                 }
                 catch (e){
                     console.error("Failed to wipe component ", comp, comp.constructor.name, "belonging to ix ", ix);
@@ -1458,9 +1468,8 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
         for(let comp of this.compsClassFeatureOptionsSelect[ix]){
             if(comp) { wipe(comp); }
         }
-        //We need hooks to be fired so that other components realize that these components just had their states reset
-
-        //this._setStateValue("class_ixPrimaryClass", this._state["class_ixPrimaryClass"], {isForceTriggerHooks:true});
+        //We need to reduce class_ixMax
+        //This should be enough wiping for now
     }
 
     /**Defines the starting default values of our _state proxy  */
@@ -3071,6 +3080,19 @@ class Charactermancer_Class_StartingProficiencies extends BaseComponent {
         this._existingProficienciesFvttSavingThrows = existingProficienciesFvttSavingThrows ? MiscUtil.copy(existingProficienciesFvttSavingThrows) : null;
     }
     
+    
+    /**
+     * @param {any} {featureSourceTracker
+     * @param {any} primaryProficiencies
+     * @param {any} multiclassProficiencies
+     * @param {any} savingThrowsProficiencies
+     * @param {any} mode
+     * @param {any} existingProficienciesFvttArmor
+     * @param {any} existingProficienciesFvttWeapons
+     * @param {any} existingProficienciesFvttSavingThrows
+     * @param {any} }={}
+     * @returns {Charactermancer_Class_StartingProficiencies}
+     */
     static get({featureSourceTracker, primaryProficiencies, multiclassProficiencies, savingThrowsProficiencies, mode, existingProficienciesFvttArmor, existingProficienciesFvttWeapons, existingProficienciesFvttSavingThrows, }={}, ) {
         const {existingProficienciesVetArmor, existingProficienciesCustomArmor,
         existingProficienciesVetWeapons, existingProficienciesCustomWeapons,
@@ -3322,8 +3344,12 @@ class Charactermancer_Class_StartingProficiencies extends BaseComponent {
             $wrpDisplay.empty();
             const isPrimary = this._state.mode === Charactermancer_Class_ProficiencyImportModeSelect.MODE_PRIMARY;
 
+            console.log("HKMode render");
+
             const profs = isPrimary ? this._primaryProficiencies : this._multiclassProficiencies;
             if (profs) {
+                console.log("existing armor prof: ", this._existingProficienciesVetArmor);
+                console.log("existing custom armor prof: ", this._existingProficienciesCustomArmor);
                 this._render_profType({
                     profList: profs.armor,
                     title: "Armor",
@@ -3420,17 +3446,18 @@ class Charactermancer_Class_StartingProficiencies extends BaseComponent {
             try {
                 await this._pLock("updateExisting");
                 await pHkUpdatePtsExisting_();
-            } finally {
+            }
+            finally {
                 this._unlock("updateExisting");
             }
-        }
-        ;
+        };
 
         const pHkUpdatePtsExisting_ = async()=>{
             const otherStates = this._featureSourceTracker ? this._featureSourceTracker.getStatesForKey(propTracker, {
                 ignore: this
             }) : null;
 
+            console.log("pHkUpdatePtsExisting_", profListUids, existing, existingProficienciesCustom);
             for (const v of profListUids) {
                 if (!$ptsExisting[v])
                     return;
@@ -3441,10 +3468,10 @@ class Charactermancer_Class_StartingProficiencies extends BaseComponent {
 
                 isExisting = isExisting || (otherStates || []).some(otherState=>!!otherState[v] || (parentGroup && !!otherState[parentGroup]));
 
+                console.log("ixExisting", isExisting);
                 $ptsExisting[v].title(isExisting ? "Proficient from Another Source" : "").toggleClass("ml-1", isExisting).html(isExisting ? `(<i class="fas fa-fw ${UtilActors.PROF_TO_ICON_CLASS[1]}"></i>)` : "");
             }
-        }
-        ;
+        };
         if (this._featureSourceTracker) {
             this._featureSourceTracker.addHook(this, propTrackerPulse, pHkUpdatePtsExisting);
             fnsCleanup.push(()=>this._featureSourceTracker.removeHook(this, propTrackerPulse, pHkUpdatePtsExisting));
@@ -14804,25 +14831,21 @@ class Charactermancer_FeatureSourceTracker extends BaseComponent {
     }
 
     unregister(comp) {
-        if (!comp)
-            return;
+        if (!comp) { return; }
 
         const registered = this._registered.get(comp);
-        if (!registered)
-            return;
+        if (!registered) { return; }
 
         this._registered.delete(comp);
 
         registered.hookMetas.forEach(({propPulse, hook})=>{
             this._removeHookBase(propPulse, hook);
-        }
-        );
+        });
 
         if (registered.state) {
             Object.keys(registered.state).forEach(k=>{
                 this._doPulseForProp(k);
-            }
-            );
+            });
         }
     }
 
