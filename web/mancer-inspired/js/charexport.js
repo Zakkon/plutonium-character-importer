@@ -45,7 +45,10 @@ class CharacterExportFvtt{
                 level: data.targetLevel,
                 isPrimary: data.isPrimary
             };
+            //Add skill proficiencies (a choice we get at lvl 1)
             if(data.skillProficiencies){block.skillProficiencies = data.skillProficiencies;}
+            //Add tool proficiencies (a choice we get at lvl 1 for some classes)
+            if(data.toolProficiencies){block.toolProficiencies = data.toolProficiencies;}
             metaDataStack.push({uid: data.cls.name+"|"+data.cls.source, _data:CharacterExportFvtt.getSourceMetaData(data.cls)});
 
             //Check if high enough level for subclass here?
@@ -142,9 +145,13 @@ class CharacterExportFvtt{
                 propIxSubclass:propIxSubclass,
                 targetLevel:targetLevel
             }
-            let skillProficienciesForm = this.getClassSkillsTools(compClass, i);
+            let skillProficienciesForm = this.getClassSkills(compClass, i);
             if(skillProficienciesForm != null){
                 block.skillProficiencies = skillProficienciesForm;
+            }
+            let toolProficienciesForm = this.getClassTools(compClass, i);
+            if(toolProficienciesForm != null){
+                block.toolProficiencies = toolProficienciesForm;
             }
             //Now we want to ask compClass if there is a subclass selected for this index
             const sc = compClass.getSubclass_({cls:cls, propIxSubclass:propIxSubclass});
@@ -154,22 +161,28 @@ class CharacterExportFvtt{
         return classList;
     }
     /**
-     * Description
      * @param {ActorCharactermancerClass} compClass
      * @param {number} ix
-     * @param {string} propIxClass
-     * @returns {any}
+     * @returns {any} returns a form
      */
-    static getClassSkillsTools(compClass, ix){
-        if(compClass.compsClassSkillProficiencies.length<ix){return null;}
-        let arr = [];
-        //for(let cix = 0; cix < compClass.compsClassSkillProficiencies.length)
-        console.log("COMPONENTS", compClass.compsClassSkillProficiencies);
-        //Get the component with skill proficiency choices for our class only (use ix)
+    static getClassSkills(compClass, ix){
+        if(compClass.compsClassSkillProficiencies.length<=ix){return null;}
         const comp = compClass.compsClassSkillProficiencies[ix];
-        console.log("STATE", comp._state);
+        if(comp==null){return null;}
         const form = comp._getFormData();
-        console.log("Form: ", form);
+        return form;
+    }
+    /**
+     * @param {ActorCharactermancerClass} compClass
+     * @param {number} ix
+     * @returns {any} returns a form
+     */
+    static getClassTools(compClass, ix){
+        if(compClass.compsClassToolProficiencies.length<=ix){return null;}
+        console.log(compClass.compsClassToolProficiencies);
+        const comp = compClass.compsClassToolProficiencies[ix];
+        if(comp==null){return null;}
+        const form = comp._getFormData();
         return form;
     }
     /**

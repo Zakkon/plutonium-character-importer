@@ -1029,17 +1029,40 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
                 this[propCompsClass][ix].render(parentElement);
 
                 //Set state to component AFTER first render, this way all other components have hooks set up and can react to the changes we are about to make
-                if(SETTINGS.USE_EXISTING_WEB && this._actor?.classes.length > ix){
+                if(SETTINGS.USE_EXISTING_WEB && ix < this._actor?.classes.length){
                     //So we can set the state of the proficiency select component here
                     const comp = this[propCompsClass][ix];
+                    //Make sure this is the same class
                     if(SETTINGS.TRANSFER_CHOICES || (this._actor.classes[ix].name == cls.name && this._actor.classes[ix].source == cls.source)){
                         const chooseOptions =  proficiencies[0]; //Proficiencies is an array, usually only with one entry
-                        const chosenProficiencies = this._actor.classes[ix].skillProficiencies.data.skillProficiencies;
-                        const chosenNames = Object.keys(chosenProficiencies);
-                        for(let i = 0; i < chosenNames.length && i < chooseOptions.choose.count; ++i){
-                            let ixOf = chooseOptions.choose.from.indexOf(chosenNames[i]);
-                            let prop = `otherProfSelect_0__isActive_${ixOf}`;
-                            comp._state[prop] = true;
+                        //This should be a secure way to get the options we have to pick from, regardless if it is choose from, or choose any
+                        const numToPick = comp._available[0].choose[0].count;
+                        const namesToPickFrom = comp._available[0].choose[0].from;
+
+                        let mode = "skills";
+                        if(propCompsClass == "_compsClassToolProficiencies"){mode = "tools"};
+
+                        let chosenProficiencies = {}
+                        if(mode == "skills"){chosenProficiencies = this._actor.classes[ix].skillProficiencies?.data?.skillProficiencies;}
+                        else if (mode == "tools"){chosenProficiencies = this._actor.classes[ix].toolProficiencies?.data?.toolProficiencies;}
+
+
+                        //Its possible that one class outputs null on either tools or skills because they dont provide an option
+                        const chosenNames = !!chosenProficiencies? Object.keys(chosenProficiencies) : [];
+                        for(let i = 0; i < chosenNames.length && i < numToPick; ++i){
+                            console.log("to pick from", namesToPickFrom);
+                            //Make sure we go from a {name:string} to just an array of strings, then match index
+                            //push to lowercase just for simplicity
+                            let ixOf = namesToPickFrom.map(n=>n.name.toLowerCase()).indexOf(chosenNames[i].toLowerCase());
+                            //Make sure a match is made
+                            if(ixOf<0){
+                                console.warn("Failed to match ", chosenNames[i].toLowerCase(), "to any option in",
+                                    namesToPickFrom.map(n=>n.name.toLowerCase()));
+                            }
+                            else{
+                                const prop = `otherProfSelect_0__isActive_${ixOf}`;
+                                comp._state[prop] = true;
+                            }
                         }
                     }
                 }
