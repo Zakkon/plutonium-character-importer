@@ -279,9 +279,9 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
             });
             //Element that shows which proficiencies we always start with (usually weapons and armor)
             this._class_renderClass_stgStartingProficiencies({
-            '$stgStartingProficiencies': holder_startingProf,
-            'ix': ix,
-            'cls': cls
+                $stgStartingProficiencies: holder_startingProf,
+                ix: ix,
+                cls: cls
             });
 
             //Now create the level select UI
@@ -1434,20 +1434,19 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
         const wipe = (comp) => {
             if(comp){
                 try {
-                    //We need to loop through each value in state
+                    //We need to loop through each value in state and set it to null
+                    //This should fire some hooks
                     const propNames = Object.keys(comp._state);
                     for(let prop of propNames){
-                        comp._setStateValue(prop, null, {isForceTriggerHooks: true});
+                        //comp._setStateValue(prop, null, {isForceTriggerHooks: true});
                     }
-                    //console.log(propNames);
-                    //_setStateValue
-                    //comp._setState(comp._getDefaultState());
+                    //Then we can go in and completely reset the _state, wiping hooks
+                    comp._setState(comp._getDefaultState());
                 }
                 catch (e){
                     console.error("Failed to wipe component ", comp, comp.constructor.name, "belonging to ix ", ix);
                     throw e;
                 }
-                
             }
         } 
         //Wipe states in each subcomponent belonging to the ix of my class
@@ -1457,9 +1456,11 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
         wipe(this.compsClassHpIncreaseMode[ix]);
         wipe(this.compsClassStartingProficiencies[ix]);
         for(let comp of this.compsClassFeatureOptionsSelect[ix]){
-            if(comp){wipe(comp);}
+            if(comp) { wipe(comp); }
         }
         //We need hooks to be fired so that other components realize that these components just had their states reset
+
+        //this._setStateValue("class_ixPrimaryClass", this._state["class_ixPrimaryClass"], {isForceTriggerHooks:true});
     }
 
     /**Defines the starting default values of our _state proxy  */
@@ -16297,7 +16298,7 @@ class Charactermancer_OtherProficiencySelect extends Charactermancer_Proficiency
 
             //Get information about choices or if static
             const selProfs = this._available[this._state.ixSet];
-            
+
              //This should only occur when we completely wipe the component state as part of 'remove class' button
             if(!selProfs){ return; }
 
