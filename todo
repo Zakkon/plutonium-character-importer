@@ -24,6 +24,12 @@ EXPORTABLE INFORMATION (json format is good enough)
 - Optional Features
 - 
 
+LOADING SAVE FILES
+- Class - done
+- Subclass - done
+- HP increase mode
+- Race - done
+
 SHEET DISPLAYABLE INFORMATION
 - Classes (with level and subclasses) - done
 - Race - done

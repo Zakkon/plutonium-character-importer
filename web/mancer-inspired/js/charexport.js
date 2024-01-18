@@ -45,6 +45,7 @@ class CharacterExportFvtt{
                 level: data.targetLevel,
                 isPrimary: data.isPrimary
             };
+            if(data.skillProficiencies){block.skillProficiencies = data.skillProficiencies;}
             metaDataStack.push({uid: data.cls.name+"|"+data.cls.source, _data:CharacterExportFvtt.getSourceMetaData(data.cls)});
 
             //Check if high enough level for subclass here?
@@ -117,7 +118,7 @@ class CharacterExportFvtt{
     //#region Pull Info From Builder
     /**
      * @param {ActorCharactermancerClass} compClass
-     * @returns {{cls: any, isPrimary: boolean, propIxSubclass:string, targetLevel:number, sc:any}[]}
+     * @returns {{cls: any, isPrimary: boolean, propIxClass:string, propIxSubclass:string, targetLevel:number, sc:any}[]}
      */
     static getClassData(compClass) {
         const primaryClassIndex = compClass._state.class_ixPrimaryClass;
@@ -137,8 +138,13 @@ class CharacterExportFvtt{
             const block = {
                 cls: cls,
                 isPrimary: isPrimary,
+                propIxClass: propIxClass,
                 propIxSubclass:propIxSubclass,
                 targetLevel:targetLevel
+            }
+            let skillProficienciesForm = this.getClassSkillsTools(compClass, i);
+            if(skillProficienciesForm != null){
+                block.skillProficiencies = skillProficienciesForm;
             }
             //Now we want to ask compClass if there is a subclass selected for this index
             const sc = compClass.getSubclass_({cls:cls, propIxSubclass:propIxSubclass});
@@ -146,6 +152,21 @@ class CharacterExportFvtt{
             classList.push(block);
         }
         return classList;
+    }
+    /**
+     * Description
+     * @param {ActorCharactermancerClass} compClass
+     * @param {number} ix
+     * @param {string} propIxClass
+     * @returns {any}
+     */
+    static getClassSkillsTools(compClass, ix){
+        if(compClass.compsClassSkillProficiencies.length<ix){return null;}
+        const comp = compClass.compsClassSkillProficiencies[ix];
+        console.log("STATE", comp._state);
+        const form = comp._getFormData();
+        console.log("Form: ", form);
+        return form;
     }
     /**
      * @param {ActorCharactermancerEquipment} compEquipment
@@ -322,6 +343,17 @@ class CharacterExportFvtt{
         return str;
     }
     
+    /**
+     * Save file schema
+     * _meta:
+     * character:
+     * -classes (array)
+     * --[0]
+     * ---name (string)
+     * ---source (string)
+     * ---skillsTools
+     * ---
+    */
 }
 
 class CharacterImportFvtt {

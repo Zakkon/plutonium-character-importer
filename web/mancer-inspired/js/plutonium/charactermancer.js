@@ -469,6 +469,10 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
     get compsClassFeatureOptionsSelect() {
       return this._compsClassFeatureOptionsSelect;
     }
+
+    /**
+     * @returns {Charactermancer_OtherProficiencySelect[]}
+     */
     get compsClassSkillProficiencies() {
       return this._compsClassSkillProficiencies;
     }
@@ -949,7 +953,7 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
         'propSystem': 'skills',
         'fnGetProfs': ({ cls: cls, isPrimaryClass: isPrimaryClass }) => {
           if (!cls) { return null; }
-          return isPrimaryClass ? cls.startingProficiencies?.["skills"] : cls.multiclassing?.['proficienciesGained']?.["skills"];
+          return isPrimaryClass ? cls.startingProficiencies?.skills : cls.multiclassing?.proficienciesGained?.skills;
         },
         'headerText': "Skill Proficiencies",
         'fnGetMapped': Charactermancer_OtherProficiencySelect.getMappedSkillProficiencies.bind(Charactermancer_OtherProficiencySelect)
@@ -987,29 +991,47 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
         fnGetMapped: fnGetMapped
         }) {
         
-        //TEMPFIX
-        if(SETTINGS.USE_EXISTING){const existingMeta = this._class_getExistingClassMeta(ix);
-        if (existingMeta) { return; }}
+        if(SETTINGS.USE_EXISTING || SETTINGS.USE_EXISTING_WEB){
+            const existingMeta = this._class_getExistingClassMeta(ix);
+            if (existingMeta?.profSkillsTools) { return; }
+        }
         
         if (this[propMetaHks][ix]) { this[propMetaHks][ix].unhook(); }
 
         const doRenderSkillsTools = () => {
             parentElement.empty();
-            const cls = this.getClass_({ 'propIxClass': propIxClass });
+            const cls = this.getClass_({ propIxClass: propIxClass });
             const isPrimaryClass = this._state.class_ixPrimaryClass === ix;
             this._parent.featureSourceTracker_.unregister(this[propCompsClass][ix]);
-            const proficiencies = fnGetProfs({ 'cls': cls, 'isPrimaryClass': isPrimaryClass });
+            const proficiencies = fnGetProfs({ cls: cls, isPrimaryClass: isPrimaryClass });
 
             if (cls && proficiencies) {
                 parentElement.showVe().append("<hr class=\"hr-2\"><div class=\"bold mb-2\">" + headerText + "</div>");
                 //TEMPFIX
-                const existing = SETTINGS.USE_EXISTING? { 'skillProficiencies': MiscUtil.get(this._actor, "_source", "system", propSystem) } : null;
+                let existing = {};
+                let existingFvtt = null;
+                if (SETTINGS.USE_EXISTING){
+                    existingFvtt = { skillProficiencies: MiscUtil.get(this._actor, "_source", "system", propSystem) };
+                    existing = Charactermancer_OtherProficiencySelect.getExisting(existingFvtt);
+                }
+                else if(SETTINGS.USE_EXISTING_WEB){
+                    //this[propCompsClass][ix]._state["otherProfSelect_0_isActive_1"] = true;
+                    existing = this._actor.classes[ix].skillProficiencies.data;
+                    
+                }
+                //Create the component
                 this[propCompsClass][ix] = new Charactermancer_OtherProficiencySelect({
-                    'featureSourceTracker': this._parent.featureSourceTracker_,
-                    'existing': Charactermancer_OtherProficiencySelect.getExisting(existing),
-                    'existingFvtt': existing,
-                    'available': fnGetMapped(proficiencies)
+                    featureSourceTracker: this._parent.featureSourceTracker_,
+                    existing: existing,
+                    existingFvtt: existingFvtt,
+                    available: fnGetMapped(proficiencies)
                 });
+                
+                if(SETTINGS.USE_EXISTING_WEB){
+                    console.log("SET STATE");
+                    this[propCompsClass][ix]._state["otherProfSelect_0_isActive_1"] = true;
+                    console.log("just after",  this[propCompsClass][ix]._state["otherProfSelect_0_isActive_1"]);
+                }
                 this[propCompsClass][ix].render(parentElement);
             }
             else { parentElement.hideVe(); this[propCompsClass][ix] = null; }
@@ -1070,6 +1092,10 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
 
         onPrimaryClassChanged();
     }
+    /**
+     * @param {number} classIx
+     * @returns {ActorCharactermancerClass.ExistingClassMeta}
+     */
     _class_getExistingClassMeta(classIx) {
       if (this._existingClassMetas[classIx]) {return this._existingClassMetas[classIx];}
 
@@ -14623,10 +14649,7 @@ class Charactermancer_FeatureSourceTracker extends BaseComponent {
     }
 
     register(comp) {
-        this._registered.set(comp, {
-            state: null,
-            hookMetas: []
-        });
+        this._registered.set(comp, { state: null, hookMetas: [] });
     }
 
     _validateProp(propPulse) {
@@ -14640,10 +14663,7 @@ class Charactermancer_FeatureSourceTracker extends BaseComponent {
         if (!this._registered.has(comp))
             this.register(comp);
 
-        this._registered.get(comp).hookMetas.push({
-            propPulse,
-            hook: hk
-        });
+        this._registered.get(comp).hookMetas.push({ propPulse, hook: hk });
         this._addHookBase(propPulse, hk);
     }
 
@@ -16173,10 +16193,11 @@ class Charactermancer_OtherProficiencySelect extends Charactermancer_Proficiency
     }
 
     render($wrp) {
+        console.log("state", this._state);
+
         const $stgSelGroup = this._render_$getStgSelGroup();
 
         const $stgGroup = $$`<div class="ve-flex-col"></div>`;
-
         const hkIxSet = ()=>{
             $stgGroup.empty();
 
@@ -16186,6 +16207,7 @@ class Charactermancer_OtherProficiencySelect extends Charactermancer_Proficiency
             this._lastMetas.forEach(it=>it.cleanup());
             this._lastMetas = [];
 
+            //Get information about choices or if static
             const selProfs = this._available[this._state.ixSet];
 
             if (this._featureSourceTracker){this._doSetTrackerState();}
@@ -16194,21 +16216,13 @@ class Charactermancer_OtherProficiencySelect extends Charactermancer_Proficiency
 
             if ($ptsExistingStatic && selProfs.choose?.length){$stgGroup.append(`<hr class="hr-2">`);}
 
+            
             const $ptsExistingChoose = (selProfs.choose || []).map(({count, from, groups, fromFilter, prop},i)=>{
                 if (this._$elesPreFromGroups?.[i])
                     $stgGroup.append(this._$elesPreFromGroups?.[i]);
 
-                const $outPtsExisting = fromFilter ? this._render_renderPtChooseFromFilter($stgGroup, {
-                    ix: i,
-                    count,
-                    fromFilter,
-                    prop
-                }) : this._render_renderPtChooseFrom($stgGroup, {
-                    ix: i,
-                    count,
-                    from,
-                    groups
-                });
+                const $outPtsExisting = fromFilter ? this._render_renderPtChooseFromFilter($stgGroup, { ix: i, count, fromFilter, prop })
+                : this._render_renderPtChooseFrom($stgGroup, { ix: i, count, from, groups });
 
                 if (this._$elesPostFromGroups?.[i])
                     $stgGroup.append(this._$elesPostFromGroups?.[i]);
@@ -16218,16 +16232,14 @@ class Charactermancer_OtherProficiencySelect extends Charactermancer_Proficiency
                 }
 
                 return $outPtsExisting;
-            }
-            );
+            });
 
             this._hkExisting = ()=>this._hk_pUpdatePtsExisting($ptsExistingStatic, $ptsExistingChoose);
             if (this._featureSourceTracker) {
                 Object.values(Charactermancer_OtherProficiencySelect._PROP_GROUPS).forEach(({propTrackerPulse})=>this._featureSourceTracker.addHook(this, propTrackerPulse, this._hkExisting));
             }
             this._hkExisting();
-        }
-        ;
+        };
         this._addHookBase("ixSet", hkIxSet);
         hkIxSet();
 
@@ -16492,10 +16504,7 @@ class Charactermancer_OtherProficiencySelect extends Charactermancer_Proficiency
     async _hk_pUpdatePtsExisting($ptsExistingStatic, $ptsExistingChooseFrom) {
         try {
             await this._pLock("updateExisting");
-            await this._hk_pUpdatePtsExisting_({
-                $ptsExistingStatic,
-                $ptsExistingChooseFrom
-            });
+            await this._hk_pUpdatePtsExisting_({ $ptsExistingStatic, $ptsExistingChooseFrom });
         } finally {
             this._unlock("updateExisting");
         }
@@ -16505,33 +16514,22 @@ class Charactermancer_OtherProficiencySelect extends Charactermancer_Proficiency
         const allValueLookupEntries = Object.entries(this._getAllValuesMaybeInUseLookup());
 
         if ($ptsExistingStatic)
-            await this._hk_pUpdatePtsExisting_part({
-                allValueLookupEntries,
-                $ptsExisting: $ptsExistingStatic
-            });
+            await this._hk_pUpdatePtsExisting_part({ allValueLookupEntries, $ptsExisting: $ptsExistingStatic });
         if (!$ptsExistingChooseFrom)
             return;
         for (const $ptsExisting of $ptsExistingChooseFrom)
-            await this._hk_pUpdatePtsExisting_part({
-                allValueLookupEntries,
-                $ptsExisting
-            });
+            await this._hk_pUpdatePtsExisting_part({ allValueLookupEntries, $ptsExisting });
     }
 
     async _hk_pUpdatePtsExisting_part({allValueLookupEntries, $ptsExisting}) {
         for (const [prop,allProfs] of allValueLookupEntries) {
-            const otherStates = this._featureSourceTracker ? this._featureSourceTracker.getStatesForKey(prop, {
-                ignore: this
-            }) : null;
+            const otherStates = this._featureSourceTracker ? this._featureSourceTracker.getStatesForKey(prop, { ignore: this }) : null;
 
             for (const v of allProfs) {
-                const parentGroup = await this.constructor._pGetParentGroup({
-                    prop,
-                    name: v
-                });
+                const parentGroup = await this.constructor._pGetParentGroup({ prop, name: v });
 
-                if (!$ptsExisting[prop]?.[v] && !parentGroup)
-                    continue;
+                if (!$ptsExisting[prop]?.[v] && !parentGroup){continue;}
+                console.log("this existing", this._existing, prop, v);
 
                 let maxExisting = this._existing?.[prop]?.[v] || (parentGroup && this._existing?.[prop]?.[parentGroup]) || 0;
 
@@ -16578,10 +16576,7 @@ class Charactermancer_OtherProficiencySelect extends Charactermancer_Proficiency
     }
 
     _render_renderPtChooseFrom($stgGroup, {ix, count, from, groups}) {
-        const {propState} = this._getPropsChooseFrom({
-            ixChoose: ix
-        });
-
+        const {propState} = this._getPropsChooseFrom({ ixChoose: ix });
         const $ptsExisting = {};
         const compOpts = {
             count,
@@ -16607,8 +16602,7 @@ class Charactermancer_OtherProficiencySelect extends Charactermancer_Proficiency
         from.forEach(({name, prop, group})=>{
             group = group ?? "_";
             MiscUtil.set(byPropThenGroup, prop, group, name, Charactermancer_OtherProficiencySelect._PROFICIENT);
-        }
-        );
+        });
 
         const isMultiProp = Object.keys(byPropThenGroup).length > 1;
         const isGrouped = Object.values(byPropThenGroup).some(groupMeta=>Object.keys(groupMeta).some(group=>group !== "_"));
@@ -16624,21 +16618,17 @@ class Charactermancer_OtherProficiencySelect extends Charactermancer_Proficiency
                             prop
                         })} Proficiencies` : ""), groupDetails?.name, ].filter(Boolean).join(""),
                         text: groupDetails?.hint,
-                        values: Object.keys(names).map(name=>({
-                            prop,
-                            name
-                        })),
+                        values: Object.keys(names).map(name=>({ prop, name })),
                     });
                 }
                 );
-            }
-            );
+            });
 
             compOpts.valueGroups = valueGroups;
-        } else {
-            compOpts.values = from;
         }
+        else { compOpts.values = from; }
 
+        //Create the UI element
         const meta = ComponentUiUtil.getMetaWrpMultipleChoice(this, propState, compOpts, );
 
         let hkSetTrackerInfo = null;
@@ -16652,8 +16642,7 @@ class Charactermancer_OtherProficiencySelect extends Charactermancer_Proficiency
                 meta.cleanup();
                 if (hkSetTrackerInfo)
                     this._removeHookBase(meta.propPulse, hkSetTrackerInfo);
-            }
-            ,
+            },
         });
 
         const header = fromProps.size === 1 ? (`${this.constructor._getPropDisplayName({
@@ -16701,8 +16690,7 @@ class Charactermancer_OtherProficiencySelect extends Charactermancer_Proficiency
 
                 if (!isFirstRun && this._featureSourceTracker)
                     this._doSetTrackerState();
-            }
-            ;
+            };
             this._addHookBase(propState, hkChosen);
             this._lastMetas.push({
                 cleanup: ()=>this._removeHookBase(propState, hkChosen)
@@ -16792,22 +16780,16 @@ class Charactermancer_OtherProficiencySelect extends Charactermancer_Proficiency
                 return;
             }
 
-            const {propState} = this._getPropsChooseFrom({
-                ixChoose
-            });
+            const {propState} = this._getPropsChooseFrom({ ixChoose });
 
             const ixs = ComponentUiUtil.getMetaWrpMultipleChoice_getSelectedIxs(this, propState);
             ixs.map(ix=>from[ix]).forEach(({prop, name})=>MiscUtil.set(out, prop, name, Charactermancer_OtherProficiencySelect._PROFICIENT));
 
             if (!this._state[ComponentUiUtil.getMetaWrpMultipleChoice_getPropIsAcceptable(propState)])
                 isFormComplete = false;
-        }
-        );
+        });
 
-        return {
-            isFormComplete,
-            data: out,
-        };
+        return { isFormComplete, data: out, };
     }
 
     pGetFormData() {
@@ -17148,16 +17130,15 @@ class Charactermancer_SkillSaveProficiencySelect extends Charactermancer_Profici
                         $ptExisting.title(helpText).addClass("ml-1").html(`(<i class="fas fa-fw ${UtilActors.PROF_TO_ICON_CLASS[maxExisting]}"></i>)`);
                     }
                     );
-                } else {
+                }
+                else {
                     $ptsExisting[prof].forEach($ptExisting=>{
                         $ptExisting.title("").removeClass("ml-1").html("");
                     }
                     );
                 }
-            }
-            );
-        }
-        );
+            });
+        });
     }
 
     _render_renderPtChooseFrom($stgGroup, profSet) {
