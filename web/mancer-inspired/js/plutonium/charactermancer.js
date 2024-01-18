@@ -1032,8 +1032,7 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
                 if(SETTINGS.USE_EXISTING_WEB && this._actor?.classes.length > ix){
                     //So we can set the state of the proficiency select component here
                     const comp = this[propCompsClass][ix];
-                    const ignoreClassDiff = true;
-                    if(ignoreClassDiff || (this._actor.classes[ix].name == cls.name && this._actor.classes[ix].source == cls.source)){
+                    if(SETTINGS.TRANSFER_CHOICES || (this._actor.classes[ix].name == cls.name && this._actor.classes[ix].source == cls.source)){
                         const chooseOptions =  proficiencies[0]; //Proficiencies is an array, usually only with one entry
                         const chosenProficiencies = this._actor.classes[ix].skillProficiencies.data.skillProficiencies;
                         const chosenNames = Object.keys(chosenProficiencies);
