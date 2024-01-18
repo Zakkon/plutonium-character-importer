@@ -3351,12 +3351,10 @@ class ComponentUiUtil {
                 }
 
                 component[stateProp][prop] = cb.checked;
-            }
-            ,
+            },
         });
 
         const hook = ()=>{
-            console.log("checkbox check", component[stateProp], prop);
             cb.checked = !!component[stateProp][prop];
             if (opts.isDisplayNullAsIndeterminate)
                 cb.indeterminate = component[stateProp][prop] == null;
@@ -3858,7 +3856,6 @@ class ComponentUiUtil {
                 if (comp._state[propIsActive] && !comp._state[propIsRequired])
                     ixsSelectionOrder.push(ixValueFrozen);
 
-                console.log("propisreq", propIsRequired, propIsActive);
                 let hk;
                 const $cb = isRequired ? $(`<input type="checkbox" disabled checked title="This option is required.">`) : ComponentUiUtil.$getCbBool(comp, propIsActive);
 

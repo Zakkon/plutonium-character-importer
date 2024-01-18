@@ -486,7 +486,7 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
     async pLoad() {
       await this._modalFilterClasses.pPreloadHidden();
       if(SETTINGS.USE_EXISTING_WEB){
-        await this._test_doHandleExistingClassItems(this._actor?.classes);
+        if(this._actor){await this._test_doHandleExistingClassItems(this._actor.classes);}
         return;
       }
       if(!SETTINGS.USE_EXISTING){return;}
@@ -589,6 +589,7 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
      */
     async _test_doHandleExistingClassItems(classes){
 
+        if(!classes){return;}
       //Collect metas
       this._existingClassMetas = classes.map(cls => {
         const _clsIx = this._test_getExistingClassIndex(cls);
@@ -1010,14 +1011,13 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
                 //TEMPFIX
                 let existing = {};
                 let existingFvtt = null;
-                if (SETTINGS.USE_EXISTING){
+                if (SETTINGS.USE_EXISTING && this._actor){
                     existingFvtt = { skillProficiencies: MiscUtil.get(this._actor, "_source", "system", propSystem) };
                     existing = Charactermancer_OtherProficiencySelect.getExisting(existingFvtt);
                 }
-                else if(SETTINGS.USE_EXISTING_WEB){
-                    //this[propCompsClass][ix]._state["otherProfSelect_0_isActive_1"] = true;
-                    existing = this._actor.classes[ix].skillProficiencies.data;
-                    
+                else if(SETTINGS.USE_EXISTING_WEB && this._actor){
+                    //Filling in 'existing' will only mark a choice as (you already have this proficiency from another source)
+                    //existing = this._actor.classes[ix].skillProficiencies.data;
                 }
                 //Create the component
                 this[propCompsClass][ix] = new Charactermancer_OtherProficiencySelect({
@@ -1026,13 +1026,23 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
                     existingFvtt: existingFvtt,
                     available: fnGetMapped(proficiencies)
                 });
-                
-                if(SETTINGS.USE_EXISTING_WEB){
-                    console.log("SET STATE");
-                    this[propCompsClass][ix]._state["otherProfSelect_0_isActive_1"] = true;
-                    console.log("just after",  this[propCompsClass][ix]._state["otherProfSelect_0_isActive_1"]);
-                }
+
                 this[propCompsClass][ix].render(parentElement);
+
+                if(SETTINGS.USE_EXISTING_WEB && this._actor?.classes.length > ix){
+                    //So we can set the state of the proficiency select component here
+                    const comp = this[propCompsClass][ix];
+                    console.log(proficiencies);
+                    const chooseOptions =  proficiencies[0]; //Proficiencies is an array, usually only with one entry
+                    const chosenProficiencies = this._actor.classes[ix].skillProficiencies.data.skillProficiencies;
+                    const chosenNames = Object.keys(chosenProficiencies);
+                    for(let i = 0; i < chosenNames.length && i < chooseOptions.choose.count; ++i){
+                        let ixOf = chooseOptions.choose.from.indexOf(chosenNames[i]);
+                        let prop = `otherProfSelect_0__isActive_${ixOf}`;
+                        comp._state[prop] = true;
+                    }
+                }
+
             }
             else { parentElement.hideVe(); this[propCompsClass][ix] = null; }
         };
@@ -1098,6 +1108,7 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
      */
     _class_getExistingClassMeta(classIx) {
       if (this._existingClassMetas[classIx]) {return this._existingClassMetas[classIx];}
+      if(!this._actor){return;}
 
       const {propIxClass: propIxClass } = ActorCharactermancerBaseComponent.class_getProps(classIx);
 
@@ -15408,7 +15419,7 @@ class Charactermancer_Class_Util {
     }
 
     static getExistingClassItems(actor, cls) {
-        if (!cls){return [];}
+        if (!cls || !actor?.items){return [];}
 
         return actor.items.filter(actItem=>{
             if (actItem.type !== "class"){return;}
@@ -16193,7 +16204,6 @@ class Charactermancer_OtherProficiencySelect extends Charactermancer_Proficiency
     }
 
     render($wrp) {
-        console.log("state", this._state);
 
         const $stgSelGroup = this._render_$getStgSelGroup();
 
@@ -16529,7 +16539,6 @@ class Charactermancer_OtherProficiencySelect extends Charactermancer_Proficiency
                 const parentGroup = await this.constructor._pGetParentGroup({ prop, name: v });
 
                 if (!$ptsExisting[prop]?.[v] && !parentGroup){continue;}
-                console.log("this existing", this._existing, prop, v);
 
                 let maxExisting = this._existing?.[prop]?.[v] || (parentGroup && this._existing?.[prop]?.[parentGroup]) || 0;
 

@@ -162,6 +162,10 @@ class CharacterExportFvtt{
      */
     static getClassSkillsTools(compClass, ix){
         if(compClass.compsClassSkillProficiencies.length<ix){return null;}
+        let arr = [];
+        //for(let cix = 0; cix < compClass.compsClassSkillProficiencies.length)
+        console.log("COMPONENTS", compClass.compsClassSkillProficiencies);
+        //Get the component with skill proficiency choices for our class only (use ix)
         const comp = compClass.compsClassSkillProficiencies[ix];
         console.log("STATE", comp._state);
         const form = comp._getFormData();
