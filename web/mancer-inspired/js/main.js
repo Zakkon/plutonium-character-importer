@@ -231,6 +231,8 @@ class SETTINGS{
     static USE_EXISTING_WEB = true;
     static LOCALPATH_REDIRECT = true;
     static USE_FVTT = false;
+    /**Should changing class/race that transfer the choices (for like proficiencies?) */
+    static TRANSFER_CHOICES = false;
 }
 class CharacterBuilder {
   static _DATA_PROPS_EXPECTED = ['class', "subclass", 'classFeature', "subclassFeature",

@@ -166,9 +166,9 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
             $iptSearch: inputSearch,
             fnUpdateHidden: fnUpdateHidden
         } = ComponentUiUtil.$getSelSearchable(this, propIxClass, {
-            'values': this._data.class.map((_0x2b7aa2, _0x2f3ba4) => _0x2f3ba4), //Think this is just the ix's of the classes
-            'isAllowNull': true,
-            'fnDisplay': clsIx => {
+            values: this._data.class.map((_0x2b7aa2, _0x2f3ba4) => _0x2f3ba4), //Think this is just the ix's of the classes
+            isAllowNull: true,
+            fnDisplay: clsIx => {
                 //Using a simple index, ask _data for the class
             const cls = this.getClass_({'ix': clsIx });
             if (!cls) {
@@ -178,14 +178,14 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
             //Then return what should be the displayed name
             return cls.name + " " + (cls.source !== Parser.SRC_PHB ? '[' + Parser.sourceJsonToAbv(cls.source) + ']' : '');
             },
-            'fnGetAdditionalStyleClasses': classIx => {
+            fnGetAdditionalStyleClasses: classIx => {
                 if (classIx == null) { return null; }
-                const cls = this.getClass_({'ix': classIx});
+                const cls = this.getClass_({ix: classIx});
                 if (!cls) { return; }
                 return cls._versionBase_isVersion ? ['italic'] : null;
             },
-            'asMeta': true,
-            'isDisabled': this._class_isClassSelectionDisabled({'ix': ix })
+            asMeta: true,
+            isDisabled: this._class_isClassSelectionDisabled({ix: ix })
         });
 
         inputDisplay.addClass("bl-0");
@@ -276,7 +276,8 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
             '$stgHpInfo': holder_hpInfo,
             'ix': ix,
             'cls': cls
-            }); 
+            });
+            //Element that shows which proficiencies we always start with (usually weapons and armor)
             this._class_renderClass_stgStartingProficiencies({
             '$stgStartingProficiencies': holder_startingProf,
             'ix': ix,
@@ -735,15 +736,13 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
         if (ix != null && ~ix) { return cls.subclasses[ix];  }
         return DataConverterClass.getSubclassStub({ 'cls': cls });
     }
-    _class_isClassSelectionDisabled({
-      ix: _0x5bbf32
-    }) {
-      return !!this._existingClassMetas[_0x5bbf32];
+    _class_isClassSelectionDisabled({ ix: ix }) {
+        //TEMPFIX
+      return SETTINGS.LOCK_EXISTING_CHOICES && !!this._existingClassMetas[ix];
     }
-    _class_isSubclassSelectionDisabled({
-      ix: _0x3ccf09
-    }) {
-      return this._existingClassMetas[_0x3ccf09] && (this._existingClassMetas[_0x3ccf09].ixSubclass != null || this._existingClassMetas[_0x3ccf09].isUnknownClass);
+    _class_isSubclassSelectionDisabled({ ix: ix }) {
+        //TEMPFIX
+      return SETTINGS.LOCK_EXISTING_CHOICES && this._existingClassMetas[ix] && (this._existingClassMetas[ix].ixSubclass != null || this._existingClassMetas[ix].isUnknownClass);
     }
     
     static _class_getLocks(ix) {
@@ -992,7 +991,7 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
         fnGetMapped: fnGetMapped
         }) {
         
-        if(SETTINGS.USE_EXISTING || SETTINGS.USE_EXISTING_WEB){
+        if(SETTINGS.USE_EXISTING){
             const existingMeta = this._class_getExistingClassMeta(ix);
             if (existingMeta?.profSkillsTools) { return; }
         }
@@ -1029,17 +1028,20 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
 
                 this[propCompsClass][ix].render(parentElement);
 
+                //Set state to component AFTER first render, this way all other components have hooks set up and can react to the changes we are about to make
                 if(SETTINGS.USE_EXISTING_WEB && this._actor?.classes.length > ix){
                     //So we can set the state of the proficiency select component here
                     const comp = this[propCompsClass][ix];
-                    console.log(proficiencies);
-                    const chooseOptions =  proficiencies[0]; //Proficiencies is an array, usually only with one entry
-                    const chosenProficiencies = this._actor.classes[ix].skillProficiencies.data.skillProficiencies;
-                    const chosenNames = Object.keys(chosenProficiencies);
-                    for(let i = 0; i < chosenNames.length && i < chooseOptions.choose.count; ++i){
-                        let ixOf = chooseOptions.choose.from.indexOf(chosenNames[i]);
-                        let prop = `otherProfSelect_0__isActive_${ixOf}`;
-                        comp._state[prop] = true;
+                    const ignoreClassDiff = true;
+                    if(ignoreClassDiff || (this._actor.classes[ix].name == cls.name && this._actor.classes[ix].source == cls.source)){
+                        const chooseOptions =  proficiencies[0]; //Proficiencies is an array, usually only with one entry
+                        const chosenProficiencies = this._actor.classes[ix].skillProficiencies.data.skillProficiencies;
+                        const chosenNames = Object.keys(chosenProficiencies);
+                        for(let i = 0; i < chosenNames.length && i < chooseOptions.choose.count; ++i){
+                            let ixOf = chooseOptions.choose.from.indexOf(chosenNames[i]);
+                            let prop = `otherProfSelect_0__isActive_${ixOf}`;
+                            comp._state[prop] = true;
+                        }
                     }
                 }
 
