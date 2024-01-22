@@ -493,6 +493,9 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
     get compsClassLevelSelect() {
       return this._compsClassLevelSelect;
     }
+    /**
+     * @returns {Charactermancer_FeatureOptionsSelect[][]}
+     */
     get compsClassFeatureOptionsSelect() {
       return this._compsClassFeatureOptionsSelect;
     }
@@ -1077,7 +1080,6 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
                         //Its possible that one class outputs null on either tools or skills because they dont provide an option
                         const chosenNames = !!chosenProficiencies? Object.keys(chosenProficiencies) : [];
                         for(let i = 0; i < chosenNames.length && i < numToPick; ++i){
-                            console.log("to pick from", namesToPickFrom);
                             //Make sure we go from a {name:string} to just an array of strings, then match index
                             //push to lowercase just for simplicity
                             let ixOf = namesToPickFrom.map(n=>n.name.toLowerCase()).indexOf(chosenNames[i].toLowerCase());
@@ -1324,12 +1326,13 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
             if (featureName === "ability score improvement") { asiCount++; continue; }
             for (const set of optionsSets) {
                 const component = new Charactermancer_FeatureOptionsSelect({
-                    'featureSourceTracker': this._parent.featureSourceTracker_,
+                    featureSourceTracker: this._parent.featureSourceTracker_,
                     //TEMPFIX //'existingFeatureChecker': existingFeatureChecker,
                     //TEMPFIX //'actor': this._actor,
-                    'optionsSet': set,
-                    'level': topLevelFeature.level,
-                    'modalFilterSpells': this._parent.compSpell.modalFilterSpells
+                    optionsSet: set,
+                    level: topLevelFeature.level,
+                    modalFilterSpells: this._parent.compSpell.modalFilterSpells
+                    //actor?
                 });
                 this._compsClassFeatureOptionsSelect[ix].push(component);
                 component.findAndCopyStateFrom(selElement);
@@ -1340,7 +1343,8 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
         await this._class_pRenderFeatureComps(ix, {'$stgFeatureOptions': stgFeatureOptions});
     }
     async _class_pRenderFeatureComps(ix, { $stgFeatureOptions: stgFeatureOptions }) {
-        for (const component of this._compsClassFeatureOptionsSelect[ix]) {
+        for (let i = 0; i < this.compsClassFeatureOptionsSelect[ix].length; ++i) {
+            let component = this.compsClassFeatureOptionsSelect[ix][i];
             //component._optionsSet[0].entity.entryData exists
             if ((await component.pIsNoChoice()) && !(await component.pIsAvailable())) {continue;}
             
@@ -1349,8 +1353,15 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
                      "<hr class=\"hr-2\"><div class=\"mb-2 bold w-100\">" + component.modalTitle + "</div>" : ''));
             }
             component.render(stgFeatureOptions);
+
+            if(ix==1 && i == 0){
+                let parentData = this._actor.classes[ix];
+                console.log("PARENTDATA", parentData);
+                //component._subCompsLanguageProficiencies[0]._state["otherProfSelect_0__isActive_16"] = true;
+            }
+            console.log("FEATOPTSEL", component._state, component);
         }
-      }
+    }
     //#endregion
 
     _class_unregisterFeatureSourceTrackingFeatureComps(_0x3f9ba9) {
@@ -3457,7 +3468,6 @@ class Charactermancer_Class_StartingProficiencies extends BaseComponent {
                 ignore: this
             }) : null;
 
-            console.log("pHkUpdatePtsExisting_", profListUids, existing, existingProficienciesCustom);
             for (const v of profListUids) {
                 if (!$ptsExisting[v])
                     return;
@@ -3468,7 +3478,6 @@ class Charactermancer_Class_StartingProficiencies extends BaseComponent {
 
                 isExisting = isExisting || (otherStates || []).some(otherState=>!!otherState[v] || (parentGroup && !!otherState[parentGroup]));
 
-                console.log("ixExisting", isExisting);
                 $ptsExisting[v].title(isExisting ? "Proficient from Another Source" : "").toggleClass("ml-1", isExisting).html(isExisting ? `(<i class="fas fa-fw ${UtilActors.PROF_TO_ICON_CLASS[1]}"></i>)` : "");
             }
         };
@@ -18819,22 +18828,18 @@ class Charactermancer_FeatureOptionsSelect extends BaseComponent {
             const {entity, type} = loaded;
 
             switch (type) {
-            case "classFeature":
-            case "subclassFeature":
-                {
-                    const {SideDataInterfaceClassSubclassFeature} = await Promise.resolve().then(function() {
-                        return SideDataInterfaceClassSubclassFeature$1;
-                    });
-                    const sideData = await SideDataInterfaceClassSubclassFeature.pGetSideLoaded(entity);
-                    out.push(sideData);
-                    break;
-                }
+                case "classFeature":
+                case "subclassFeature":
+                    {
+                        /* const {SideDataInterfaceClassSubclassFeature} = await Promise.resolve().then(function() {
+                            return SideDataInterfaceClassSubclassFeature;
+                        }); */
+                        const sideData = await SideDataInterfaceClassSubclassFeature.pGetSideLoaded(entity);
+                        out.push(sideData);
+                        break;
+                    }
 
-            default:
-                {
-                    out.push(null);
-                    break;
-                }
+                default: { out.push(null); break; }
             }
         }
         return out;
@@ -19119,8 +19124,6 @@ class Charactermancer_FeatureOptionsSelect extends BaseComponent {
         }
     }
 
-    
-
     async pRender($wrp) {
         return this.render($wrp);
     }
@@ -19128,12 +19131,9 @@ class Charactermancer_FeatureOptionsSelect extends BaseComponent {
     async _render_pHkIxsChosen({$stgSubChoiceData}) {
         try {
             await this._pLock("ixsChosen");
-            await this._render_pHkIxsChosen_({
-                $stgSubChoiceData
-            });
-        } finally {
-            this._unlock("ixsChosen");
+            await this._render_pHkIxsChosen_({ $stgSubChoiceData });
         }
+        finally { this._unlock("ixsChosen"); }
     }
 
     async _render_pHkIxsChosen_({$stgSubChoiceData}) {
@@ -19653,20 +19653,21 @@ class Charactermancer_FeatureOptionsSelect extends BaseComponent {
                 ignore: this
             }) : null;
 
+            //Check if we already gain this feature from somewhere else
             this._optionsSet.forEach(v=>{
                 const tmpUid = this.constructor._getLoadedTmpUid(v);
 
                 if (!$ptsExisting[tmpUid])
                     return;
 
-                let isExists = this._existingFeatureChecker && this._existingFeatureChecker.isExistingFeature(UtilEntityGeneric.getName(v.entity), v.page, v.source, v.hash);
+                let isExists = this._existingFeatureChecker
+                && this._existingFeatureChecker.isExistingFeature(UtilEntityGeneric.getName(v.entity), v.page, v.source, v.hash);
 
                 if (otherStates)
                     isExists = isExists || otherStates.some(arr=>arr.some(it=>it.page === v.page && it.hash === v.hash));
 
                 $ptsExisting[tmpUid].title(isExists ? `Gained from Another Source` : "").html(isExists ? `(<i class="fas fa-fw fa-check"></i>)` : "").toggleClass("ml-1", isExists);
-            }
-            );
+            });
         }
         ;
         if (this._featureSourceTracker)
@@ -19674,9 +19675,7 @@ class Charactermancer_FeatureOptionsSelect extends BaseComponent {
         hkUpdatePtsExisting();
 
         if (this._featureSourceTracker) {
-            const hkSetTrackerState = ()=>this._featureSourceTracker.setState(this, {
-                features: this._getTrackableFeatures()
-            });
+            const hkSetTrackerState = ()=>this._featureSourceTracker.setState(this, { features: this._getTrackableFeatures() });
             this._addHookBase(this._lastMeta.propPulse, hkSetTrackerState);
             hkSetTrackerState();
         }

@@ -30,7 +30,7 @@ class CharacterExportFvtt{
         }
 
         //Now lets get the class information
-        const classData = CharacterExportFvtt.getClassData(builder.compClass);
+        const classData = await CharacterExportFvtt.getClassData(builder.compClass);
         let classArray = null;
         for(let i = 0; i < classData.length; ++i){
             const data = classData[i];
@@ -49,6 +49,7 @@ class CharacterExportFvtt{
             if(data.skillProficiencies){block.skillProficiencies = data.skillProficiencies;}
             //Add tool proficiencies (a choice we get at lvl 1 for some classes)
             if(data.toolProficiencies){block.toolProficiencies = data.toolProficiencies;}
+            if(data.featureOptSel){block.featureOptSel = data.featureOptSel;}
             metaDataStack.push({uid: data.cls.name+"|"+data.cls.source, _data:CharacterExportFvtt.getSourceMetaData(data.cls)});
 
             //Check if high enough level for subclass here?
@@ -123,7 +124,7 @@ class CharacterExportFvtt{
      * @param {ActorCharactermancerClass} compClass
      * @returns {{cls: any, isPrimary: boolean, propIxClass:string, propIxSubclass:string, targetLevel:number, sc:any}[]}
      */
-    static getClassData(compClass) {
+    static async getClassData(compClass) {
         const primaryClassIndex = compClass._state.class_ixPrimaryClass;
         //If we have 2 classes, this will be 1
         const highestClassIndex = compClass._state.class_ixMax;
@@ -153,6 +154,10 @@ class CharacterExportFvtt{
             if(toolProficienciesForm != null){
                 block.toolProficiencies = toolProficienciesForm;
             }
+            let featureOptSel = await this.getClassFeatureChoices(compClass, i);
+            if(featureOptSel != null){
+                block.featureOptSel = featureOptSel;
+            }
             //Now we want to ask compClass if there is a subclass selected for this index
             const sc = compClass.getSubclass_({cls:cls, propIxSubclass:propIxSubclass});
             if(sc != null) { block.sc = sc; }
@@ -179,11 +184,41 @@ class CharacterExportFvtt{
      */
     static getClassTools(compClass, ix){
         if(compClass.compsClassToolProficiencies.length<=ix){return null;}
-        console.log(compClass.compsClassToolProficiencies);
         const comp = compClass.compsClassToolProficiencies[ix];
         if(comp==null){return null;}
         const form = comp._getFormData();
         return form;
+    }
+    /**
+     * @param {ActorCharactermancerClass} compClass
+     * @param {number} ix
+     * @returns {any} returns a form
+     */
+    static async getClassFeatureChoices(compClass, ix){
+        if(compClass.compsClassFeatureOptionsSelect.length<=ix){return null;}
+        console.log("featoptsel", compClass.compsClassFeatureOptionsSelect);
+        const myComps = compClass.compsClassFeatureOptionsSelect[ix];
+        let arr = [];
+        for(let comp of myComps){
+            if(comp==null){return null;}
+            console.log(comp, comp.constructor.name);
+
+            let simpleForm = {};
+            if(!!comp._subCompsLanguageProficiencies && comp._subCompsLanguageProficiencies.length > 0){
+                simpleForm.subLang = [];
+                for(let subcomp of comp._subCompsLanguageProficiencies){
+                    let subForm = subcomp._getFormData();
+                    simpleForm.subLang.push(subForm);
+                }
+            }
+            arr.push(simpleForm);
+            continue; //Debug
+
+            const form = await comp.pGetFormData();
+            arr.push(form);
+        }
+        console.log(arr);
+        return arr;
     }
     /**
      * @param {ActorCharactermancerEquipment} compEquipment
