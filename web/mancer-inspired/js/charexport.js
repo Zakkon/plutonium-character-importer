@@ -196,21 +196,30 @@ class CharacterExportFvtt{
      */
     static async getClassFeatureChoices(compClass, ix){
         if(compClass.compsClassFeatureOptionsSelect.length<=ix){return null;}
-        console.log("featoptsel", compClass.compsClassFeatureOptionsSelect);
-        const myComps = compClass.compsClassFeatureOptionsSelect[ix];
+        const compArray = compClass.compsClassFeatureOptionsSelect[ix];
         let arr = [];
-        for(let comp of myComps){
+        for(let comp of compArray){
             if(comp==null){return null;}
-            console.log(comp, comp.constructor.name);
 
             let simpleForm = {};
-            if(!!comp._subCompsLanguageProficiencies && comp._subCompsLanguageProficiencies.length > 0){
+            simpleForm.forms = [];
+            const subCompsNames = comp.allSubComponents;
+            for(let j = 0; j < subCompsNames.length; ++j){
+                let prop = subCompsNames[j];
+                let subCompArray = comp[prop];
+                for(let i = 0; i < subCompArray.length; ++i){
+                    if(subCompArray[i] == null){continue;}
+                    let subForm = {prop: prop, ix: i, form: subCompArray[i]._getFormData()};
+                    simpleForm.forms.push(subForm);
+                }
+            }
+            /* if(!!comp._subCompsLanguageProficiencies && comp._subCompsLanguageProficiencies.length > 0){
                 simpleForm.subLang = [];
                 for(let subcomp of comp._subCompsLanguageProficiencies){
                     let subForm = subcomp._getFormData();
                     simpleForm.subLang.push(subForm);
                 }
-            }
+            } */
             arr.push(simpleForm);
             continue; //Debug
 

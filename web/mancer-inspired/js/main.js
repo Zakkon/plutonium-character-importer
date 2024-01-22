@@ -228,6 +228,7 @@ class SETTINGS{
     static DO_RENDER_DICE = false;
     static USE_EXISTING = false;
     static LOCK_EXISTING_CHOICES = false;
+    /**This boolean toggles loading from a cookie save file */
     static USE_EXISTING_WEB = true;
     static LOCALPATH_REDIRECT = true;
     static USE_FVTT = false;
@@ -348,6 +349,8 @@ class CharacterBuilder {
         if(!SETTINGS.FILTERS){return;}
         await this.compRace.pLoad();
         await this.compBackground.pLoad();
+        //This sets state based on what is in the savefile (if USE_EXISTING_WEB) is true
+        //Only handles class, subclass, level and isPrimary
         await this.compClass.pLoad();
         await this.compSpell.pLoad();
         await this.compFeat.pLoad();
@@ -362,6 +365,9 @@ class CharacterBuilder {
         this.compSpell.pRender();
         this.compFeat.render();
         this.compSheet.render();
+    }
+    loadFromSave(){
+
     }
 
     //#region Events

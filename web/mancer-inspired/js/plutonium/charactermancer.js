@@ -346,6 +346,7 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
             const filteredFeatures = this._class_getFilteredFeatures(cls, subcls);
             if (this._compsClassLevelSelect[ix]) { this._compsClassLevelSelect[ix].setFeatures(filteredFeatures); }
 
+            //Re-render feature options select, since we changed subclass
             await this._class_pRenderFeatureOptionsSelects({
                 'ix': ix,
                 'propCntAsi': propCntAsi,
@@ -522,6 +523,7 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
       if(!SETTINGS.USE_EXISTING){return;}
       await this._pLoad_pDoHandleExistingClassItems();
     }
+    
     //#region Loading Existing
     //#region FVTT
     async _pLoad_pDoHandleExistingClassItems() {
@@ -640,14 +642,15 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
 
         //Should be (class level - 1) or 0, whichever is higher
         const classLevel = Math.max((cls.level||0) - 1, 0); //Keep in mind that our save file schema currently stores levels with base 1, whereas in this program we could 0 as lvl 1
+        //Create one ExistingClassMeta per class
         return new ActorCharactermancerClass.ExistingClassMeta({
-            'item': cls,
-            'ixClass': _clsIx,
-            'isUnknownClass': !~_clsIx,
-            'ixSubclass': _scIx,
-            'isUnknownSubclass': _scIx == null && !~_scIx,
-            'level': classLevel,
-            'isPrimary': isPrimaryClass,
+            item: cls, //Class data object
+            ixClass: _clsIx, //index of this class
+            isUnknownClass: !~_clsIx,
+            ixSubclass: _scIx, //index of the subclass
+            isUnknownSubclass: _scIx == null && !~_scIx,
+            level: classLevel, //level
+            isPrimary: isPrimaryClass, //is this the primary class?
             //TEMPFIX 'spellSlotLevelSelection': cls?.flags?.[SharedConsts.MODULE_ID]?.['spellSlotLevelSelection']
         });
       });
@@ -894,13 +897,16 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
             ele_levelSelect.showVe().append("<hr class=\"hr-2\"><div class=\"bold mb-2\">Select Levels</div>");
             const filteredFeatures = this._class_getFilteredFeatures(cls, sc);
 
+            //Load existingClassMeta, or create a new one if needed
             //TEMPFIX
             const existingClassMeta = (SETTINGS.USE_EXISTING || SETTINGS.USE_EXISTING_WEB)? this._class_getExistingClassMeta(ix) : null;
             //Any level <= this will be forcefully locked in, and we cannot choose them as options Default is 0
             const maxPrevLevel = existingClassMeta?.level || 0;
             //Are we going to forcefully select a level?
             //Default is true
+            //TODO: improve this, depending on if we have existingClassMeta and if SETTINGS.LOCK_EXISTING_CHOICES is true
             const isForceSelect = true; //!existingClassMeta || (this.getExistingClassTotalLevels_() === 0 && SETTINGS.LOCK_EXISTING_CHOICES);
+            //Create a level select UI component
             this._compsClassLevelSelect[ix] = new Charactermancer_Class_LevelSelect({
                 features: filteredFeatures,
                 isRadio: true,
@@ -908,29 +914,23 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
                 maxPreviousLevel: maxPrevLevel,
                 isSubclass: true
             });
+            //Render it
             this._compsClassLevelSelect[ix].render(ele_levelSelect);
 
+            //Create a hook for re-rendering it again if needed
             const e_onChangeLevelSelected = async () => {
-                const subclass = this.getSubclass_({'cls': cls, 'propIxSubclass': propIxSubclass});
+                const subclass = this.getSubclass_({cls: cls, propIxSubclass: propIxSubclass});
                 const _features = this._class_getFilteredFeatures(cls, subclass);
                 //_features should have loadeds, an each in loadeds should have entity
                 //some of these entity should have an entryData, but this is only for specific choice class features
-                
 
-                //Debug
-                for(let f of _features){
-                    if(f.level == 3 && (f.name == "Expertise" || f.name == "Primal Knowledge") && !f.loadeds[0].entity.entryData){
-                        console.error("Class feature " + f.name + " is missing their entrydata!");
-                    }
-                }
-
-                //Re-render the Feature Options Selects
+                //Re-render the Feature Options Selects, since we changed level
                 await this._class_pRenderFeatureOptionsSelects({
-                    'ix': ix,
-                    'propCntAsi': propCntAsi,
-                    'filteredFeatures': _features,
-                    '$stgFeatureOptions': ele_featureOptions,
-                    'lockRenderFeatureOptionsSelects': lockRenderFeatureOptionsSelects
+                    ix: ix,
+                    propCntAsi: propCntAsi,
+                    filteredFeatures: _features,
+                    $stgFeatureOptions: ele_featureOptions,
+                    lockRenderFeatureOptionsSelects: lockRenderFeatureOptionsSelects
                 });
                 this._state[propCurLevel] = this._compsClassLevelSelect[ix].getCurLevel();
                 this._state[propTargetLevel] = this._compsClassLevelSelect[ix].getTargetLevel();
@@ -940,23 +940,24 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
             this._compsClassLevelSelect[ix].onchange(e_onChangeLevelSelected);
             await e_onChangeLevelSelected();
 
+
+
             if(SETTINGS.FILTERS){ //TEMPFIX
                 this._modalFilterClasses.pageFilter.filterBox.on(idFilterBoxChangeClassLevels, () => {
-                    if (!this._compsClassLevelSelect[ix]) {
-                        return;
-                    }
-                    const subclass = this.getSubclass_({'cls': cls, 'propIxSubclass': propIxSubclass});
+                    if (!this._compsClassLevelSelect[ix]) { return; }
+                    const subclass = this.getSubclass_({cls: cls, propIxSubclass: propIxSubclass});
                     const filteredFeatures = this._class_getFilteredFeatures(cls, subclass);
                     if (this._compsClassLevelSelect[ix]) {
                         this._compsClassLevelSelect[ix].setFeatures(filteredFeatures);
                     }
                     this._class_pRenderFeatureOptionsSelects({
-                        'ix': ix,
-                        'propCntAsi': propCntAsi,
-                        'filteredFeatures': filteredFeatures,
-                        '$stgFeatureOptions': ele_featureOptions,
-                        'lockRenderFeatureOptionsSelects': lockRenderFeatureOptionsSelects
+                        ix: ix,
+                        propCntAsi: propCntAsi,
+                        filteredFeatures: filteredFeatures,
+                        $stgFeatureOptions: ele_featureOptions,
+                        lockRenderFeatureOptionsSelects: lockRenderFeatureOptionsSelects
                     });
+
                 });
             }
         }
@@ -1007,8 +1008,10 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
       });
     }
 
-    /**Create an element to display skill or tool proficiency choices that our class gives us.
-     * Use _class_renderClass_stgSkills or _class_renderClass_stgTools if you specifically know which one you want to use  */
+    /**
+     * Create an element to display skill or tool proficiency choices that our class gives us.
+     * Use _class_renderClass_stgSkills or _class_renderClass_stgTools if you specifically know which one you want to use 
+     * */
     _class_renderClass_stgSkillsTools({
         $stg: parentElement,
         ix: ix,
@@ -1058,6 +1061,7 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
 
                 this[propCompsClass][ix].render(parentElement);
 
+                //LOAD FROM SAVE FILE
                 //Set state to component AFTER first render, this way all other components have hooks set up and can react to the changes we are about to make
                 if(SETTINGS.USE_EXISTING_WEB && ix < this._actor?.classes.length){
                     //So we can set the state of the proficiency select component here
@@ -1089,6 +1093,7 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
                                     namesToPickFrom.map(n=>n.name.toLowerCase()));
                             }
                             else{
+                                //TODO: change 0 to ix?
                                 const prop = `otherProfSelect_0__isActive_${ixOf}`;
                                 comp._state[prop] = true;
                             }
@@ -1156,12 +1161,14 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
         onPrimaryClassChanged();
     }
     /**
+     * Each class component we're handling should have an ExistingClassMeta. This function returns the one that matches classIx. If none exists, try to create a new one.
      * @param {number} classIx
      * @returns {ActorCharactermancerClass.ExistingClassMeta}
      */
     _class_getExistingClassMeta(classIx) {
       if (this._existingClassMetas[classIx]) {return this._existingClassMetas[classIx];}
-      if(!this._actor){return;}
+      console.warn("Creating new ExistingClassMeta. Not tested!");
+      if(!this._actor){return null;}
 
       const {propIxClass: propIxClass } = ActorCharactermancerBaseComponent.class_getProps(classIx);
 
@@ -1318,13 +1325,14 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
         this._class_unregisterFeatureSourceTrackingFeatureComps(ix);
 
         let asiCount = 0;
-        for (const grpA of groupedByOptionsSet) {
-            const { topLevelFeature: topLevelFeature, optionsSets: optionsSets} = grpA;
+        for (const grp of groupedByOptionsSet) {
+            const { topLevelFeature: topLevelFeature, optionsSets: optionsSets} = grp;
             //Only render features of the right level
             if (topLevelFeature.level < lvlMin || topLevelFeature.level > lvlMax) { continue; }
             const featureName = topLevelFeature.name.toLowerCase();
             if (featureName === "ability score improvement") { asiCount++; continue; }
             for (const set of optionsSets) {
+                //Create the new FeatureOptionsSelect
                 const component = new Charactermancer_FeatureOptionsSelect({
                     featureSourceTracker: this._parent.featureSourceTracker_,
                     //TEMPFIX //'existingFeatureChecker': existingFeatureChecker,
@@ -1340,7 +1348,10 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
         }
 
         this._state[propCntAsi] = asiCount;
+        //Do a first render
         await this._class_pRenderFeatureComps(ix, {'$stgFeatureOptions': stgFeatureOptions});
+
+        
     }
     async _class_pRenderFeatureComps(ix, { $stgFeatureOptions: stgFeatureOptions }) {
         for (let i = 0; i < this.compsClassFeatureOptionsSelect[ix].length; ++i) {
@@ -16982,6 +16993,7 @@ class Charactermancer_OtherProficiencySelect extends Charactermancer_Proficiency
         return existing;
     }
 }
+
 Charactermancer_OtherProficiencySelect._PROFICIENT = 1;
 Charactermancer_OtherProficiencySelect._PROP_GROUPS = {
     "skillProficiencies": {
@@ -18207,6 +18219,29 @@ class Charactermancer_FeatureOptionsSelect extends BaseComponent {
         this._prevSubCompsResources = [];
         this._prevSubCompsSenses = null;
         this._prevSubCompsAdditionalSpells = null;
+    }
+
+    /**
+     * @returns {BaseComponent[]}
+     */
+    get allSubComponents(){
+        return [
+            "_subCompsSkillToolLanguageProficiencies",
+            "_subCompsSkillProficiencies",
+            "_subCompsLanguageProficiencies",
+            "_subCompsToolProficiencies",
+            "_subCompsWeaponProficiencies",
+            "_subCompsArmorProficiencies",
+            "_subCompsSavingThrowProficiencies",
+            "_subCompsDamageImmunities",
+            "_subCompsDamageResistances",
+            "_subCompsDamageVulnerabilities",
+            "_subCompsConditionImmunities",
+            "_subCompsExpertise",
+            "_subCompsResources",
+            "_subCompsSenses",
+            "_subCompsAdditionalSpells",
+        ];
     }
 
     render($wrp) {
