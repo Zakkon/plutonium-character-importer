@@ -1338,7 +1338,7 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
             const featureName = topLevelFeature.name.toLowerCase();
             if (featureName === "ability score improvement") { asiCount++; continue; }
             for (const set of optionsSets) {
-                //Create the new FeatureOptionsSelect
+                //Create the new FeatureOptionsSelect for this optionset
                 const component = new Charactermancer_FeatureOptionsSelect({
                     featureSourceTracker: this._parent.featureSourceTracker_,
                     //TEMPFIX //'existingFeatureChecker': existingFeatureChecker,
@@ -18198,6 +18198,11 @@ class Charactermancer_SenseSelect extends BaseComponent {
     }
 }
 
+/**
+ * This component handles choices presented by class features and feats.
+ * It can create several sub-components that handle specific choices like expertise, language proficiencies, etc
+ * The state information is kept within these sub-components themselves.
+ */
 class Charactermancer_FeatureOptionsSelect extends BaseComponent {
     constructor(opts) {
         super();
@@ -18236,6 +18241,7 @@ class Charactermancer_FeatureOptionsSelect extends BaseComponent {
         this._subCompsSenses = [];
         this._subCompsAdditionalSpells = [];
 
+        //Arrays to store previous sub-components. We will pull state from them when creating new ones at re-render
         this._prevSubCompsSkillToolLanguageProficiencies = null;
         this._prevSubCompsSkillProficiencies = null;
         this._prevSubCompsLanguageProficiencies = null;
@@ -18289,6 +18295,7 @@ class Charactermancer_FeatureOptionsSelect extends BaseComponent {
         this._addHookBase(ComponentUiUtil.getMetaWrpMultipleChoice_getPropPulse("ixsChosen"), ()=>this._render_pHkIxsChosen({
             $stgSubChoiceData
         }), );
+
         return this._render_pHkIxsChosen({$stgSubChoiceData});
     }
 
@@ -18310,17 +18317,13 @@ class Charactermancer_FeatureOptionsSelect extends BaseComponent {
 
         const selectedLoadeds = this._getSelectedLoadeds();
 
-        if (!selectedLoadeds.length)
-            return this._render_noSubChoices({
-                $stgSubChoiceData
-            });
+        //If no loadeds are found, just don't render any subcomponents
+        if (!selectedLoadeds.length){return this._render_noSubChoices({ $stgSubChoiceData });}
 
         const isSubChoiceForceDisplay = await this._pIsSubChoiceForceDisplay(selectedLoadeds);
         const isSubChoiceAvailable = await this._pIsSubChoiceAvailable(selectedLoadeds);
-        if (!isSubChoiceForceDisplay && !isSubChoiceAvailable)
-            return this._render_noSubChoices({
-                $stgSubChoiceData
-            });
+        //Or if no choices are available for display, also dont render any subcomponents
+        if (!isSubChoiceForceDisplay && !isSubChoiceAvailable){return this._render_noSubChoices({ $stgSubChoiceData });}
 
         $stgSubChoiceData.empty();
         this._unregisterSubComps();
@@ -18334,10 +18337,12 @@ class Charactermancer_FeatureOptionsSelect extends BaseComponent {
 
             if (!(await this._pIsSubChoiceForceDisplay([selectedLoadeds[i]]) || await this._pIsSubChoiceAvailable([selectedLoadeds[i]])))
                 continue;
+            
             //TEMPFIX
             const isSubChoice_sideDataChooseSystem = false; //await this._pHasChoiceInSideData_chooseSystem([selectedLoadeds[i]]);
             const isSubChoice_sideDataChooseFlags = false; //await this._pHasChoiceInSideData_chooseFlags([selectedLoadeds[i]]);
 
+            //Check if force display
             const isForceDisplay_entryDataSkillToolLanguageProficiencies = await this._pIsForceDisplay_skillToolLanguageProficiencies([selectedLoadeds[i]]);
             const isForceDisplay_entryDataSkillProficiencies = await this._pIsForceDisplay_skillProficiencies([selectedLoadeds[i]]);
             const isForceDisplay_entryDataLanguageProficiencies = await this._pIsForceDisplay_languageProficiencies([selectedLoadeds[i]]);
@@ -18354,6 +18359,7 @@ class Charactermancer_FeatureOptionsSelect extends BaseComponent {
             const isForceDisplay_entryDataSenses = await this._pIsForceDisplay_senses([selectedLoadeds[i]]);
             const isForceDisplay_entryDataAdditionalSpells = await this._pIsForceDisplay_additionalSpells([selectedLoadeds[i]]);
 
+            //Check if available
             const isAvailable_entryDataSkillToolLanguageProficiencies = await this._pIsAvailable_skillToolLanguageProficiencies([selectedLoadeds[i]]);
             const isAvailable_entryDataSkillProficiencies = await this._pIsAvailable_skillProficiencies([selectedLoadeds[i]]);
             const isAvailable_entryDataLanguageProficiencies = await this._pIsAvailable_languageProficiencies([selectedLoadeds[i]]);
@@ -18374,6 +18380,8 @@ class Charactermancer_FeatureOptionsSelect extends BaseComponent {
 
             if (i !== 0 || !this._isSkipRenderingFirstFeatureTitle)
                 $stgSubChoiceData.append(this._render_getSubCompTitle(entity));
+
+            //Try to render any subcomponent possible (will self-cancel if requirements are not met)
 
             //TEMPFIX
            /*  if (isSubChoice_sideDataChooseSystem) {
@@ -18646,17 +18654,35 @@ class Charactermancer_FeatureOptionsSelect extends BaseComponent {
         $stgSubChoiceData.toggleVe(isSubChoiceForceDisplay);
     }
 
+    /**
+     * Try to render a subcomponent. Will self-cancel if isAvailable is false
+     * @param {number} ix
+     * @param {any} $stgSubChoiceData
+     * @param {string} propSubComps
+     * @param {string} propPrevSubComps
+     * @param {boolean} isAvailable
+     * @param {boolean} isForceDisplay
+     * @param {any} selectedLoadeds
+     * @param {any} prop
+     * @param {any} title
+     * @param {any} CompClass
+     * @param {any} propPathActorExistingProficiencies
+     * @param {any} ptrIsFirstSection
+     * @param {any} fnSetComp
+     * @param {any} fnGetMappedProficiencies
+     * @param {any} fnGetExistingFvtt
+     * @returns {any}
+     */
     _render_pHkIxsChosen_comp({ix, $stgSubChoiceData, propSubComps, propPrevSubComps, isAvailable, isForceDisplay, selectedLoadeds, prop, title, CompClass, propPathActorExistingProficiencies, ptrIsFirstSection, fnSetComp, fnGetMappedProficiencies, fnGetExistingFvtt, }, ) {
         this[propSubComps][ix] = null;
-        if (!isAvailable)
-            return;
+        if (!isAvailable){return;}
 
         const {entity} = selectedLoadeds[ix];
 
-        if (!entity?.[prop] && !entity?.entryData?.[prop])
-            return;
+        if (!entity?.[prop] && !entity?.entryData?.[prop]){return;}
 
         //Create the sub-component (can be found at this[propSubComps][ix])
+        //Use the function we were passed
         fnSetComp({
             ix,
             propSubComps,
@@ -18668,15 +18694,14 @@ class Charactermancer_FeatureOptionsSelect extends BaseComponent {
             fnGetExistingFvtt,
         });
 
+        //Copy the state over from previous sub-components
         if (this[propPrevSubComps] && this[propPrevSubComps][ix]) {
             this[propSubComps][ix]._proxyAssignSimple("state", MiscUtil.copy(this[propPrevSubComps][ix].__state));
         }
 
-        if (!isForceDisplay)
-            return;
+        if (!isForceDisplay){return;}
 
-        if (!title)
-            title = this[propSubComps][ix]?.modalTitle;
+        if (!title){title = this[propSubComps][ix]?.modalTitle;}
 
         if (title)
             $stgSubChoiceData.append(`${ptrIsFirstSection._ ? "" : `<div class="w-100 mt-1 mb-2"></div>`}<div class="bold mb-2">${title}</div>`);
@@ -19633,9 +19658,8 @@ class Charactermancer_FeatureOptionsSelect extends BaseComponent {
             const ixs = ComponentUiUtil.getMetaWrpMultipleChoice_getSelectedIxs(this, "ixsChosen");
             const {required} = this._getOptionsNameAndCount();
             return [...ixs, ...required].map(ix=>this._optionsSet[ix]);
-        } else {
-            return this._optionsSet;
         }
+        else { return this._optionsSet; }
     }
 
     _getProps(ix) {
@@ -19646,9 +19670,12 @@ class Charactermancer_FeatureOptionsSelect extends BaseComponent {
         };
     }
 
+    /**
+     * Unregister all existing subcomponents from the featureSourceTracker.
+     * Doesn't clear our cache of existing subcomponents.
+     */
     _unregisterSubComps() {
-        if (!this._featureSourceTracker)
-            return;
+        if (!this._featureSourceTracker){return;}
 
         this._subCompsSkillToolLanguageProficiencies.filter(Boolean).forEach(comp=>this._featureSourceTracker.unregister(comp));
         this._subCompsSkillProficiencies.filter(Boolean).forEach(comp=>this._featureSourceTracker.unregister(comp));
@@ -19667,6 +19694,11 @@ class Charactermancer_FeatureOptionsSelect extends BaseComponent {
         this._subCompsAdditionalSpells.filter(Boolean).forEach(comp=>this._featureSourceTracker.unregister(comp));
     }
 
+    /**
+     * Render this FeatureOptionsSelect without any visible subcomponents.
+     * Unregisters and clears cache of existing subcomponents.
+     * @param {any} {$stgSubChoiceData}
+     */
     _render_noSubChoices({$stgSubChoiceData}) {
         this._lastSubMetas.forEach(it=>it.unhook());
         this._lastSubMetas = [];
@@ -19713,8 +19745,7 @@ class Charactermancer_FeatureOptionsSelect extends BaseComponent {
 						<div class="mr-2 ve-flex-v-center">${ptName}${$ptExisting}</div>
 						<div class="${Parser.sourceJsonToColor(v.entity.source)} pr-1" title="${Parser.sourceJsonToFull(v.entity.source)}">${Parser.sourceJsonToAbv(v.entity.source)}</div>
 					</div>`;
-            }
-            ,
+            },
         }, );
 
         const hkUpdatePtsExisting = ()=>{
@@ -19737,10 +19768,8 @@ class Charactermancer_FeatureOptionsSelect extends BaseComponent {
 
                 $ptsExisting[tmpUid].title(isExists ? `Gained from Another Source` : "").html(isExists ? `(<i class="fas fa-fw fa-check"></i>)` : "").toggleClass("ml-1", isExists);
             });
-        }
-        ;
-        if (this._featureSourceTracker)
-            this._featureSourceTracker.addHook(this, "pulseFeatures", hkUpdatePtsExisting);
+        };
+        if (this._featureSourceTracker){this._featureSourceTracker.addHook(this, "pulseFeatures", hkUpdatePtsExisting);}
         hkUpdatePtsExisting();
 
         if (this._featureSourceTracker) {
@@ -19998,6 +20027,7 @@ class Charactermancer_FeatureOptionsSelect extends BaseComponent {
         }
     }
 }
+
 class Charactermancer_Feature_Util {
     static addFauxOptionalFeatureEntries(featureList, optfeatList) {
         if (!featureList || !optfeatList)
