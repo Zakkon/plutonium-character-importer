@@ -232,7 +232,7 @@ class SETTINGS{
     static USE_EXISTING_WEB = true;
     static LOCALPATH_REDIRECT = true;
     static USE_FVTT = false;
-    /**Should changing class/race that transfer the choices (for like proficiencies?) */
+    /**Should changing class/race that transfer the already set choices (for like proficiencies?), so if both the new and the old race could pick Perception as a proficiency, and the old one did, make sure the new one also has that choice set */
     static TRANSFER_CHOICES = false;
 }
 class CharacterBuilder {
@@ -307,6 +307,7 @@ class CharacterBuilder {
       //Call this to let the components load some content before we start using them
       this.pLoad()
       .then(() => this.renderComponents()) //Then render the components
+      .then(() => this.loadFromSave())
       .then(() => testApplyDefaultSources()) //Use our test function to set only certain sources as active in the filter
       .then(() => this.e_switchTab("class")); //Then switch to the tab we want to start off with
     }
@@ -366,8 +367,8 @@ class CharacterBuilder {
         this.compFeat.render();
         this.compSheet.render();
     }
-    loadFromSave(){
-
+    async loadFromSave(){
+      //await this.compClass.pLoadLate();
     }
 
     //#region Events

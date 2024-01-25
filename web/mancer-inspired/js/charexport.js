@@ -201,15 +201,19 @@ class CharacterExportFvtt{
         for(let comp of compArray){
             if(comp==null){return null;}
 
+            let hashes = comp._optionsSet.map(set => {return set.hash});
+            console.log("FEATOPTSEL", comp);
             let simpleForm = {};
             simpleForm.forms = [];
+            simpleForm.hashes = hashes;
             const subCompsNames = comp.allSubComponents;
             for(let j = 0; j < subCompsNames.length; ++j){
                 let prop = subCompsNames[j];
                 let subCompArray = comp[prop];
                 for(let i = 0; i < subCompArray.length; ++i){
                     if(subCompArray[i] == null){continue;}
-                    let subForm = {prop: prop, ix: i, form: subCompArray[i]._getFormData()};
+                    let subComp = subCompArray[i];
+                    let subForm = {prop: prop, ix: i, form: subComp._getFormData(), state:subComp.__state};
                     simpleForm.forms.push(subForm);
                 }
             }

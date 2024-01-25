@@ -1102,13 +1102,13 @@ class _BrewUtil2Base {
         source = source.toLowerCase();
         if (!this.getMetaLookup("_sources")[source]?.color)
             return "";
-        return BrewUtilShared$1.getValidColor(this.getMetaLookup("_sources")[source].color);
+        return BrewUtilShared.getValidColor(this.getMetaLookup("_sources")[source].color);
     }
 
     sourceToColor(source) {
         if (!source?.color)
             return "";
-        return BrewUtilShared$1.getValidColor(source.color);
+        return BrewUtilShared.getValidColor(source.color);
     }
 
     getSources() {
@@ -1824,5 +1824,13 @@ class BrewDocHead {
         if (!isLazy)
             this.checksum = CryptUtil.md5(JSON.stringify(body ?? json));
         return this;
+    }
+}
+
+class BrewUtilShared {
+    static getValidColor(color, {isExtended=false}={}) {
+        if (isExtended)
+            return color.replace(/[^-a-zA-Z\d]/g, "");
+        return color.replace(/[^a-fA-F\d]/g, "").slice(0, 8);
     }
 }

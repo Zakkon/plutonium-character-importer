@@ -668,6 +668,12 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
       }
       //Set first class as primary, if none is marked already
       if (!this._existingClassMetas.some(meta => meta.isPrimary)) { this._state.class_ixPrimaryClass = 0; }
+
+      //Ideally, we would continue from here and set states of our subcomponents
+      //However, none of them exist yet, so that's not possible at the moment
+    }
+    async pLoadLate(){
+        
     }
     _test_getExistingClassIndex(cls){
         if (cls.source && cls.hash) {
@@ -1350,9 +1356,14 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
         this._state[propCntAsi] = asiCount;
         //Do a first render
         await this._class_pRenderFeatureComps(ix, {'$stgFeatureOptions': stgFeatureOptions});
-
-        
     }
+    
+    /**
+     * Render the FeatureOptionsSelects and their subcomponents
+     * @param {any} ix
+     * @param {any} {$stgFeatureOptions:stgFeatureOptions}
+     * @returns {any}
+     */
     async _class_pRenderFeatureComps(ix, { $stgFeatureOptions: stgFeatureOptions }) {
         for (let i = 0; i < this.compsClassFeatureOptionsSelect[ix].length; ++i) {
             let component = this.compsClassFeatureOptionsSelect[ix][i];
@@ -1363,15 +1374,39 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
                 stgFeatureOptions.showVe().append('' + (component.modalTitle ?
                      "<hr class=\"hr-2\"><div class=\"mb-2 bold w-100\">" + component.modalTitle + "</div>" : ''));
             }
-            component.render(stgFeatureOptions);
-
-            if(ix==1 && i == 0){
-                let parentData = this._actor.classes[ix];
-                console.log("PARENTDATA", parentData);
-                //component._subCompsLanguageProficiencies[0]._state["otherProfSelect_0__isActive_16"] = true;
-            }
-            console.log("FEATOPTSEL", component._state, component);
+            await component.render(stgFeatureOptions);
         }
+
+        //Load from save file
+        this._test_loadFeatureOptSelectFromSaveFile(ix);
+    }
+    _test_loadFeatureOptSelectFromSaveFile(classIndex){
+        console.error("LOAD FROM SAVE FILE - FEATURE OPTIONS SELECT, CLASS ", classIndex);
+        for(let i = 0; i < this.compsClassFeatureOptionsSelect[classIndex].length; ++i){
+            let component = this.compsClassFeatureOptionsSelect[classIndex][i];
+            let classData = this._actor.classes[classIndex];
+            console.log("CLASSDATA", classData);
+            const featOptSel = this.getFormsFromSaveData(classData, component._optionsSet);
+            if(featOptSel == null){continue;} //Apparently our save data has no info on the hash of this components optionset
+            for(let subCompData of featOptSel.forms){
+                let subComponent = component[subCompData.prop][subCompData.ix];
+                if(subComponent == null){console.error("Could not find subcomponent of type", subCompData.prop, featOptSel);}
+                let newState = subCompData.state;
+                for(let propName of Object.keys(newState)){
+                    let propValue = newState[propName];
+                    subComponent._state[propName] = propValue;
+                }
+            }
+        }
+    }
+    getFormsFromSaveData(classData, optionSet){
+        const hashes = optionSet.map(set => {return set.hash}); //Use this to pull choices from parentData
+        for(let f of classData.featureOptSel){
+            for(let hash of hashes){
+                if(f.hashes.includes(hash)){return f;}
+            }
+        }
+        return null;
     }
     //#endregion
 
@@ -12697,9 +12732,6 @@ class Charactermancer_Spell_Level extends BaseComponent {
         this._$dispNoRows = $(`<div class="ve-flex-vh-center italic ve-muted ve-small mt-1">No matching spells</div>`).hideVe(); //Hide by default
         const doUpdateDispNoRows = ()=>{
             if(this._spellLevel == 0){
-                console.log("visible items", this._list.visibleItems);
-                if(this._list.visibleItems.length<1){console.error("bad");}
-                console.log("searcheditems", this._list._searchedItems);
                 //why is visible items not searched items?
                 //Something is making them not be visible
             }
@@ -18260,6 +18292,453 @@ class Charactermancer_FeatureOptionsSelect extends BaseComponent {
         return this._render_pHkIxsChosen({$stgSubChoiceData});
     }
 
+    async pRender($wrp) {
+        return this.render($wrp);
+    }
+
+    async _render_pHkIxsChosen({$stgSubChoiceData}) {
+        try {
+            await this._pLock("ixsChosen");
+            await this._render_pHkIxsChosen_({ $stgSubChoiceData });
+        }
+        finally { this._unlock("ixsChosen"); }
+    }
+
+    async _render_pHkIxsChosen_({$stgSubChoiceData}) {
+        const {prefixSubComps} = this._getProps();
+        Object.keys(this._state).filter(k=>k.startsWith(prefixSubComps)).forEach(k=>delete this._state[k]);
+
+        const selectedLoadeds = this._getSelectedLoadeds();
+
+        if (!selectedLoadeds.length)
+            return this._render_noSubChoices({
+                $stgSubChoiceData
+            });
+
+        const isSubChoiceForceDisplay = await this._pIsSubChoiceForceDisplay(selectedLoadeds);
+        const isSubChoiceAvailable = await this._pIsSubChoiceAvailable(selectedLoadeds);
+        if (!isSubChoiceForceDisplay && !isSubChoiceAvailable)
+            return this._render_noSubChoices({
+                $stgSubChoiceData
+            });
+
+        $stgSubChoiceData.empty();
+        this._unregisterSubComps();
+
+        //TEMPFIX
+        const sideDataRaws = null;//await this._pGetLoadedsSideDataRaws(selectedLoadeds);
+        const ptrIsFirstSection = {_: true };
+
+        for (let i = 0; i < selectedLoadeds.length; ++i) {
+            const loaded = selectedLoadeds[i];
+
+            if (!(await this._pIsSubChoiceForceDisplay([selectedLoadeds[i]]) || await this._pIsSubChoiceAvailable([selectedLoadeds[i]])))
+                continue;
+            //TEMPFIX
+            const isSubChoice_sideDataChooseSystem = false; //await this._pHasChoiceInSideData_chooseSystem([selectedLoadeds[i]]);
+            const isSubChoice_sideDataChooseFlags = false; //await this._pHasChoiceInSideData_chooseFlags([selectedLoadeds[i]]);
+
+            const isForceDisplay_entryDataSkillToolLanguageProficiencies = await this._pIsForceDisplay_skillToolLanguageProficiencies([selectedLoadeds[i]]);
+            const isForceDisplay_entryDataSkillProficiencies = await this._pIsForceDisplay_skillProficiencies([selectedLoadeds[i]]);
+            const isForceDisplay_entryDataLanguageProficiencies = await this._pIsForceDisplay_languageProficiencies([selectedLoadeds[i]]);
+            const isForceDisplay_entryDataToolProficiencies = await this._pIsForceDisplay_toolProficiencies([selectedLoadeds[i]]);
+            const isForceDisplay_entryDataWeaponProficiencies = await this._pIsForceDisplay_weaponProficiencies([selectedLoadeds[i]]);
+            const isForceDisplay_entryDataArmorProficiencies = await this._pIsForceDisplay_armorProficiencies([selectedLoadeds[i]]);
+            const isForceDisplay_entryDataSavingThrowProficiencies = await this._pIsForceDisplay_savingThrowProficiencies([selectedLoadeds[i]]);
+            const isForceDisplay_entryDataDamageImmunities = await this._pIsForceDisplay_damageImmunities([selectedLoadeds[i]]);
+            const isForceDisplay_entryDataDamageResistances = await this._pIsForceDisplay_damageResistances([selectedLoadeds[i]]);
+            const isForceDisplay_entryDataDamageVulnerabilities = await this._pIsForceDisplay_damageVulnerabilities([selectedLoadeds[i]]);
+            const isForceDisplay_entryDataConditionImmunities = await this._pIsForceDisplay_conditionImmunities([selectedLoadeds[i]]);
+            const isForceDisplay_entryDataExpertise = await this._pIsForceDisplay_expertise([selectedLoadeds[i]]);
+            const isForceDisplay_entryDataResources = await this._pIsForceDisplay_resources([selectedLoadeds[i]]);
+            const isForceDisplay_entryDataSenses = await this._pIsForceDisplay_senses([selectedLoadeds[i]]);
+            const isForceDisplay_entryDataAdditionalSpells = await this._pIsForceDisplay_additionalSpells([selectedLoadeds[i]]);
+
+            const isAvailable_entryDataSkillToolLanguageProficiencies = await this._pIsAvailable_skillToolLanguageProficiencies([selectedLoadeds[i]]);
+            const isAvailable_entryDataSkillProficiencies = await this._pIsAvailable_skillProficiencies([selectedLoadeds[i]]);
+            const isAvailable_entryDataLanguageProficiencies = await this._pIsAvailable_languageProficiencies([selectedLoadeds[i]]);
+            const isAvailable_entryDataToolProficiencies = await this._pIsAvailable_toolProficiencies([selectedLoadeds[i]]);
+            const isAvailable_entryDataWeaponProficiencies = await this._pIsAvailable_weaponProficiencies([selectedLoadeds[i]]);
+            const isAvailable_entryDataArmorProficiencies = await this._pIsAvailable_armorProficiencies([selectedLoadeds[i]]);
+            const isAvailable_entryDataSavingThrowProficiencies = await this._pIsAvailable_savingThrowProficiencies([selectedLoadeds[i]]);
+            const isAvailable_entryDataDamageImmunities = await this._pIsAvailable_damageImmunities([selectedLoadeds[i]]);
+            const isAvailable_entryDataDamageResistances = await this._pIsAvailable_damageResistances([selectedLoadeds[i]]);
+            const isAvailable_entryDataDamageVulnerabilities = await this._pIsAvailable_damageVulnerabilities([selectedLoadeds[i]]);
+            const isAvailable_entryDataConditionImmunities = await this._pIsAvailable_conditionImmunities([selectedLoadeds[i]]);
+            const isAvailable_entryDataExpertise = await this._pIsAvailable_expertise([selectedLoadeds[i]]);
+            const isAvailable_entryDataResources = await this._pIsAvailable_resources([selectedLoadeds[i]]);
+            const isAvailable_entryDataSenses = await this._pIsAvailable_senses([selectedLoadeds[i]]);
+            const isAvailable_entryDataAdditionalSpells = await this._pIsAvailable_additionalSpells([selectedLoadeds[i]]);
+
+            const {entity, type} = loaded;
+
+            if (i !== 0 || !this._isSkipRenderingFirstFeatureTitle)
+                $stgSubChoiceData.append(this._render_getSubCompTitle(entity));
+
+            //TEMPFIX
+           /*  if (isSubChoice_sideDataChooseSystem) {
+                const sideDataRaw = sideDataRaws[i];
+                if (sideDataRaw?.chooseSystem) {
+                    ptrIsFirstSection._ = false;
+                    this._render_renderSubComp_chooseSystem(i, $stgSubChoiceData, entity, type, sideDataRaw);
+                }
+            }
+
+            if (isSubChoice_sideDataChooseFlags) {
+                const sideDataRaw = sideDataRaws[i];
+                if (sideDataRaw?.chooseFlags) {
+                    ptrIsFirstSection._ = false;
+                    this._render_renderSubComp_chooseFlags(i, $stgSubChoiceData, entity, type, sideDataRaw);
+                }
+            } */
+
+            this._render_pHkIxsChosen_comp({
+                ix: i,
+                $stgSubChoiceData,
+                selectedLoadeds,
+                propSubComps: "_subCompsSkillToolLanguageProficiencies",
+                propPrevSubComps: "_prevSubCompsSkillToolLanguageProficiencies",
+                isAvailable: isAvailable_entryDataSkillToolLanguageProficiencies,
+                isForceDisplay: isForceDisplay_entryDataSkillToolLanguageProficiencies,
+                prop: "skillToolLanguageProficiencies",
+                ptrIsFirstSection,
+                CompClass: Charactermancer_OtherProficiencySelect,
+                fnGetExistingFvtt: Charactermancer_OtherProficiencySelect.getExistingFvttFromActor.bind(Charactermancer_OtherProficiencySelect),
+                fnSetComp: this._render_pHkIxsChosen_setCompOtherProficiencies.bind(this),
+            });
+
+            this._render_pHkIxsChosen_comp({
+                ix: i,
+                $stgSubChoiceData,
+                selectedLoadeds,
+                propSubComps: "_subCompsSkillProficiencies",
+                propPrevSubComps: "_prevSubCompsSkillProficiencies",
+                isAvailable: isAvailable_entryDataSkillProficiencies,
+                isForceDisplay: isForceDisplay_entryDataSkillProficiencies,
+                prop: "skillProficiencies",
+                title: "Skill Proficiencies",
+                ptrIsFirstSection,
+                CompClass: Charactermancer_OtherProficiencySelect,
+                propPathActorExistingProficiencies: ["system", "skills"],
+                fnSetComp: this._render_pHkIxsChosen_setCompOtherProficiencies.bind(this),
+                fnGetMappedProficiencies: Charactermancer_OtherProficiencySelect.getMappedSkillProficiencies.bind(Charactermancer_OtherProficiencySelect),
+            });
+
+            this._render_pHkIxsChosen_comp({
+                ix: i,
+                $stgSubChoiceData,
+                selectedLoadeds,
+                propSubComps: "_subCompsLanguageProficiencies",
+                propPrevSubComps: "_prevSubCompsLanguageProficiencies",
+                isAvailable: isAvailable_entryDataLanguageProficiencies,
+                isForceDisplay: isForceDisplay_entryDataLanguageProficiencies,
+                prop: "languageProficiencies",
+                title: "Language Proficiencies",
+                ptrIsFirstSection,
+                CompClass: Charactermancer_OtherProficiencySelect,
+                propPathActorExistingProficiencies: ["system", "traits", "languages"],
+                fnSetComp: this._render_pHkIxsChosen_setCompOtherProficiencies.bind(this),
+                fnGetMappedProficiencies: Charactermancer_OtherProficiencySelect.getMappedLanguageProficiencies.bind(Charactermancer_OtherProficiencySelect),
+            });
+
+            this._render_pHkIxsChosen_comp({
+                ix: i,
+                $stgSubChoiceData,
+                selectedLoadeds,
+                propSubComps: "_subCompsToolProficiencies",
+                propPrevSubComps: "_prevSubCompsToolProficiencies",
+                isAvailable: isAvailable_entryDataToolProficiencies,
+                isForceDisplay: isForceDisplay_entryDataToolProficiencies,
+                prop: "toolProficiencies",
+                title: "Tool Proficiencies",
+                ptrIsFirstSection,
+                CompClass: Charactermancer_OtherProficiencySelect,
+                propPathActorExistingProficiencies: ["system", "tools"],
+                fnSetComp: this._render_pHkIxsChosen_setCompOtherProficiencies.bind(this),
+                fnGetMappedProficiencies: Charactermancer_OtherProficiencySelect.getMappedToolProficiencies.bind(Charactermancer_OtherProficiencySelect),
+            });
+
+            this._render_pHkIxsChosen_comp({
+                ix: i,
+                $stgSubChoiceData,
+                selectedLoadeds,
+                propSubComps: "_subCompsWeaponProficiencies",
+                propPrevSubComps: "_prevSubCompsWeaponProficiencies",
+                isAvailable: isAvailable_entryDataWeaponProficiencies,
+                isForceDisplay: isForceDisplay_entryDataWeaponProficiencies,
+                prop: "weaponProficiencies",
+                title: "Weapon Proficiencies",
+                ptrIsFirstSection,
+                CompClass: Charactermancer_OtherProficiencySelect,
+                propPathActorExistingProficiencies: ["system", "traits", "weaponProf"],
+                fnSetComp: this._render_pHkIxsChosen_setCompOtherProficiencies.bind(this),
+                fnGetMappedProficiencies: Charactermancer_OtherProficiencySelect.getMappedWeaponProficiencies.bind(Charactermancer_OtherProficiencySelect),
+            });
+
+            this._render_pHkIxsChosen_comp({
+                ix: i,
+                $stgSubChoiceData,
+                selectedLoadeds,
+                propSubComps: "_subCompsArmorProficiencies",
+                propPrevSubComps: "_prevSubCompsArmorProficiencies",
+                isAvailable: isAvailable_entryDataArmorProficiencies,
+                isForceDisplay: isForceDisplay_entryDataArmorProficiencies,
+                prop: "armorProficiencies",
+                title: "Armor Proficiencies",
+                ptrIsFirstSection,
+                CompClass: Charactermancer_OtherProficiencySelect,
+                propPathActorExistingProficiencies: ["system", "traits", "armorProf"],
+                fnSetComp: this._render_pHkIxsChosen_setCompOtherProficiencies.bind(this),
+                fnGetMappedProficiencies: Charactermancer_OtherProficiencySelect.getMappedArmorProficiencies.bind(Charactermancer_OtherProficiencySelect),
+            });
+
+            this._render_pHkIxsChosen_comp({
+                ix: i,
+                $stgSubChoiceData,
+                selectedLoadeds,
+                propSubComps: "_subCompsSavingThrowProficiencies",
+                propPrevSubComps: "_prevSubCompsSavingThrowProficiencies",
+                isAvailable: isAvailable_entryDataSavingThrowProficiencies,
+                isForceDisplay: isForceDisplay_entryDataSavingThrowProficiencies,
+                prop: "savingThrowProficiencies",
+                title: "Saving Throw Proficiencies",
+                ptrIsFirstSection,
+                CompClass: Charactermancer_OtherProficiencySelect,
+                propPathActorExistingProficiencies: ["system", "abilities"],
+                fnSetComp: this._render_pHkIxsChosen_setCompOtherProficiencies.bind(this),
+                fnGetMappedProficiencies: Charactermancer_OtherProficiencySelect.getMappedSavingThrowProficiencies.bind(Charactermancer_OtherProficiencySelect),
+            });
+
+            this._render_pHkIxsChosen_comp({
+                ix: i,
+                $stgSubChoiceData,
+                selectedLoadeds,
+                propSubComps: "_subCompsDamageImmunities",
+                propPrevSubComps: "_prevSubCompsDamageImmunities",
+                isAvailable: isAvailable_entryDataDamageImmunities,
+                isForceDisplay: isForceDisplay_entryDataDamageImmunities,
+                prop: "immune",
+                title: "Damage Immunities",
+                ptrIsFirstSection,
+                CompClass: Charactermancer_DamageImmunitySelect,
+                propPathActorExistingProficiencies: ["system", "traits", "di"],
+                fnSetComp: this._render_pHkIxsChosen_setCompOtherProficiencies.bind(this),
+            });
+
+            this._render_pHkIxsChosen_comp({
+                ix: i,
+                $stgSubChoiceData,
+                selectedLoadeds,
+                propSubComps: "_subCompsDamageResistances",
+                propPrevSubComps: "_prevSubCompsDamageResistances",
+                isAvailable: isAvailable_entryDataDamageResistances,
+                isForceDisplay: isForceDisplay_entryDataDamageResistances,
+                prop: "resist",
+                title: "Damage Resistances",
+                ptrIsFirstSection,
+                CompClass: Charactermancer_DamageResistanceSelect,
+                propPathActorExistingProficiencies: ["system", "traits", "dr"],
+                fnSetComp: this._render_pHkIxsChosen_setCompOtherProficiencies.bind(this),
+            });
+
+            this._render_pHkIxsChosen_comp({
+                ix: i,
+                $stgSubChoiceData,
+                selectedLoadeds,
+                propSubComps: "_subCompsDamageVulnerabilities",
+                propPrevSubComps: "_prevSubCompsDamageVulnerabilities",
+                isAvailable: isAvailable_entryDataDamageVulnerabilities,
+                isForceDisplay: isForceDisplay_entryDataDamageVulnerabilities,
+                prop: "vulnerable",
+                title: "Damage Vulnerabilities",
+                ptrIsFirstSection,
+                CompClass: Charactermancer_DamageVulnerabilitySelect,
+                propPathActorExistingProficiencies: ["system", "traits", "dv"],
+                fnSetComp: this._render_pHkIxsChosen_setCompOtherProficiencies.bind(this),
+            });
+
+            this._render_pHkIxsChosen_comp({
+                ix: i,
+                $stgSubChoiceData,
+                selectedLoadeds,
+                propSubComps: "_subCompsConditionImmunities",
+                propPrevSubComps: "_prevSubCompsConditionImmunities",
+                isAvailable: isAvailable_entryDataConditionImmunities,
+                isForceDisplay: isForceDisplay_entryDataConditionImmunities,
+                prop: "conditionImmune",
+                title: "Condition Immunities",
+                CompClass: Charactermancer_ConditionImmunitySelect,
+                propPathActorExistingProficiencies: ["system", "traits", "ci"],
+                ptrIsFirstSection,
+                fnSetComp: this._render_pHkIxsChosen_setCompOtherProficiencies.bind(this),
+            });
+
+            this._render_pHkIxsChosen_comp({
+                ix: i,
+                $stgSubChoiceData,
+                selectedLoadeds,
+                propSubComps: "_subCompsExpertise",
+                propPrevSubComps: "_prevSubCompsExpertise",
+                isAvailable: isAvailable_entryDataExpertise,
+                isForceDisplay: isForceDisplay_entryDataExpertise,
+                prop: "expertise",
+                title: "Expertise",
+                ptrIsFirstSection,
+                fnSetComp: this._render_pHkIxsChosen_setCompExpertise.bind(this),
+            });
+
+            this._render_pHkIxsChosen_comp({
+                ix: i,
+                $stgSubChoiceData,
+                selectedLoadeds,
+                propSubComps: "_subCompsResources",
+                propPrevSubComps: "_prevSubCompsResources",
+                isAvailable: isAvailable_entryDataResources,
+                isForceDisplay: isForceDisplay_entryDataResources,
+                prop: "resources",
+                ptrIsFirstSection,
+                fnSetComp: this._render_pHkIxsChosen_setCompResources.bind(this),
+            });
+
+            this._render_pHkIxsChosen_comp({
+                ix: i,
+                $stgSubChoiceData,
+                selectedLoadeds,
+                propSubComps: "_subCompsSenses",
+                propPrevSubComps: "_prevSubCompsSenses",
+                isAvailable: isAvailable_entryDataSenses,
+                isForceDisplay: isForceDisplay_entryDataSenses,
+                prop: "senses",
+                ptrIsFirstSection,
+                fnSetComp: this._render_pHkIxsChosen_setCompSenses.bind(this),
+            });
+
+            this._render_pHkIxsChosen_comp({
+                ix: i,
+                $stgSubChoiceData,
+                selectedLoadeds,
+                propSubComps: "_subCompsAdditionalSpells",
+                propPrevSubComps: "_prevSubCompsAdditionalSpells",
+                isAvailable: isAvailable_entryDataAdditionalSpells,
+                isForceDisplay: isForceDisplay_entryDataAdditionalSpells,
+                prop: "additionalSpells",
+                ptrIsFirstSection,
+                fnSetComp: this._render_pHkIxsChosen_setCompAdditionalSpells.bind(this),
+            });
+        }
+
+        this._prevSubCompsSkillToolLanguageProficiencies = null;
+        this._prevSubCompsSkillProficiencies = null;
+        this._prevSubCompsLanguageProficiencies = null;
+        this._prevSubCompsToolProficiencies = null;
+        this._prevSubCompsWeaponProficiencies = null;
+        this._prevSubCompsArmorProficiencies = null;
+        this._prevSubCompsSavingThrowProficiencies = null;
+        this._prevSubCompsDamageImmunities = null;
+        this._prevSubCompsDamageResistances = null;
+        this._prevSubCompsDamageVulnerabilities = null;
+        this._prevSubCompsConditionImmunities = null;
+        this._prevSubCompsExpertise = null;
+        this._prevSubCompsResources = null;
+        this._prevSubCompsSenses = null;
+        this._prevSubCompsAdditionalSpells = null;
+
+        $stgSubChoiceData.toggleVe(isSubChoiceForceDisplay);
+    }
+
+    _render_pHkIxsChosen_comp({ix, $stgSubChoiceData, propSubComps, propPrevSubComps, isAvailable, isForceDisplay, selectedLoadeds, prop, title, CompClass, propPathActorExistingProficiencies, ptrIsFirstSection, fnSetComp, fnGetMappedProficiencies, fnGetExistingFvtt, }, ) {
+        this[propSubComps][ix] = null;
+        if (!isAvailable)
+            return;
+
+        const {entity} = selectedLoadeds[ix];
+
+        if (!entity?.[prop] && !entity?.entryData?.[prop])
+            return;
+
+        //Create the sub-component (can be found at this[propSubComps][ix])
+        fnSetComp({
+            ix,
+            propSubComps,
+            prop,
+            CompClass,
+            propPathActorExistingProficiencies,
+            entity,
+            fnGetMappedProficiencies,
+            fnGetExistingFvtt,
+        });
+
+        if (this[propPrevSubComps] && this[propPrevSubComps][ix]) {
+            this[propSubComps][ix]._proxyAssignSimple("state", MiscUtil.copy(this[propPrevSubComps][ix].__state));
+        }
+
+        if (!isForceDisplay)
+            return;
+
+        if (!title)
+            title = this[propSubComps][ix]?.modalTitle;
+
+        if (title)
+            $stgSubChoiceData.append(`${ptrIsFirstSection._ ? "" : `<div class="w-100 mt-1 mb-2"></div>`}<div class="bold mb-2">${title}</div>`);
+
+        //Render the subcomponent
+        this[propSubComps][ix].render($stgSubChoiceData);
+        ptrIsFirstSection._ = false;
+    }
+
+    _render_pHkIxsChosen_setCompOtherProficiencies({ix, propSubComps, prop, CompClass, propPathActorExistingProficiencies, entity, fnGetMappedProficiencies, fnGetExistingFvtt, }, ) {
+        const availableRaw = entity[prop] || entity.entryData[prop];
+        const existingFvtt = fnGetExistingFvtt ? fnGetExistingFvtt() : {
+            [prop]: MiscUtil.get(this._actor, ...propPathActorExistingProficiencies)
+        };
+        this[propSubComps][ix] = new CompClass({
+            featureSourceTracker: this._featureSourceTracker,
+            existing: CompClass.getExisting(existingFvtt),
+            existingFvtt,
+            available: fnGetMappedProficiencies ? fnGetMappedProficiencies(availableRaw) : availableRaw,
+        });
+    }
+
+    _render_pHkIxsChosen_setCompExpertise({ix, propSubComps, prop, entity, }, ) {
+        const existingFvtt = Charactermancer_ExpertiseSelect.getExistingFvttFromActor(this._actor);
+        this[propSubComps][ix] = new Charactermancer_ExpertiseSelect({
+            featureSourceTracker: this._featureSourceTracker,
+            existing: Charactermancer_ExpertiseSelect.getExisting(existingFvtt),
+            existingFvtt,
+            available: entity[prop] || entity.entryData[prop],
+        });
+    }
+
+    _render_pHkIxsChosen_setCompResources({ix, propSubComps, prop, entity, }, ) {
+        this[propSubComps][ix] = new Charactermancer_ResourceSelect({
+            resources: entity[prop] || entity.entryData[prop],
+            className: entity.className,
+            classSource: entity.classSource,
+            subclassShortName: entity.subclassShortName,
+            subclassSource: entity.subclassSource,
+        });
+    }
+
+    _render_pHkIxsChosen_setCompSenses({ix, propSubComps, prop, entity, }, ) {
+        const existingFvtt = Charactermancer_SenseSelect.getExistingFvttFromActor(this._actor);
+        this[propSubComps][ix] = new Charactermancer_SenseSelect({
+            existing: Charactermancer_SenseSelect.getExisting(existingFvtt),
+            existingFvtt,
+            senses: entity[prop] || entity.entryData[prop],
+        });
+    }
+
+    _render_pHkIxsChosen_setCompAdditionalSpells({ix, propSubComps, prop, entity, }, ) {
+        this[propSubComps][ix] = Charactermancer_AdditionalSpellsSelect.getComp({
+            additionalSpells: entity[prop] || entity.entryData[prop],
+            modalFilterSpells: this._modalFilterSpells,
+            curLevel: 0,
+            targetLevel: Consts.CHAR_MAX_LEVEL,
+            spellLevelLow: 0,
+            spellLevelHigh: 9,
+        });
+    }
+
     get optionSet_() {
         return this._optionsSet;
     }
@@ -19157,451 +19636,6 @@ class Charactermancer_FeatureOptionsSelect extends BaseComponent {
         } else {
             return this._optionsSet;
         }
-    }
-
-    async pRender($wrp) {
-        return this.render($wrp);
-    }
-
-    async _render_pHkIxsChosen({$stgSubChoiceData}) {
-        try {
-            await this._pLock("ixsChosen");
-            await this._render_pHkIxsChosen_({ $stgSubChoiceData });
-        }
-        finally { this._unlock("ixsChosen"); }
-    }
-
-    async _render_pHkIxsChosen_({$stgSubChoiceData}) {
-        const {prefixSubComps} = this._getProps();
-        Object.keys(this._state).filter(k=>k.startsWith(prefixSubComps)).forEach(k=>delete this._state[k]);
-
-        const selectedLoadeds = this._getSelectedLoadeds();
-
-        if (!selectedLoadeds.length)
-            return this._render_noSubChoices({
-                $stgSubChoiceData
-            });
-
-        const isSubChoiceForceDisplay = await this._pIsSubChoiceForceDisplay(selectedLoadeds);
-        const isSubChoiceAvailable = await this._pIsSubChoiceAvailable(selectedLoadeds);
-        if (!isSubChoiceForceDisplay && !isSubChoiceAvailable)
-            return this._render_noSubChoices({
-                $stgSubChoiceData
-            });
-
-        $stgSubChoiceData.empty();
-        this._unregisterSubComps();
-
-        //TEMPFIX
-        const sideDataRaws = null;//await this._pGetLoadedsSideDataRaws(selectedLoadeds);
-        const ptrIsFirstSection = {_: true };
-
-        for (let i = 0; i < selectedLoadeds.length; ++i) {
-            const loaded = selectedLoadeds[i];
-
-            if (!(await this._pIsSubChoiceForceDisplay([selectedLoadeds[i]]) || await this._pIsSubChoiceAvailable([selectedLoadeds[i]])))
-                continue;
-            //TEMPFIX
-            const isSubChoice_sideDataChooseSystem = false; //await this._pHasChoiceInSideData_chooseSystem([selectedLoadeds[i]]);
-            const isSubChoice_sideDataChooseFlags = false; //await this._pHasChoiceInSideData_chooseFlags([selectedLoadeds[i]]);
-
-            const isForceDisplay_entryDataSkillToolLanguageProficiencies = await this._pIsForceDisplay_skillToolLanguageProficiencies([selectedLoadeds[i]]);
-            const isForceDisplay_entryDataSkillProficiencies = await this._pIsForceDisplay_skillProficiencies([selectedLoadeds[i]]);
-            const isForceDisplay_entryDataLanguageProficiencies = await this._pIsForceDisplay_languageProficiencies([selectedLoadeds[i]]);
-            const isForceDisplay_entryDataToolProficiencies = await this._pIsForceDisplay_toolProficiencies([selectedLoadeds[i]]);
-            const isForceDisplay_entryDataWeaponProficiencies = await this._pIsForceDisplay_weaponProficiencies([selectedLoadeds[i]]);
-            const isForceDisplay_entryDataArmorProficiencies = await this._pIsForceDisplay_armorProficiencies([selectedLoadeds[i]]);
-            const isForceDisplay_entryDataSavingThrowProficiencies = await this._pIsForceDisplay_savingThrowProficiencies([selectedLoadeds[i]]);
-            const isForceDisplay_entryDataDamageImmunities = await this._pIsForceDisplay_damageImmunities([selectedLoadeds[i]]);
-            const isForceDisplay_entryDataDamageResistances = await this._pIsForceDisplay_damageResistances([selectedLoadeds[i]]);
-            const isForceDisplay_entryDataDamageVulnerabilities = await this._pIsForceDisplay_damageVulnerabilities([selectedLoadeds[i]]);
-            const isForceDisplay_entryDataConditionImmunities = await this._pIsForceDisplay_conditionImmunities([selectedLoadeds[i]]);
-            const isForceDisplay_entryDataExpertise = await this._pIsForceDisplay_expertise([selectedLoadeds[i]]);
-            const isForceDisplay_entryDataResources = await this._pIsForceDisplay_resources([selectedLoadeds[i]]);
-            const isForceDisplay_entryDataSenses = await this._pIsForceDisplay_senses([selectedLoadeds[i]]);
-            const isForceDisplay_entryDataAdditionalSpells = await this._pIsForceDisplay_additionalSpells([selectedLoadeds[i]]);
-
-            const isAvailable_entryDataSkillToolLanguageProficiencies = await this._pIsAvailable_skillToolLanguageProficiencies([selectedLoadeds[i]]);
-            const isAvailable_entryDataSkillProficiencies = await this._pIsAvailable_skillProficiencies([selectedLoadeds[i]]);
-            const isAvailable_entryDataLanguageProficiencies = await this._pIsAvailable_languageProficiencies([selectedLoadeds[i]]);
-            const isAvailable_entryDataToolProficiencies = await this._pIsAvailable_toolProficiencies([selectedLoadeds[i]]);
-            const isAvailable_entryDataWeaponProficiencies = await this._pIsAvailable_weaponProficiencies([selectedLoadeds[i]]);
-            const isAvailable_entryDataArmorProficiencies = await this._pIsAvailable_armorProficiencies([selectedLoadeds[i]]);
-            const isAvailable_entryDataSavingThrowProficiencies = await this._pIsAvailable_savingThrowProficiencies([selectedLoadeds[i]]);
-            const isAvailable_entryDataDamageImmunities = await this._pIsAvailable_damageImmunities([selectedLoadeds[i]]);
-            const isAvailable_entryDataDamageResistances = await this._pIsAvailable_damageResistances([selectedLoadeds[i]]);
-            const isAvailable_entryDataDamageVulnerabilities = await this._pIsAvailable_damageVulnerabilities([selectedLoadeds[i]]);
-            const isAvailable_entryDataConditionImmunities = await this._pIsAvailable_conditionImmunities([selectedLoadeds[i]]);
-            const isAvailable_entryDataExpertise = await this._pIsAvailable_expertise([selectedLoadeds[i]]);
-            const isAvailable_entryDataResources = await this._pIsAvailable_resources([selectedLoadeds[i]]);
-            const isAvailable_entryDataSenses = await this._pIsAvailable_senses([selectedLoadeds[i]]);
-            const isAvailable_entryDataAdditionalSpells = await this._pIsAvailable_additionalSpells([selectedLoadeds[i]]);
-
-            const {entity, type} = loaded;
-
-            if (i !== 0 || !this._isSkipRenderingFirstFeatureTitle)
-                $stgSubChoiceData.append(this._render_getSubCompTitle(entity));
-
-            //TEMPFIX
-           /*  if (isSubChoice_sideDataChooseSystem) {
-                const sideDataRaw = sideDataRaws[i];
-                if (sideDataRaw?.chooseSystem) {
-                    ptrIsFirstSection._ = false;
-                    this._render_renderSubComp_chooseSystem(i, $stgSubChoiceData, entity, type, sideDataRaw);
-                }
-            }
-
-            if (isSubChoice_sideDataChooseFlags) {
-                const sideDataRaw = sideDataRaws[i];
-                if (sideDataRaw?.chooseFlags) {
-                    ptrIsFirstSection._ = false;
-                    this._render_renderSubComp_chooseFlags(i, $stgSubChoiceData, entity, type, sideDataRaw);
-                }
-            } */
-
-            this._render_pHkIxsChosen_comp({
-                ix: i,
-                $stgSubChoiceData,
-                selectedLoadeds,
-                propSubComps: "_subCompsSkillToolLanguageProficiencies",
-                propPrevSubComps: "_prevSubCompsSkillToolLanguageProficiencies",
-                isAvailable: isAvailable_entryDataSkillToolLanguageProficiencies,
-                isForceDisplay: isForceDisplay_entryDataSkillToolLanguageProficiencies,
-                prop: "skillToolLanguageProficiencies",
-                ptrIsFirstSection,
-                CompClass: Charactermancer_OtherProficiencySelect,
-                fnGetExistingFvtt: Charactermancer_OtherProficiencySelect.getExistingFvttFromActor.bind(Charactermancer_OtherProficiencySelect),
-                fnSetComp: this._render_pHkIxsChosen_setCompOtherProficiencies.bind(this),
-            });
-
-            this._render_pHkIxsChosen_comp({
-                ix: i,
-                $stgSubChoiceData,
-                selectedLoadeds,
-                propSubComps: "_subCompsSkillProficiencies",
-                propPrevSubComps: "_prevSubCompsSkillProficiencies",
-                isAvailable: isAvailable_entryDataSkillProficiencies,
-                isForceDisplay: isForceDisplay_entryDataSkillProficiencies,
-                prop: "skillProficiencies",
-                title: "Skill Proficiencies",
-                ptrIsFirstSection,
-                CompClass: Charactermancer_OtherProficiencySelect,
-                propPathActorExistingProficiencies: ["system", "skills"],
-                fnSetComp: this._render_pHkIxsChosen_setCompOtherProficiencies.bind(this),
-                fnGetMappedProficiencies: Charactermancer_OtherProficiencySelect.getMappedSkillProficiencies.bind(Charactermancer_OtherProficiencySelect),
-            });
-
-            this._render_pHkIxsChosen_comp({
-                ix: i,
-                $stgSubChoiceData,
-                selectedLoadeds,
-                propSubComps: "_subCompsLanguageProficiencies",
-                propPrevSubComps: "_prevSubCompsLanguageProficiencies",
-                isAvailable: isAvailable_entryDataLanguageProficiencies,
-                isForceDisplay: isForceDisplay_entryDataLanguageProficiencies,
-                prop: "languageProficiencies",
-                title: "Language Proficiencies",
-                ptrIsFirstSection,
-                CompClass: Charactermancer_OtherProficiencySelect,
-                propPathActorExistingProficiencies: ["system", "traits", "languages"],
-                fnSetComp: this._render_pHkIxsChosen_setCompOtherProficiencies.bind(this),
-                fnGetMappedProficiencies: Charactermancer_OtherProficiencySelect.getMappedLanguageProficiencies.bind(Charactermancer_OtherProficiencySelect),
-            });
-
-            this._render_pHkIxsChosen_comp({
-                ix: i,
-                $stgSubChoiceData,
-                selectedLoadeds,
-                propSubComps: "_subCompsToolProficiencies",
-                propPrevSubComps: "_prevSubCompsToolProficiencies",
-                isAvailable: isAvailable_entryDataToolProficiencies,
-                isForceDisplay: isForceDisplay_entryDataToolProficiencies,
-                prop: "toolProficiencies",
-                title: "Tool Proficiencies",
-                ptrIsFirstSection,
-                CompClass: Charactermancer_OtherProficiencySelect,
-                propPathActorExistingProficiencies: ["system", "tools"],
-                fnSetComp: this._render_pHkIxsChosen_setCompOtherProficiencies.bind(this),
-                fnGetMappedProficiencies: Charactermancer_OtherProficiencySelect.getMappedToolProficiencies.bind(Charactermancer_OtherProficiencySelect),
-            });
-
-            this._render_pHkIxsChosen_comp({
-                ix: i,
-                $stgSubChoiceData,
-                selectedLoadeds,
-                propSubComps: "_subCompsWeaponProficiencies",
-                propPrevSubComps: "_prevSubCompsWeaponProficiencies",
-                isAvailable: isAvailable_entryDataWeaponProficiencies,
-                isForceDisplay: isForceDisplay_entryDataWeaponProficiencies,
-                prop: "weaponProficiencies",
-                title: "Weapon Proficiencies",
-                ptrIsFirstSection,
-                CompClass: Charactermancer_OtherProficiencySelect,
-                propPathActorExistingProficiencies: ["system", "traits", "weaponProf"],
-                fnSetComp: this._render_pHkIxsChosen_setCompOtherProficiencies.bind(this),
-                fnGetMappedProficiencies: Charactermancer_OtherProficiencySelect.getMappedWeaponProficiencies.bind(Charactermancer_OtherProficiencySelect),
-            });
-
-            this._render_pHkIxsChosen_comp({
-                ix: i,
-                $stgSubChoiceData,
-                selectedLoadeds,
-                propSubComps: "_subCompsArmorProficiencies",
-                propPrevSubComps: "_prevSubCompsArmorProficiencies",
-                isAvailable: isAvailable_entryDataArmorProficiencies,
-                isForceDisplay: isForceDisplay_entryDataArmorProficiencies,
-                prop: "armorProficiencies",
-                title: "Armor Proficiencies",
-                ptrIsFirstSection,
-                CompClass: Charactermancer_OtherProficiencySelect,
-                propPathActorExistingProficiencies: ["system", "traits", "armorProf"],
-                fnSetComp: this._render_pHkIxsChosen_setCompOtherProficiencies.bind(this),
-                fnGetMappedProficiencies: Charactermancer_OtherProficiencySelect.getMappedArmorProficiencies.bind(Charactermancer_OtherProficiencySelect),
-            });
-
-            this._render_pHkIxsChosen_comp({
-                ix: i,
-                $stgSubChoiceData,
-                selectedLoadeds,
-                propSubComps: "_subCompsSavingThrowProficiencies",
-                propPrevSubComps: "_prevSubCompsSavingThrowProficiencies",
-                isAvailable: isAvailable_entryDataSavingThrowProficiencies,
-                isForceDisplay: isForceDisplay_entryDataSavingThrowProficiencies,
-                prop: "savingThrowProficiencies",
-                title: "Saving Throw Proficiencies",
-                ptrIsFirstSection,
-                CompClass: Charactermancer_OtherProficiencySelect,
-                propPathActorExistingProficiencies: ["system", "abilities"],
-                fnSetComp: this._render_pHkIxsChosen_setCompOtherProficiencies.bind(this),
-                fnGetMappedProficiencies: Charactermancer_OtherProficiencySelect.getMappedSavingThrowProficiencies.bind(Charactermancer_OtherProficiencySelect),
-            });
-
-            this._render_pHkIxsChosen_comp({
-                ix: i,
-                $stgSubChoiceData,
-                selectedLoadeds,
-                propSubComps: "_subCompsDamageImmunities",
-                propPrevSubComps: "_prevSubCompsDamageImmunities",
-                isAvailable: isAvailable_entryDataDamageImmunities,
-                isForceDisplay: isForceDisplay_entryDataDamageImmunities,
-                prop: "immune",
-                title: "Damage Immunities",
-                ptrIsFirstSection,
-                CompClass: Charactermancer_DamageImmunitySelect,
-                propPathActorExistingProficiencies: ["system", "traits", "di"],
-                fnSetComp: this._render_pHkIxsChosen_setCompOtherProficiencies.bind(this),
-            });
-
-            this._render_pHkIxsChosen_comp({
-                ix: i,
-                $stgSubChoiceData,
-                selectedLoadeds,
-                propSubComps: "_subCompsDamageResistances",
-                propPrevSubComps: "_prevSubCompsDamageResistances",
-                isAvailable: isAvailable_entryDataDamageResistances,
-                isForceDisplay: isForceDisplay_entryDataDamageResistances,
-                prop: "resist",
-                title: "Damage Resistances",
-                ptrIsFirstSection,
-                CompClass: Charactermancer_DamageResistanceSelect,
-                propPathActorExistingProficiencies: ["system", "traits", "dr"],
-                fnSetComp: this._render_pHkIxsChosen_setCompOtherProficiencies.bind(this),
-            });
-
-            this._render_pHkIxsChosen_comp({
-                ix: i,
-                $stgSubChoiceData,
-                selectedLoadeds,
-                propSubComps: "_subCompsDamageVulnerabilities",
-                propPrevSubComps: "_prevSubCompsDamageVulnerabilities",
-                isAvailable: isAvailable_entryDataDamageVulnerabilities,
-                isForceDisplay: isForceDisplay_entryDataDamageVulnerabilities,
-                prop: "vulnerable",
-                title: "Damage Vulnerabilities",
-                ptrIsFirstSection,
-                CompClass: Charactermancer_DamageVulnerabilitySelect,
-                propPathActorExistingProficiencies: ["system", "traits", "dv"],
-                fnSetComp: this._render_pHkIxsChosen_setCompOtherProficiencies.bind(this),
-            });
-
-            this._render_pHkIxsChosen_comp({
-                ix: i,
-                $stgSubChoiceData,
-                selectedLoadeds,
-                propSubComps: "_subCompsConditionImmunities",
-                propPrevSubComps: "_prevSubCompsConditionImmunities",
-                isAvailable: isAvailable_entryDataConditionImmunities,
-                isForceDisplay: isForceDisplay_entryDataConditionImmunities,
-                prop: "conditionImmune",
-                title: "Condition Immunities",
-                CompClass: Charactermancer_ConditionImmunitySelect,
-                propPathActorExistingProficiencies: ["system", "traits", "ci"],
-                ptrIsFirstSection,
-                fnSetComp: this._render_pHkIxsChosen_setCompOtherProficiencies.bind(this),
-            });
-
-            this._render_pHkIxsChosen_comp({
-                ix: i,
-                $stgSubChoiceData,
-                selectedLoadeds,
-                propSubComps: "_subCompsExpertise",
-                propPrevSubComps: "_prevSubCompsExpertise",
-                isAvailable: isAvailable_entryDataExpertise,
-                isForceDisplay: isForceDisplay_entryDataExpertise,
-                prop: "expertise",
-                title: "Expertise",
-                ptrIsFirstSection,
-                fnSetComp: this._render_pHkIxsChosen_setCompExpertise.bind(this),
-            });
-
-            this._render_pHkIxsChosen_comp({
-                ix: i,
-                $stgSubChoiceData,
-                selectedLoadeds,
-                propSubComps: "_subCompsResources",
-                propPrevSubComps: "_prevSubCompsResources",
-                isAvailable: isAvailable_entryDataResources,
-                isForceDisplay: isForceDisplay_entryDataResources,
-                prop: "resources",
-                ptrIsFirstSection,
-                fnSetComp: this._render_pHkIxsChosen_setCompResources.bind(this),
-            });
-
-            this._render_pHkIxsChosen_comp({
-                ix: i,
-                $stgSubChoiceData,
-                selectedLoadeds,
-                propSubComps: "_subCompsSenses",
-                propPrevSubComps: "_prevSubCompsSenses",
-                isAvailable: isAvailable_entryDataSenses,
-                isForceDisplay: isForceDisplay_entryDataSenses,
-                prop: "senses",
-                ptrIsFirstSection,
-                fnSetComp: this._render_pHkIxsChosen_setCompSenses.bind(this),
-            });
-
-            this._render_pHkIxsChosen_comp({
-                ix: i,
-                $stgSubChoiceData,
-                selectedLoadeds,
-                propSubComps: "_subCompsAdditionalSpells",
-                propPrevSubComps: "_prevSubCompsAdditionalSpells",
-                isAvailable: isAvailable_entryDataAdditionalSpells,
-                isForceDisplay: isForceDisplay_entryDataAdditionalSpells,
-                prop: "additionalSpells",
-                ptrIsFirstSection,
-                fnSetComp: this._render_pHkIxsChosen_setCompAdditionalSpells.bind(this),
-            });
-        }
-
-        this._prevSubCompsSkillToolLanguageProficiencies = null;
-        this._prevSubCompsSkillProficiencies = null;
-        this._prevSubCompsLanguageProficiencies = null;
-        this._prevSubCompsToolProficiencies = null;
-        this._prevSubCompsWeaponProficiencies = null;
-        this._prevSubCompsArmorProficiencies = null;
-        this._prevSubCompsSavingThrowProficiencies = null;
-        this._prevSubCompsDamageImmunities = null;
-        this._prevSubCompsDamageResistances = null;
-        this._prevSubCompsDamageVulnerabilities = null;
-        this._prevSubCompsConditionImmunities = null;
-        this._prevSubCompsExpertise = null;
-        this._prevSubCompsResources = null;
-        this._prevSubCompsSenses = null;
-        this._prevSubCompsAdditionalSpells = null;
-
-        $stgSubChoiceData.toggleVe(isSubChoiceForceDisplay);
-    }
-
-    _render_pHkIxsChosen_comp({ix, $stgSubChoiceData, propSubComps, propPrevSubComps, isAvailable, isForceDisplay, selectedLoadeds, prop, title, CompClass, propPathActorExistingProficiencies, ptrIsFirstSection, fnSetComp, fnGetMappedProficiencies, fnGetExistingFvtt, }, ) {
-        this[propSubComps][ix] = null;
-        if (!isAvailable)
-            return;
-
-        const {entity} = selectedLoadeds[ix];
-
-        if (!entity?.[prop] && !entity?.entryData?.[prop])
-            return;
-
-        fnSetComp({
-            ix,
-            propSubComps,
-            prop,
-            CompClass,
-            propPathActorExistingProficiencies,
-            entity,
-            fnGetMappedProficiencies,
-            fnGetExistingFvtt,
-        });
-
-        if (this[propPrevSubComps] && this[propPrevSubComps][ix]) {
-            this[propSubComps][ix]._proxyAssignSimple("state", MiscUtil.copy(this[propPrevSubComps][ix].__state));
-        }
-
-        if (!isForceDisplay)
-            return;
-
-        if (!title)
-            title = this[propSubComps][ix]?.modalTitle;
-
-        if (title)
-            $stgSubChoiceData.append(`${ptrIsFirstSection._ ? "" : `<div class="w-100 mt-1 mb-2"></div>`}<div class="bold mb-2">${title}</div>`);
-        this[propSubComps][ix].render($stgSubChoiceData);
-        ptrIsFirstSection._ = false;
-    }
-
-    _render_pHkIxsChosen_setCompOtherProficiencies({ix, propSubComps, prop, CompClass, propPathActorExistingProficiencies, entity, fnGetMappedProficiencies, fnGetExistingFvtt, }, ) {
-        const availableRaw = entity[prop] || entity.entryData[prop];
-        const existingFvtt = fnGetExistingFvtt ? fnGetExistingFvtt() : {
-            [prop]: MiscUtil.get(this._actor, ...propPathActorExistingProficiencies)
-        };
-        this[propSubComps][ix] = new CompClass({
-            featureSourceTracker: this._featureSourceTracker,
-            existing: CompClass.getExisting(existingFvtt),
-            existingFvtt,
-            available: fnGetMappedProficiencies ? fnGetMappedProficiencies(availableRaw) : availableRaw,
-        });
-    }
-
-    _render_pHkIxsChosen_setCompExpertise({ix, propSubComps, prop, entity, }, ) {
-        const existingFvtt = Charactermancer_ExpertiseSelect.getExistingFvttFromActor(this._actor);
-        this[propSubComps][ix] = new Charactermancer_ExpertiseSelect({
-            featureSourceTracker: this._featureSourceTracker,
-            existing: Charactermancer_ExpertiseSelect.getExisting(existingFvtt),
-            existingFvtt,
-            available: entity[prop] || entity.entryData[prop],
-        });
-    }
-
-    _render_pHkIxsChosen_setCompResources({ix, propSubComps, prop, entity, }, ) {
-        this[propSubComps][ix] = new Charactermancer_ResourceSelect({
-            resources: entity[prop] || entity.entryData[prop],
-            className: entity.className,
-            classSource: entity.classSource,
-            subclassShortName: entity.subclassShortName,
-            subclassSource: entity.subclassSource,
-        });
-    }
-
-    _render_pHkIxsChosen_setCompSenses({ix, propSubComps, prop, entity, }, ) {
-        const existingFvtt = Charactermancer_SenseSelect.getExistingFvttFromActor(this._actor);
-        this[propSubComps][ix] = new Charactermancer_SenseSelect({
-            existing: Charactermancer_SenseSelect.getExisting(existingFvtt),
-            existingFvtt,
-            senses: entity[prop] || entity.entryData[prop],
-        });
-    }
-
-    _render_pHkIxsChosen_setCompAdditionalSpells({ix, propSubComps, prop, entity, }, ) {
-        this[propSubComps][ix] = Charactermancer_AdditionalSpellsSelect.getComp({
-            additionalSpells: entity[prop] || entity.entryData[prop],
-            modalFilterSpells: this._modalFilterSpells,
-
-            curLevel: 0,
-            targetLevel: Consts.CHAR_MAX_LEVEL,
-            spellLevelLow: 0,
-            spellLevelHigh: 9,
-        });
     }
 
     _getProps(ix) {
