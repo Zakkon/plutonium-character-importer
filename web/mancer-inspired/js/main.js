@@ -358,7 +358,6 @@ class CharacterBuilder {
     }
     renderComponents(){
         this.compClass.render();
-        //this.compClass._test_loadFeatureOptSelectsFromSaveFile(this.actor.classes);
         this.compRace.render();
         this.compAbility.render();
         this.compBackground.render();
@@ -369,11 +368,6 @@ class CharacterBuilder {
         this.compSheet.render();
     }
     async loadFromSave(){
-      const delay = ms => new Promise(res => setTimeout(res, ms));
-      //await delay(1000);
-      console.log("waited!");
-      //this.compClass._test_loadFeatureOptSelectsFromSaveFile(this.actor.classes);
-      //await this.compClass.pLoadLate();
     }
 
     //#region Events

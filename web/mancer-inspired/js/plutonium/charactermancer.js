@@ -479,7 +479,7 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
             ${disp_subclass}
         </div>`.appendTo(parentDiv_right);
 
-        renderClassComponents_safe().then(() => renderSubclass_safe());
+        renderClassComponents_safe().then(() => renderSubclass_safe()).then(() => this._test_tryLoadFOS(ix));
     }
 
     get modalFilterClasses() {
@@ -669,22 +669,14 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
       //Set first class as primary, if none is marked already
       if (!this._existingClassMetas.some(meta => meta.isPrimary)) { this._state.class_ixPrimaryClass = 0; }
 
-      //Lets try to grab some state info from the savefile
-      //FeatureOptionsSelect data
-      this.loadedSaveData_FeatureOptSel = [];
-      for(let classIndex = 0; classIndex < classes.length; ++classIndex){
-        const cls = classes[classIndex];
-        //const el = [];
-        if(!cls.featureOptSel){continue;}
-        console.log("FEATOPTSEL FOR CLASS", classIndex, cls.featureOptSel);
-        this.loadedSaveData_FeatureOptSel.push(cls.featureOptSel)
-        for(let compIndex = 0; compIndex < cls.featureOptSel.length; ++ compIndex){
-            const compData = cls.featureOptSel[compIndex];
-
-            //this.loadedSaveData_FeatureOptSel[ix]
+      //Prepare some data for FeatureOptionsSelect components to load into their state (only once) after first render
+      if(SETTINGS.USE_EXISTING_WEB){
+        this.loadedSaveData_FeatureOptSel = [];
+        for(let classIndex = 0; classIndex < classes.length; ++classIndex){
+            const cls = classes[classIndex];
+            if(!cls.featureOptSel){ this.loadedSaveData_FeatureOptSel.push(null); continue;}
+            this.loadedSaveData_FeatureOptSel.push(cls.featureOptSel);
         }
-        
-        //this.loadedSaveData_FeatureOptSel.push(el);
       }
     }
     async pLoadLate(){
@@ -1411,60 +1403,42 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
             }
             await component.render(stgFeatureOptions);
         }
-
-        //Load from save file
+    }
+    _test_tryLoadFOS(ix){
+        //Try to load saved cached save data
         if(SETTINGS.USE_EXISTING_WEB && this.loadedSaveData_FeatureOptSel && ix < this.loadedSaveData_FeatureOptSel.length){
             if(this.loadedSaveData_FeatureOptSel[ix] != null){
-                //this._test_loadFeatureOptSelectFromSaveFile(ix, this.loadedSaveData_FeatureOptSel[ix]);
+                this._test_loadFeatureOptSelectFromSaveFile(ix, this.loadedSaveData_FeatureOptSel[ix]);
             }
+            //Then wipe the cached save data so we cant accidentally set it again
             this.loadedSaveData_FeatureOptSel[ix] = null;
         }
     }
-     /**
-     * @param { {featureOptSel: {subCompDatas: { prop:string, states:{ ix:number, state:any}[] }[] }[]} []} classes
-     * @returns {any}
-     */
-    _test_loadFeatureOptSelectsFromSaveFile(classes){
-        console.log("Loading FOS for " + classes.length + " classes");
-        for(let classIndex = 0; classIndex < classes.length; ++classIndex){
-            const cls = classes[classIndex]; //Get the data for our class
-            for(let fosData of cls.featureOptSel){ //Go through the feature opt sel data
-                const state = fosData.state;
-                //Grab the subcomponent that we want to paste the state onto
-                const subComp = this._test_getFOSSubComponent(classIndex, fosData.parentCompIx, fosData.subCompProp, fosData.subCompIx);
-                //Paste the state onto the subcomponent
-                for(let propName of Object.keys(state)){
-                    let propValue = state[propName];
-                    subComp._state[propName] = propValue;
-                }
-            }
-        }
-    }
     _test_loadFeatureOptSelectFromSaveFile(classIndex, saveData){
-        for(let i = 0; i < this.compsClassFeatureOptionsSelect[classIndex].length; ++i){
-            let component = this.compsClassFeatureOptionsSelect[classIndex][i];
-            let compData = saveData[i];
-            console.log("FEATURE OPT SEL DATA", classIndex, i, compData);
-            for(let subData of compData.subCompDatas){
-                const subCompProp = subData.prop; //Used to grab subcomponents
-                const subCompArray = component[subCompProp];
-                console.log("subCompArray", subData, subCompArray);
-                for(let j = 0; j < subData.states.length; ++j){
-                    const loadedState = subData.states[j].state;
-                    const subComponent = subCompArray[subData.states[j].ix];
-                    console.log("SUBCOMPONENT", subComponent);
-                    //Copy over the states onto the subcomponent
-                    for(let propName of Object.keys(loadedState)){
-                        let propValue = loadedState[propName];
-                        subComponent._state[propName] = propValue;
-                    }
-                    console.log("NEW STATE OF SUBCOMP", subComponent.__state);
-                }
+        for(let fosData of saveData){ //Go through the feature opt sel data
+            const state = fosData.state;
+            //Grab the subcomponent that we want to paste the state onto
+            const subComp = this._test_getFOSSubComponent(classIndex, fosData.parentCompIx, fosData.subCompProp, fosData.subCompIx);
+            //Paste the state onto the subcomponent
+            for(let propName of Object.keys(state)){
+                let propValue = state[propName];
+                subComp._state[propName] = propValue;
             }
         }
     }
     _test_getFOSSubComponent(classIx, parentCompIx, subCompName, subCompIx){
-        return this._compsClassFeatureOptionsSelect[classIx][parentCompIx][subCompName][subCompIx];
+        if(!this._compsClassFeatureOptionsSelect[classIx]?.length){
+            console.error("FeatureOptionsSelect components have not been created for class " + classIx + " yet!");
+        }
+        try{
+            return this._compsClassFeatureOptionsSelect[classIx][parentCompIx][subCompName][subCompIx];
+        }
+        catch(e){
+            console.error(classIx, parentCompIx, subCompName, subCompIx, this._compsClassFeatureOptionsSelect.length);
+            console.error(this._compsClassFeatureOptionsSelect);
+            throw e;
+        }
+        
     }
 
     matchFeatureOptionSelectSaveDataToComponent(componentData, optionSet){
