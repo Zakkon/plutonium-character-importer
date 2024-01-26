@@ -669,8 +669,23 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
       //Set first class as primary, if none is marked already
       if (!this._existingClassMetas.some(meta => meta.isPrimary)) { this._state.class_ixPrimaryClass = 0; }
 
-      //Ideally, we would continue from here and set states of our subcomponents
-      //However, none of them exist yet, so that's not possible at the moment
+      //Lets try to grab some state info from the savefile
+      //FeatureOptionsSelect data
+      this.loadedSaveData_FeatureOptSel = [];
+      for(let classIndex = 0; classIndex < classes.length; ++classIndex){
+        const cls = classes[classIndex];
+        //const el = [];
+        if(!cls.featureOptSel){continue;}
+        console.log("FEATOPTSEL FOR CLASS", classIndex, cls.featureOptSel);
+        this.loadedSaveData_FeatureOptSel.push(cls.featureOptSel)
+        for(let compIndex = 0; compIndex < cls.featureOptSel.length; ++ compIndex){
+            const compData = cls.featureOptSel[compIndex];
+
+            //this.loadedSaveData_FeatureOptSel[ix]
+        }
+        
+        //this.loadedSaveData_FeatureOptSel.push(el);
+      }
     }
     async pLoadLate(){
         
@@ -1299,6 +1314,20 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
     }
 
     //#region Feature Options Selects
+    /**
+     * HOW FEATURE OPTIONS SELECTS WORKS
+     * -------------------------------------
+     * Whenever our class or subclass levels up, it might need to create a FeatureOptionsSelect component
+     * These components may also be deleted when we are leveled down
+     * A FeatureOptionsSelect component has subcomponents (like expertise choice, language choice, etc) that are created during rendering
+     * Whenever a FeatureOptionsSelect is to be rendered, it deletes its old version of itself, but copies over the list of subcomponents from the old one
+     * It then creates new subcomponents, but copies over the state from the old ones
+    */
+
+    /**
+     * Safely creates and then renders FeatureOptionsSelect components
+     * @param {any} options
+     */
     async _class_pRenderFeatureOptionsSelects(options) {
         const { lockRenderFeatureOptionsSelects: lockRenderFeatureOptionsSelects } = options;
         try {
@@ -1307,15 +1336,15 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
         }
         finally { this._unlock(lockRenderFeatureOptionsSelects); }
     }
-
-    async _class_pRenderFeatureOptionsSelects_({
-        ix: ix,
-        propCntAsi: propCntAsi,
-        filteredFeatures: filteredFeatures,
-        $stgFeatureOptions: stgFeatureOptions
+    /**
+     * Creates and then renders FeatureOptionsSelect components, deleting the previous ones but copying over their states
+     */
+    async _class_pRenderFeatureOptionsSelects_({ix: ix, propCntAsi: propCntAsi, filteredFeatures: filteredFeatures, $stgFeatureOptions: stgFeatureOptions
         }) {
-        const selElement = this._compsClassFeatureOptionsSelect[ix] || [];
-        selElement.forEach(e => this._parent.featureSourceTracker_.unregister(e));
+
+        //Get the previous components we had
+        const previousComponents = this._compsClassFeatureOptionsSelect[ix] || [];
+        previousComponents.forEach(e => this._parent.featureSourceTracker_.unregister(e)); //Unregister each of them from the feature source tracker
         stgFeatureOptions.empty();
         const existingFeatureChecker = this._existingClassMetas[ix] ? new Charactermancer_Class_Util.ExistingFeatureChecker(this._actor) : null;
         const importableFeatures = Charactermancer_Util.getImportableFeatures(filteredFeatures);
@@ -1324,10 +1353,12 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
             Charactermancer_Util.doApplyFilterToFeatureEntries_bySource(features,
                 this._modalFilterClasses.pageFilter, this._modalFilterClasses.pageFilter.filterBox.getValues());
         }
+
         //by this point, 'features' should be an array of classFeatures with property 'loadeds'
         const groupedByOptionsSet = Charactermancer_Util.getFeaturesGroupedByOptionsSet(features);
         //groupedByOptionsSet should be an array of objects like this: {optionsSets: [...], topLevelFeature: {...}}
         const {lvlMin: lvlMin, lvlMax: lvlMax } = await this._class_pGetMinMaxLevel(ix);
+        //Unregister and delete previousComponents
         this._class_unregisterFeatureSourceTrackingFeatureComps(ix);
 
         let asiCount = 0;
@@ -1346,20 +1377,24 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
                     optionsSet: set,
                     level: topLevelFeature.level,
                     modalFilterSpells: this._parent.compSpell.modalFilterSpells
-                    //actor?
                 });
+                //Add a featureoptionselect component for the class 'ix'
                 this._compsClassFeatureOptionsSelect[ix].push(component);
-                component.findAndCopyStateFrom(selElement);
+                //Copy the state from a previous component that matches our optionsset
+                //Doesnt copy over states from subcomponents, instead just adds those subcomponents to the memory of component, preserving the state
+                component.findAndCopyStateFrom(previousComponents);
             }
         }
 
+        //Remember the amount of ASI's
         this._state[propCntAsi] = asiCount;
-        //Do a first render
+
+        //Do a first render on these freshly created components
         await this._class_pRenderFeatureComps(ix, {'$stgFeatureOptions': stgFeatureOptions});
     }
     
     /**
-     * Render the FeatureOptionsSelects and their subcomponents
+     * Render the FeatureOptionsSelects and create their subcomponents
      * @param {any} ix
      * @param {any} {$stgFeatureOptions:stgFeatureOptions}
      * @returns {any}
@@ -1378,41 +1413,77 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
         }
 
         //Load from save file
-        this._test_loadFeatureOptSelectFromSaveFile(ix);
+        if(SETTINGS.USE_EXISTING_WEB && this.loadedSaveData_FeatureOptSel && ix < this.loadedSaveData_FeatureOptSel.length){
+            if(this.loadedSaveData_FeatureOptSel[ix] != null){
+                //this._test_loadFeatureOptSelectFromSaveFile(ix, this.loadedSaveData_FeatureOptSel[ix]);
+            }
+            this.loadedSaveData_FeatureOptSel[ix] = null;
+        }
     }
-    _test_loadFeatureOptSelectFromSaveFile(classIndex){
-        console.error("LOAD FROM SAVE FILE - FEATURE OPTIONS SELECT, CLASS ", classIndex);
-        for(let i = 0; i < this.compsClassFeatureOptionsSelect[classIndex].length; ++i){
-            let component = this.compsClassFeatureOptionsSelect[classIndex][i];
-            let classData = this._actor.classes[classIndex];
-            console.log("CLASSDATA", classData);
-            const featOptSel = this.getFormsFromSaveData(classData, component._optionsSet);
-            if(featOptSel == null){continue;} //Apparently our save data has no info on the hash of this components optionset
-            for(let subCompData of featOptSel.forms){
-                let subComponent = component[subCompData.prop][subCompData.ix];
-                if(subComponent == null){console.error("Could not find subcomponent of type", subCompData.prop, featOptSel);}
-                let newState = subCompData.state;
-                for(let propName of Object.keys(newState)){
-                    let propValue = newState[propName];
-                    subComponent._state[propName] = propValue;
+     /**
+     * @param { {featureOptSel: {subCompDatas: { prop:string, states:{ ix:number, state:any}[] }[] }[]} []} classes
+     * @returns {any}
+     */
+    _test_loadFeatureOptSelectsFromSaveFile(classes){
+        console.log("Loading FOS for " + classes.length + " classes");
+        for(let classIndex = 0; classIndex < classes.length; ++classIndex){
+            const cls = classes[classIndex]; //Get the data for our class
+            for(let fosData of cls.featureOptSel){ //Go through the feature opt sel data
+                const state = fosData.state;
+                //Grab the subcomponent that we want to paste the state onto
+                const subComp = this._test_getFOSSubComponent(classIndex, fosData.parentCompIx, fosData.subCompProp, fosData.subCompIx);
+                //Paste the state onto the subcomponent
+                for(let propName of Object.keys(state)){
+                    let propValue = state[propName];
+                    subComp._state[propName] = propValue;
                 }
             }
         }
     }
-    getFormsFromSaveData(classData, optionSet){
-        const hashes = optionSet.map(set => {return set.hash}); //Use this to pull choices from parentData
-        for(let f of classData.featureOptSel){
-            for(let hash of hashes){
-                if(f.hashes.includes(hash)){return f;}
+    _test_loadFeatureOptSelectFromSaveFile(classIndex, saveData){
+        for(let i = 0; i < this.compsClassFeatureOptionsSelect[classIndex].length; ++i){
+            let component = this.compsClassFeatureOptionsSelect[classIndex][i];
+            let compData = saveData[i];
+            console.log("FEATURE OPT SEL DATA", classIndex, i, compData);
+            for(let subData of compData.subCompDatas){
+                const subCompProp = subData.prop; //Used to grab subcomponents
+                const subCompArray = component[subCompProp];
+                console.log("subCompArray", subData, subCompArray);
+                for(let j = 0; j < subData.states.length; ++j){
+                    const loadedState = subData.states[j].state;
+                    const subComponent = subCompArray[subData.states[j].ix];
+                    console.log("SUBCOMPONENT", subComponent);
+                    //Copy over the states onto the subcomponent
+                    for(let propName of Object.keys(loadedState)){
+                        let propValue = loadedState[propName];
+                        subComponent._state[propName] = propValue;
+                    }
+                    console.log("NEW STATE OF SUBCOMP", subComponent.__state);
+                }
             }
+        }
+    }
+    _test_getFOSSubComponent(classIx, parentCompIx, subCompName, subCompIx){
+        return this._compsClassFeatureOptionsSelect[classIx][parentCompIx][subCompName][subCompIx];
+    }
+
+    matchFeatureOptionSelectSaveDataToComponent(componentData, optionSet){
+        const hashes = optionSet.map(set => {return set.hash}); //Use this to pull choices from parentData
+        //if(!componentData.hashes){continue;} //This shouldnt happen
+        for(let hash of hashes){
+            if(componentData.hashes.includes(hash)){return f;}
         }
         return null;
     }
     //#endregion
 
-    _class_unregisterFeatureSourceTrackingFeatureComps(_0x3f9ba9) {
-      (this._compsClassFeatureOptionsSelect[_0x3f9ba9] || []).forEach(_0x2edadc => _0x2edadc.unregisterFeatureSourceTracking());
-      this._compsClassFeatureOptionsSelect[_0x3f9ba9] = [];
+    /**
+     * Unregisters FeatureOptionsSelect components specific to the class from the featureSourceTracker and wipes them from memory
+     * @param {number} ix ix of the class we are talking about
+     */
+    _class_unregisterFeatureSourceTrackingFeatureComps(ix) {
+      (this._compsClassFeatureOptionsSelect[ix] || []).forEach(comp => comp.unregisterFeatureSourceTracking());
+      this._compsClassFeatureOptionsSelect[ix] = [];
     }
     async _class_pGetMinMaxLevel(ix) {
         let lvlMin = 0;
@@ -15060,7 +15131,11 @@ class Charactermancer_Util {
         return allFeatures;
     }
 
-    /**Expects each feature to have a .loadeds property */
+    /**
+     * Expects each feature to have a .loadeds property
+     * @param {any} allFeatures
+     * @returns {{topLevelFeature:{name:string, level:number}, optionSets:any[]}[]}
+     */
     static getFeaturesGroupedByOptionsSet(allFeatures) {
         return allFeatures.map(topLevelFeature=>{
 
@@ -15783,6 +15858,22 @@ Charactermancer_ProficiencySelect.PropGroup = class {
 };
 
 class Charactermancer_OtherProficiencySelect extends Charactermancer_ProficiencySelect {
+    
+    constructor(opts) {
+        opts = opts || {};
+        super();
+
+        this._existing = opts.existing; //Just used to determine if ANYTHING else on our character already is giving us proficiency/expertise for something
+        this._available = Charactermancer_OtherProficiencySelect._getNormalizedAvailableProficiencies(opts.available);
+        this._titlePrefix = opts.titlePrefix;
+        this._featureSourceTracker = opts.featureSourceTracker || new Charactermancer_FeatureSourceTracker();
+        this._$elesPreFromGroups = opts.$elesPreFromGroups;
+        this._$elesPostFromGroups = opts.$elesPostFromGroups;
+
+        this._lastMetas = [];
+        this._hkExisting = null;
+    }
+    
     static async pGetUserInput(opts) {
         opts = opts || {};
 
@@ -16080,20 +16171,7 @@ class Charactermancer_OtherProficiencySelect extends Charactermancer_Proficiency
         };
     }
 
-    constructor(opts) {
-        opts = opts || {};
-        super();
-
-        this._existing = opts.existing;
-        this._available = Charactermancer_OtherProficiencySelect._getNormalizedAvailableProficiencies(opts.available);
-        this._titlePrefix = opts.titlePrefix;
-        this._featureSourceTracker = opts.featureSourceTracker || new Charactermancer_FeatureSourceTracker();
-        this._$elesPreFromGroups = opts.$elesPreFromGroups;
-        this._$elesPostFromGroups = opts.$elesPostFromGroups;
-
-        this._lastMetas = [];
-        this._hkExisting = null;
-    }
+    
 
     static _getNormalizedAvailableProficiencies(availProfs) {
         return availProfs.map(availProfSet=>{
@@ -16697,13 +16775,16 @@ class Charactermancer_OtherProficiencySelect extends Charactermancer_Proficiency
 
                 if (!$ptsExisting[prop]?.[v] && !parentGroup){continue;}
 
+                //Check our actor already has proficiency or expertise in this skill from anywhere else
                 let maxExisting = this._existing?.[prop]?.[v] || (parentGroup && this._existing?.[prop]?.[parentGroup]) || 0;
 
                 if (otherStates)
                     otherStates.forEach(otherState=>maxExisting = Math.max(maxExisting, otherState[v] || 0, (parentGroup ? otherState[parentGroup] : 0) || 0));
 
+                //1 is proficiency, 2 is expertise
                 const helpText = maxExisting === 0 ? "" : `${UtilActors.PROF_TO_TEXT[maxExisting]} from Another Source`;
 
+                //Show a warning text
                 $ptsExisting[prop][v].title(helpText).toggleClass("ml-1", !!maxExisting).html(maxExisting ? `(<i class="fas fa-fw ${UtilActors.PROF_TO_ICON_CLASS[maxExisting]}"></i>)` : "");
             }
         }
@@ -18260,9 +18341,9 @@ class Charactermancer_FeatureOptionsSelect extends BaseComponent {
     }
 
     /**
-     * @returns {BaseComponent[]}
+     * @returns {string[]}
      */
-    get allSubComponents(){
+    get allSubComponentNames(){
         return [
             "_subCompsSkillToolLanguageProficiencies",
             "_subCompsSkillProficiencies",
@@ -18280,6 +18361,18 @@ class Charactermancer_FeatureOptionsSelect extends BaseComponent {
             "_subCompsSenses",
             "_subCompsAdditionalSpells",
         ];
+    }
+     /**
+     * @returns {BaseComponent[]}
+     */
+    allSubComponents(){
+        const names = this.allSubComponentNames;
+        let arr = [];
+        for(let n of names){
+            let a = this[n];
+            if(a && a.length > 0){arr = arr.concat(a);}
+        }
+        return arr;
     }
 
     render($wrp) {
@@ -18656,22 +18749,8 @@ class Charactermancer_FeatureOptionsSelect extends BaseComponent {
 
     /**
      * Try to render a subcomponent. Will self-cancel if isAvailable is false
-     * @param {number} ix
-     * @param {any} $stgSubChoiceData
-     * @param {string} propSubComps
-     * @param {string} propPrevSubComps
-     * @param {boolean} isAvailable
-     * @param {boolean} isForceDisplay
-     * @param {any} selectedLoadeds
-     * @param {any} prop
-     * @param {any} title
-     * @param {any} CompClass
-     * @param {any} propPathActorExistingProficiencies
-     * @param {any} ptrIsFirstSection
-     * @param {any} fnSetComp
-     * @param {any} fnGetMappedProficiencies
-     * @param {any} fnGetExistingFvtt
-     * @returns {any}
+     * @param {{ix:number, isAvailable:boolean, isForceDisplay:boolean, propSubComps:string, propPrevSubComps:string, prop:string, propPathActorExistingProficiencies:string[],
+     * ptrIsFirstSection: {_:boolean,}}}
      */
     _render_pHkIxsChosen_comp({ix, $stgSubChoiceData, propSubComps, propPrevSubComps, isAvailable, isForceDisplay, selectedLoadeds, prop, title, CompClass, propPathActorExistingProficiencies, ptrIsFirstSection, fnSetComp, fnGetMappedProficiencies, fnGetExistingFvtt, }, ) {
         this[propSubComps][ix] = null;
@@ -18711,8 +18790,12 @@ class Charactermancer_FeatureOptionsSelect extends BaseComponent {
         ptrIsFirstSection._ = false;
     }
 
+    /**
+     * @param {{ix:number, prop:string, propPathActorExistingProficiencies:string[]}}
+     */
     _render_pHkIxsChosen_setCompOtherProficiencies({ix, propSubComps, prop, CompClass, propPathActorExistingProficiencies, entity, fnGetMappedProficiencies, fnGetExistingFvtt, }, ) {
         const availableRaw = entity[prop] || entity.entryData[prop];
+        //If existingFvtt is null, we can try to pull the info we need from _actor by using the fnGetExistingFvtt function that was passed to us
         const existingFvtt = fnGetExistingFvtt ? fnGetExistingFvtt() : {
             [prop]: MiscUtil.get(this._actor, ...propPathActorExistingProficiencies)
         };
@@ -19396,28 +19479,31 @@ class Charactermancer_FeatureOptionsSelect extends BaseComponent {
         }));
     }
 
+    /**
+     * Copies over state from any component within 'comps' that has a matching optionset to ours
+     * @param {any[]} comps
+     */
     findAndCopyStateFrom(comps) {
-        if (!comps?.length)
-            return;
+        if (!comps?.length){ return;}
 
-        const comp = comps.find(it=>CollectionUtil.deepEquals(it.optionSet_, this.optionSet_));
-        if (comp) {
-            this._proxyAssignSimple("state", MiscUtil.copy(comp.__state));
-            this._prevSubCompsSkillToolLanguageProficiencies = comp._subCompsSkillToolLanguageProficiencies;
-            this._prevSubCompsSkillProficiencies = comp._subCompsSkillProficiencies;
-            this._prevSubCompsLanguageProficiencies = comp._subCompsLanguageProficiencies;
-            this._prevSubCompsToolProficiencies = comp._subCompsToolProficiencies;
-            this._prevSubCompsWeaponProficiencies = comp._subCompsWeaponProficiencies;
-            this._prevSubCompsArmorProficiencies = comp._subCompsArmorProficiencies;
-            this._prevSubCompsSavingThrowProficiencies = comp._subCompsSavingThrowProficiencies;
-            this._prevSubCompsDamageImmunities = comp._prevSubCompsDamageImmunities;
-            this._prevSubCompsDamageResistances = comp._prevSubCompsDamageResistances;
-            this._prevSubCompsDamageVulnerabilities = comp._prevSubCompsDamageVulnerabilities;
-            this._prevSubCompsConditionImmunities = comp._prevSubCompsConditionImmunities;
-            this._prevSubCompsExpertise = comp._prevSubCompsExpertise;
-            this._prevSubCompsResources = comp._prevSubCompsResources;
-            this._prevSubCompsSenses = comp._subCompsSenses;
-            this._prevSubCompsAdditionalSpells = comp._subCompsAdditionalSpells;
+        const match = comps.find(it=>CollectionUtil.deepEquals(it.optionSet_, this.optionSet_));
+        if (match) {
+            this._proxyAssignSimple("state", MiscUtil.copy(match.__state));
+            this._prevSubCompsSkillToolLanguageProficiencies = match._subCompsSkillToolLanguageProficiencies;
+            this._prevSubCompsSkillProficiencies = match._subCompsSkillProficiencies;
+            this._prevSubCompsLanguageProficiencies = match._subCompsLanguageProficiencies;
+            this._prevSubCompsToolProficiencies = match._subCompsToolProficiencies;
+            this._prevSubCompsWeaponProficiencies = match._subCompsWeaponProficiencies;
+            this._prevSubCompsArmorProficiencies = match._subCompsArmorProficiencies;
+            this._prevSubCompsSavingThrowProficiencies = match._subCompsSavingThrowProficiencies;
+            this._prevSubCompsDamageImmunities = match._prevSubCompsDamageImmunities;
+            this._prevSubCompsDamageResistances = match._prevSubCompsDamageResistances;
+            this._prevSubCompsDamageVulnerabilities = match._prevSubCompsDamageVulnerabilities;
+            this._prevSubCompsConditionImmunities = match._prevSubCompsConditionImmunities;
+            this._prevSubCompsExpertise = match._prevSubCompsExpertise;
+            this._prevSubCompsResources = match._prevSubCompsResources;
+            this._prevSubCompsSenses = match._subCompsSenses;
+            this._prevSubCompsAdditionalSpells = match._subCompsAdditionalSpells;
         }
     }
 

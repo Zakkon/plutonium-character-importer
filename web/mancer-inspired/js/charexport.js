@@ -197,41 +197,30 @@ class CharacterExportFvtt{
     static async getClassFeatureChoices(compClass, ix){
         if(compClass.compsClassFeatureOptionsSelect.length<=ix){return null;}
         const compArray = compClass.compsClassFeatureOptionsSelect[ix];
-        let arr = [];
-        for(let comp of compArray){
+        let compDatas = [];
+        for(let k = 0; k < compArray.length; ++k){
+            let comp = compArray[k];
             if(comp==null){return null;}
 
             let hashes = comp._optionsSet.map(set => {return set.hash});
-            console.log("FEATOPTSEL", comp);
-            let simpleForm = {};
-            simpleForm.forms = [];
-            simpleForm.hashes = hashes;
-            const subCompsNames = comp.allSubComponents;
+            let subCompDatas = [];
+            const subCompsNames = comp.allSubComponentNames;
             for(let j = 0; j < subCompsNames.length; ++j){
                 let prop = subCompsNames[j];
                 let subCompArray = comp[prop];
+                if(!subCompArray){continue;}
+                let newStatesArray  = [];
                 for(let i = 0; i < subCompArray.length; ++i){
-                    if(subCompArray[i] == null){continue;}
                     let subComp = subCompArray[i];
-                    let subForm = {prop: prop, ix: i, form: subComp._getFormData(), state:subComp.__state};
-                    simpleForm.forms.push(subForm);
+                    //apparently the array can have null entries
+                    if(!subComp){continue;}
+                    compDatas.push({classIx: ix, parentCompIx: k, subCompProp:prop, subCompIx: i, state: subComp.__state});
                 }
             }
-            /* if(!!comp._subCompsLanguageProficiencies && comp._subCompsLanguageProficiencies.length > 0){
-                simpleForm.subLang = [];
-                for(let subcomp of comp._subCompsLanguageProficiencies){
-                    let subForm = subcomp._getFormData();
-                    simpleForm.subLang.push(subForm);
-                }
-            } */
-            arr.push(simpleForm);
             continue; //Debug
-
-            const form = await comp.pGetFormData();
-            arr.push(form);
         }
-        console.log(arr);
-        return arr;
+        console.log(compDatas);
+        return compDatas;
     }
     /**
      * @param {ActorCharactermancerEquipment} compEquipment
