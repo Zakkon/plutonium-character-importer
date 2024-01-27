@@ -75,6 +75,7 @@ class CharacterExportFvtt{
 
         //ability scores (our choices, maybe not the total)
         const abilities = await CharacterExportFvtt.getAbilityScoreData(builder.compAbility);
+        _char.abilities = abilities;
         //equipment (including gold, and bought items)
         const equipment = await CharacterExportFvtt.getEquipmentData(builder.compEquipment);
         console.log("Equipment: ", equipment);
@@ -230,14 +231,20 @@ class CharacterExportFvtt{
         const statgen = compAbility._compStatgen;
         const s = statgen.__state;
         const chosenModeIx = statgen._meta.ixActiveTab___default;
-        const chosenMode = (["none", "rolled", "std_array", "pointbuy"])[chosenModeIx];
+        //const chosenMode = (["none", "rolled", "std_array", "pointbuy", "manual"])[chosenModeIx];
         let out = {};
-        if(chosenMode == 1){
-            /* out = {pb_str:s["pb_str"], pb_dex:s["pb_dex"], pb_con:s["pb_con"],
-            pb_wis:s["pb_wis"], pb_int:s["pb_int"], pb_cha:s["pb_cha"],
-            pb_budget:s["pb_budget"], pb_isCustom:s["pb_isCustom"], pb_points:s["pb_points"]}; */
+        if(chosenModeIx == 1){ //ROLL
+            out = {rolled_str_abilSelectedRollIx:s["rolled_str_abilSelectedRollIx"],
+            rolled_dex_abilSelectedRollIx:s["rolled_dex_abilSelectedRollIx"],
+            rolled_con_abilSelectedRollIx:s["rolled_con_abilSelectedRollIx"],
+            rolled_wis_abilSelectedRollIx:s["rolled_wis_abilSelectedRollIx"],
+            rolled_int_abilSelectedRollIx:s["rolled_int_abilSelectedRollIx"],
+            rolled_cha_abilSelectedRollIx:s["rolled_cha_abilSelectedRollIx"],
+            rolled_formula:s["rolled_formula"],
+            pb_isCustom:s["pb_isCustom"],
+            rolled_rolls:s["rolled_rolls"]};
         }
-        else if(chosenMode == 2){
+        else if(chosenModeIx == 2){ //STANDARD ARRAY
             out = {array_str_abilSelectedScoreIx:s["array_str_abilSelectedScoreIx"],
             array_dex_abilSelectedScoreIx:s["array_dex_abilSelectedScoreIx"],
             array_con_abilSelectedScoreIx:s["array_con_abilSelectedScoreIx"],
@@ -245,12 +252,20 @@ class CharacterExportFvtt{
             array_wis_abilSelectedScoreIx:s["array_wis_abilSelectedScoreIx"],
             array_cha_abilSelectedScoreIx:s["array_cha_abilSelectedScoreIx"]};
         }
-        else if(chosenMode == 3){
+        else if(chosenModeIx == 3){ //POINT BUY
             out = {pb_str:s["pb_str"], pb_dex:s["pb_dex"], pb_con:s["pb_con"],
             pb_wis:s["pb_wis"], pb_int:s["pb_int"], pb_cha:s["pb_cha"],
             pb_budget:s["pb_budget"], pb_isCustom:s["pb_isCustom"], pb_points:s["pb_points"]};
         }
-        out["mode"] = chosenModeIx;
+        else if(chosenModeIx == 4){ //MANUAL
+            out = {manual_str_abilValue:s["manual_str_abilValue"],
+            manual_dex_abilValue:s["manual_dex_abilValue"],
+            manual_con_abilValue:s["manual_con_abilValue"],
+            manual_wis_abilValue:s["manual_wis_abilValue"],
+            manual_int_abilValue:s["manual_int_abilValue"],
+            manual_cha_abilValue:s["manual_cha_abilValue"]};
+        }
+        return {state:out, mode:chosenModeIx};
     }
     /**
      * @param {ActorCharactermancerEquipment} compEquipment

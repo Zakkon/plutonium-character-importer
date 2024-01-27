@@ -361,6 +361,13 @@ class CharacterBuilder {
         this.compClass.render();
         this.compRace.render();
         this.compAbility.render();
+
+        //This works
+        console.log("TEST LOAD ABILITIES"); 
+        this.compAbility._compStatgen._meta.ixActiveTab___default = 2;
+        console.log(this.compAbility._compStatgen._selModeElement[0]);
+        this.compAbility._compStatgen._selModeElement[0].value = 2;
+
         this.compBackground.render();
         this.compEquipment.pRenderStarting();
         this.compEquipment.pRenderShop();

@@ -3656,6 +3656,7 @@ class ComponentUiUtil {
         ;
 
         const hook = ()=>{
+            if(prop == "ixActiveTab___default"){console.error("SEL ENUM HOOK", prop);}
             if (isSetIndexes) {
                 const ix = component[_propProxy][prop] == null ? -1 : component[_propProxy][prop];
                 $sel.val(`${ix}`);

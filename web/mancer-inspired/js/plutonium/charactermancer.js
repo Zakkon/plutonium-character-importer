@@ -3821,6 +3821,7 @@ class StatGenUi extends BaseComponent {
         if (this._isFvttMode) {
             if (!this._isLevelUp) {
                 const {propActive: propActiveTab, propProxy: propProxyTabs} = this._getTabProps();
+                console.log("BEFORE", this.__hooks.meta.ixActiveTab___default.length);
                 const $selMode = ComponentUiUtil.$getSelEnum(this, propActiveTab, {
                     values: iptTabMetas.map((_,ix)=>ix),
                     fnDisplay: ix=>iptTabMetas[ix].name,
@@ -3831,6 +3832,7 @@ class StatGenUi extends BaseComponent {
 					${$selMode}
 				</div>
 				<hr class="hr-2">`.appendTo($parent);
+                this._selModeElement = $selMode; //just caching this here so we can access it and change it from elsewhere if we want to
             }
 
             tabMetas.forEach(it=>it.$wrpTab.appendTo($parent));
