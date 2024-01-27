@@ -1431,6 +1431,7 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
             console.error("FeatureOptionsSelect components have not been created for class " + classIx + " yet!");
         }
         try{
+
             return this._compsClassFeatureOptionsSelect[classIx][parentCompIx][subCompName][subCompIx];
         }
         catch(e){
@@ -3649,6 +3650,8 @@ class ActorCharactermancerAbility extends ActorCharactermancerBaseComponent {
 
         //Render the ui for changing ability scores
         this._compStatgen.render(parentDiv);
+
+        //Create a hook for recounting ASI
         const e_recountASI = () => {
             let asiCount = 0;
             //Go through each class open on the class component
@@ -3663,7 +3666,6 @@ class ActorCharactermancerAbility extends ActorCharactermancerBaseComponent {
             }
             this._compStatgen.common_cntAsi = asiCount;
         };
-
         this._parent.compClass.addHookBase("class_pulseChange", e_recountASI);
         this._parent.compClass.addHookBase('class_totalLevels', e_recountASI);
         e_recountASI();
@@ -4129,18 +4131,15 @@ class StatGenUi extends BaseComponent {
 
         const $btnRoll = $(`<button class="btn btn-primary bold">Roll</button>`).click(()=>{
             this._state.rolled_rolls = this._roll_getRolledStats();
-        }
-        );
+        });
 
         const $btnRandom = $(`<button class="btn btn-xs btn-default mt-2">Randomly Assign</button>`).hideVe().click(()=>{
             const abs = [...Parser.ABIL_ABVS].shuffle();
             abs.forEach((ab,i)=>{
                 const {propAbilSelectedRollIx} = this.constructor._rolled_getProps(ab);
                 this._state[propAbilSelectedRollIx] = i;
-            }
-            );
-        }
-        );
+            });
+        });
 
         const $wrpRolled = $(`<div class="ve-flex-v-center mr-auto statgen-rolled__wrp-results py-1"></div>`);
         const $wrpRolledOuter = $$`<div class="ve-flex-v-center"><div class="mr-2">=</div>${$wrpRolled}</div>`;
@@ -4148,14 +4147,18 @@ class StatGenUi extends BaseComponent {
         const hkRolled = ()=>{
             $wrpRolledOuter.toggleVe(this._state.rolled_rolls.length);
             $btnRandom.toggleVe(this._state.rolled_rolls.length);
-
-            $wrpRolled.html(this._state.rolled_rolls.map((it,i)=>{
+            let html = this._state.rolled_rolls.map((it,i)=>{
                 const cntPrevRolls = this._state.rolled_rolls.slice(0, i).filter(r=>r.total === it.total).length;
-                return `<div class="px-3 py-1 help-subtle ve-flex-vh-center" title="${it.text}"><div class="ve-muted">[</div><div class="ve-flex-vh-center statgen-rolled__disp-result">${it.total}${cntPrevRolls ? Parser.numberToSubscript(cntPrevRolls) : ""}</div><div class="ve-muted">]</div></div>`;
-            }
-            ));
-        }
-        ;
+                console.log("TEXT", it.text);
+                return $$`<div class="px-3 py-1 help-subtle ve-flex-vh-center" title="${it.text}">
+                    <div class="ve-muted">[</div>
+                    <div class="ve-flex-vh-center statgen-rolled__disp-result">${it.total}${cntPrevRolls ? Parser.numberToSubscript(cntPrevRolls) : ""}</div>
+                    <div class="ve-muted">]</div>
+                </div>`;
+            });
+            $wrpRolled.html(html);
+
+        };
         this._addHookBase("rolled_rolls", hkRolled);
         hkRolled();
 
@@ -4409,8 +4412,7 @@ class StatGenUi extends BaseComponent {
 
     _roll_getRolledStats() {
         const wrpTree = Renderer.dice.lang.getTree3(this._state.rolled_formula);
-        if (!wrpTree)
-            return this._$rollIptFormula.addClass("form-control--error");
+        if (!wrpTree){return this._$rollIptFormula.addClass("form-control--error");}
 
         const rolls = [];
         for (let i = 0; i < this._state.rolled_rollCount; i++) {
@@ -4419,11 +4421,7 @@ class StatGenUi extends BaseComponent {
             rolls.push(meta);
         }
         rolls.sort((a,b)=>SortUtil.ascSort(b.total, a.total));
-
-        return rolls.map(r=>({
-            total: r.total,
-            text: (r.text || []).join("")
-        }));
+        return rolls.map(r=>({ total: r.total, text: (r.text || []).join("") }));
     }
 
     _doReset() {
@@ -6461,23 +6459,27 @@ StatGenUi.RenderableCollectionPbRules = class extends RenderableCollectionGeneri
 
 class StatGenUiCharactermancer extends StatGenUi {
     _roll_getRolledStats() {
-      try {
-        const roll = new Roll(this._state.rolled_formula);
-        roll.evaluate({ 'async': false });
-      }
-      catch (err) { return this._$rollIptFormula.addClass("form-control--error"); }
-      const result = [];
-      for (let i = 0; i < this._state.rolled_rollCount; i++) {
-        const roll = new Roll(this._state.rolled_formula);
-        roll.evaluate({ 'async': false });
-        result.push(roll);
-        roll.toMessage({ 'sound': null }).then(null);
-      }
-      result.sort((r1, r2) => SortUtil.ascSort(r2.total, r1.total));
-      return result.map(r => ({
-        'total': r.total,
-        'text': (r?.terms || []).map(term => (term?.results || []).map(result => '[' + (result.result || '‒') + ']').join('+'))
-      }));
+        try {
+            //Make a test roll
+            const roll = new Roll(this._state.rolled_formula);
+            roll.evaluate({ async: false });
+        }
+        //Catch the error if it shows up, and return an error ui
+        catch (err) { console.error(err); return this._$rollIptFormula.addClass("form-control--error"); }
+
+        const result = [];
+        for (let i = 0; i < this._state.rolled_rollCount; i++) {
+            const roll = new Roll(this._state.rolled_formula);
+            roll.evaluate({ async: false });
+            result.push(roll);
+            if(SETTINGS.DICE_TOMESSAGE){roll.toMessage({ sound: null }).then(null);}
+        }
+        result.sort((r1, r2) => SortUtil.ascSort(r2.total, r1.total));
+        let outputs = result.map(r => ({
+            total: r.total,
+            text: (r?.terms || []).map(term => (term?.results || []).map(result => '[' + (result.result || '‒') + ']').join('+'))
+        }));
+        return outputs;
     }
 }
 

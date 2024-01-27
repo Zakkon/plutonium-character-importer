@@ -234,6 +234,7 @@ class SETTINGS{
     static USE_FVTT = false;
     /**Should changing class/race that transfer the already set choices (for like proficiencies?), so if both the new and the old race could pick Perception as a proficiency, and the old one did, make sure the new one also has that choice set */
     static TRANSFER_CHOICES = false;
+    static DICE_TOMESSAGE = false;
 }
 class CharacterBuilder {
   static _DATA_PROPS_EXPECTED = ['class', "subclass", 'classFeature', "subclassFeature",

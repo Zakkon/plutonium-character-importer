@@ -74,8 +74,7 @@ class CharacterExportFvtt{
         _char.background = background;
 
         //ability scores (our choices, maybe not the total)
-
-
+        const abilities = await CharacterExportFvtt.getAbilityScoreData(builder.compAbility);
         //equipment (including gold, and bought items)
         const equipment = await CharacterExportFvtt.getEquipmentData(builder.compEquipment);
         console.log("Equipment: ", equipment);
@@ -209,11 +208,11 @@ class CharacterExportFvtt{
                 let prop = subCompsNames[j];
                 let subCompArray = comp[prop];
                 if(!subCompArray){continue;}
-                let newStatesArray  = [];
                 for(let i = 0; i < subCompArray.length; ++i){
                     let subComp = subCompArray[i];
                     //apparently the array can have null entries
                     if(!subComp){continue;}
+                    console.log("SUBCOMP", subComp, comp);
                     compDatas.push({classIx: ix, parentCompIx: k, subCompProp:prop, subCompIx: i, state: subComp.__state});
                 }
             }
@@ -221,6 +220,37 @@ class CharacterExportFvtt{
         }
         console.log(compDatas);
         return compDatas;
+    }
+    /**
+     * @param {ActorCharactermancerAbility} compAbility
+     * @returns {any}
+     */
+    static async getAbilityScoreData(compAbility){
+        console.log("COMPABIL", compAbility);
+        const statgen = compAbility._compStatgen;
+        const s = statgen.__state;
+        const chosenModeIx = statgen._meta.ixActiveTab___default;
+        const chosenMode = (["none", "rolled", "std_array", "pointbuy"])[chosenModeIx];
+        let out = {};
+        if(chosenMode == 1){
+            /* out = {pb_str:s["pb_str"], pb_dex:s["pb_dex"], pb_con:s["pb_con"],
+            pb_wis:s["pb_wis"], pb_int:s["pb_int"], pb_cha:s["pb_cha"],
+            pb_budget:s["pb_budget"], pb_isCustom:s["pb_isCustom"], pb_points:s["pb_points"]}; */
+        }
+        else if(chosenMode == 2){
+            out = {array_str_abilSelectedScoreIx:s["array_str_abilSelectedScoreIx"],
+            array_dex_abilSelectedScoreIx:s["array_dex_abilSelectedScoreIx"],
+            array_con_abilSelectedScoreIx:s["array_con_abilSelectedScoreIx"],
+            array_int_abilSelectedScoreIx:s["array_int_abilSelectedScoreIx"],
+            array_wis_abilSelectedScoreIx:s["array_wis_abilSelectedScoreIx"],
+            array_cha_abilSelectedScoreIx:s["array_cha_abilSelectedScoreIx"]};
+        }
+        else if(chosenMode == 3){
+            out = {pb_str:s["pb_str"], pb_dex:s["pb_dex"], pb_con:s["pb_con"],
+            pb_wis:s["pb_wis"], pb_int:s["pb_int"], pb_cha:s["pb_cha"],
+            pb_budget:s["pb_budget"], pb_isCustom:s["pb_isCustom"], pb_points:s["pb_points"]};
+        }
+        out["mode"] = chosenModeIx;
     }
     /**
      * @param {ActorCharactermancerEquipment} compEquipment
