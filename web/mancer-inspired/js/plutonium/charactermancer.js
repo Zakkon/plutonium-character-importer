@@ -3696,10 +3696,10 @@ class ActorCharactermancerAbility extends ActorCharactermancerBaseComponent {
     addHookAbilityScores(...hook) {
       return this._compStatgen.addHookAbilityScores(...hook);
     }
-    getMode(...ix) { //i think this is ix anyway. or is this for merging?
+    getMode(...ix) {
       return this._compStatgen.getMode(...ix);
     }
-    getTotals(...ix) { //i think this is ix anyway. or is this for merging?
+    getTotals(...ix) {
       return this._compStatgen.getTotals(...ix);
     }
     
@@ -4170,7 +4170,6 @@ class StatGenUi extends BaseComponent {
             $btnRandom.toggleVe(this._state.rolled_rolls.length);
             let html = this._state.rolled_rolls.map((it,i)=>{
                 const cntPrevRolls = this._state.rolled_rolls.slice(0, i).filter(r=>r.total === it.total).length;
-                console.log("TEXT", it.text);
                 return $$`<div class="px-3 py-1 help-subtle ve-flex-vh-center" title="${it.text}">
                     <div class="ve-muted">[</div>
                     <div class="ve-flex-vh-center statgen-rolled__disp-result">${it.total}${cntPrevRolls ? Parser.numberToSubscript(cntPrevRolls) : ""}</div>
@@ -7123,11 +7122,11 @@ class ActorCharactermancerBackground extends ActorCharactermancerBaseComponent {
         if (!parentDiv) { return; }
         const { $sel: ele_sel, $btnFilter: btnFilter }
         = Charactermancer_Util.getFilterSearchMeta({
-          'comp': this,
-          'prop': 'background_ixBackground',
-          'data': this._data.background,
-          'modalFilter': this._modalFilterBackgrounds,
-          'title': "Background"
+          comp: this,
+          prop: 'background_ixBackground',
+          data: this._data.background,
+          modalFilter: this._modalFilterBackgrounds,
+          title: "Background"
         });
         const wrpCustomize0 = this._background_renderBackground_$getWrpCbCustomize(ComponentUiUtil.$getCbBool(this, 'background_isCustomizeSkills'));
         const wrpCustomize1 = this._background_renderBackground_$getWrpCbCustomize(ComponentUiUtil.$getCbBool(this, "background_isCustomizeLanguagesTools"));
@@ -7283,9 +7282,9 @@ class ActorCharactermancerBackground extends ActorCharactermancerBaseComponent {
         const renderCustomizeSkills = () => {
             const background = this._data.background[this._state.background_ixBackground];
             this._background_renderBackground_stgSkills({
-                '$stgSkills': holderSkills,
-                'background': background,
-                '$wrpCbIsCustomizeSkills': wrpCustomize0
+                $stgSkills: holderSkills,
+                background: background,
+                $wrpCbIsCustomizeSkills: wrpCustomize0
             });
         };
 
@@ -7342,46 +7341,90 @@ class ActorCharactermancerBackground extends ActorCharactermancerBaseComponent {
         </div>`.appendTo(parentDiv);
     }
 
+    /**
+     * Sets the state of the component and subcomponents based on a save file. This should be called just after first render.
+     * @param {{background:{name:string, source:string, isFullyCustom:boolean, stateSkillProficiencies:any, stateLanguageToolProficiencies:any,
+     * stateCharacteristics:any, isCustomizeSkills:boolean, isCustomizeLanguagesTools:boolean}} actor
+     */
+    setStateFromSaveFile(actor){
+        const data = actor.background;
+        if(!data || !data.name || !data.source){return;}
+
+        const printToState = (input, state) => {
+            for(let prop of Object.keys(input)){
+                let val = input[prop];
+                state[prop] = val;
+            }
+        }
+
+        //Go through our data and try to match to the background
+        console.log("DATA", this._data);
+        const matches = this._data.background.filter((b, ix) => {if(b.name == data.name && b.source == data.source){
+            return {ix:ix, match:b};
+        }else{return null;}});
+        console.log("MATCHES", matches);
+        if(matches.length > 1){}
+        else if(matches.length < 1){
+
+        }
+        else{
+            //Get the index of the match
+            const ixOf = this._data.background.indexOf(matches[0]);
+            //Set it to state
+            this._state.background_ixBackground = ixOf;
+            //Then set other values
+            if(data.isCustomizeSkills){this._state.background_isCustomizeSkills = true;}
+            if(data.isCustomizeLanguagesTools){this._state.background_isCustomizeLanguagesTools = true;}
+            if(data.stateSkillProficiencies){
+                printToState(data.stateSkillProficiencies, this.compBackgroundSkillProficiencies._state);
+            }
+            if(data.stateLanguageToolProficiencies){
+                printToState(data.stateLanguageToolProficiencies, this.compBackgroundLanguageToolProficiencies._state);
+            }
+            printToState(data.stateCharacteristics, this.compBackgroundCharacteristics._state);
+        }
+    }
+
     get modalFilterBackgrounds() {
       return this._modalFilterBackgrounds;
     }
     get compBackgroundFeatures() {
       return this._metaCompBackgroundFeatures?.["comp"];
     }
-    get ["compBackgroundSkillProficiencies"]() {
+    get compBackgroundSkillProficiencies() {
       return this._compBackgroundSkillProficiencies;
     }
-    get ["compBackgroundLanguageProficiencies"]() {
+    get compBackgroundLanguageProficiencies() {
       return this._compBackgroundLanguageProficiencies;
     }
-    get ['compBackgroundToolProficiencies']() {
+    get compBackgroundToolProficiencies() {
       return this._compBackgroundToolProficiencies;
     }
-    get ["compBackgroundLanguageToolProficiencies"]() {
+    get compBackgroundLanguageToolProficiencies() {
       return this._compBackgroundLanguageToolProficiencies;
     }
     get compBackgroundCharacteristics() {
       return this._compBackgroundCharacteristics;
     }
-    get ["compBackgroundExpertise"]() {
+    get compBackgroundExpertise() {
       return this._compBackgroundExpertise;
     }
-    get ["compBackgroundWeaponProficiencies"]() {
+    get compBackgroundWeaponProficiencies() {
       return this._compBackgroundWeaponProficiencies;
     }
-    get ["compBackgroundArmorProficiencies"]() {
+    get compBackgroundArmorProficiencies() {
       return this._compBackgroundArmorProficiencies;
     }
-    get ["compBackgroundDamageImmunity"]() {
+    get compBackgroundDamageImmunity() {
       return this._compBackgroundDamageImmunity;
     }
-    get ["compBackgroundDamageResistance"]() {
+    get compBackgroundDamageResistance() {
       return this._compBackgroundDamageResistance;
     }
-    get ["compBackgroundDamageVulnerability"]() {
+    get compBackgroundDamageVulnerability() {
       return this._compBackgroundDamageVulnerability;
     }
-    get ["compBackgroundConditionImmunity"]() {
+    get compBackgroundConditionImmunity() {
       return this._compBackgroundConditionImmunity;
     }
     get isCustomizeLanguagesTools() {
@@ -7391,28 +7434,22 @@ class ActorCharactermancerBackground extends ActorCharactermancerBaseComponent {
       await this._modalFilterBackgrounds.pPreloadHidden();
     }
     getFeatureCustomizedBackground_({
-      ix: _0x40e6e0,
+      ix: ix,
       isAllowStub = true
     } = {}) {
-      if (_0x40e6e0 != null) {
-        if (~_0x40e6e0) {
-          return this._data.background[_0x40e6e0];
-        }
-        if (!isAllowStub) {
-          return null;
-        }
+      if (ix != null) {
+        if (~ix) { return this._data.background[ix]; }
+        if (!isAllowStub) { return null; }
         return DataConverterBackground.getBackgroundStub();
       }
-      const _0x5d2446 = this._data.background[this._state.background_ixBackground];
-      if (!_0x5d2446) {
+      const bk = this._data.background[this._state.background_ixBackground];
+      if (!bk) {
         return isAllowStub ? DataConverterBackground.getBackgroundStub() : null;
       }
-      const _0x40097d = MiscUtil.copy(_0x5d2446);
-      if (!this._metaCompBackgroundFeatures?.['comp']) {
-        return _0x40097d;
-      }
-      const _0x2ee9e8 = this._metaCompBackgroundFeatures.comp.getFormData();
-      return _0x2ee9e8.data?.["background"];
+      const bkCopy = MiscUtil.copy(bk);
+      if (!this._metaCompBackgroundFeatures?.comp) { return bkCopy; }
+      const form = this._metaCompBackgroundFeatures.comp.getFormData();
+      return form.data?.background;
     }
     getBackground_() {
       return this._data.background[this._state.background_ixBackground];
@@ -7554,17 +7591,19 @@ class ActorCharactermancerBackground extends ActorCharactermancerBaseComponent {
       else { parentDiv.hideVe(); this._compBackgroundLanguageToolProficiencies = null; }
     }
     _background_hk_showCustomizingRules({
-      $stgRulesCustomize: _0x77fbe7
+      $stgRulesCustomize: rulesCustomizeElement
     }) {
-      const _0x283f3d = this._data.background[this._state.background_ixBackground];
-      _0x77fbe7.empty();
-      if (_0x283f3d && (this._state.background_isCustomizeSkills || this._state.background_isCustomizeLanguagesTools || this._metaCompBackgroundFeatures?.["comp"] && this._metaCompBackgroundFeatures.comp?.["mode"] !== Charactermancer_Background_Features._MODE_DEFAULT)) {
-        $$(_0x77fbe7.showVe())`
-                  <div class="w-100">${Renderer.get().setFirstSection(true).render(ActorCharactermancerBackground._ENTRY_CUSTOMIZING, -0x1)}</div>
+      const bk = this._data.background[this._state.background_ixBackground];
+      rulesCustomizeElement.empty();
+      if (bk && (this._state.background_isCustomizeSkills ||
+        this._state.background_isCustomizeLanguagesTools ||
+        this._metaCompBackgroundFeatures?.["comp"] &&
+        this._metaCompBackgroundFeatures.comp?.["mode"] !== Charactermancer_Background_Features._MODE_DEFAULT)) {
+        $$(rulesCustomizeElement.showVe())`
+                  <div class="w-100">${Renderer.get().setFirstSection(true).render(ActorCharactermancerBackground._ENTRY_CUSTOMIZING, -1)}</div>
                   <hr class="hr-3 hr--heavy">`;
-      } else {
-        _0x77fbe7.hideVe();
       }
+      else { rulesCustomizeElement.hideVe(); }
     }
     _background_renderBackground_stgCharacteristics({
       $stgCharacteristics: parentDiv,
@@ -7747,7 +7786,6 @@ class Charactermancer_Background_Characteristics extends BaseComponent {
 				</div>`;
 
                 const tbl = this._tables[propMeta.prop];
-                console.log("TABLE", tbl);
 
                 const $rendered = Vetools.withCustomDiceRenderingPatch(()=>{ //fn
                     const $rendered = $(`${Renderer.get().render(tbl)}`);

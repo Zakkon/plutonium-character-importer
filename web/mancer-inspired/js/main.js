@@ -364,6 +364,8 @@ class CharacterBuilder {
         if(SETTINGS.USE_EXISTING_WEB){this.compAbility.setStateFromSaveFile(this.actor);}
 
         this.compBackground.render();
+        if(SETTINGS.USE_EXISTING_WEB){this.compBackground.setStateFromSaveFile(this.actor);}
+
         this.compEquipment.pRenderStarting();
         this.compEquipment.pRenderShop();
         this.compSpell.pRender();

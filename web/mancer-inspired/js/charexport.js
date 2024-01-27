@@ -316,8 +316,32 @@ class CharacterExportFvtt{
         }
         return spellsBySource;
     }
+    /**
+     * Description
+     * @param {ActorCharactermancerBackground} compBackground
+     * @returns {any}
+     */
     static getBackground(compBackground){
-        return compBackground.getBackground_(); 
+        let bk = compBackground.getBackground_();
+        const bkSource = bk.source;
+        const bkName = bk.name;
+        const isCompletelyCustom = bk.name == "Custom Background";
+
+        let out = {name:bkName, source:bkSource};
+        //Skill proficiencies
+        out.isCustomizeSkills = !!compBackground.__state.background_isCustomizeSkills;
+        out.stateSkillProficiencies = compBackground.compBackgroundSkillProficiencies?.__state;
+        //Languages & tools
+        out.isCustomizeLanguagesTools = !!compBackground.__state.background_isCustomizeLanguagesTools;
+        out.stateLanguageToolProficiencies = compBackground.compBackgroundLanguageToolProficiencies?.__state;
+        //Characteristics
+        out.stateCharacteristics = compBackground.compBackgroundCharacteristics.__state;
+
+        //Delete all properties that are null
+        out = Object.fromEntries(Object.entries(out).filter(([_, v]) => v != null));
+
+        console.log("BACKCOMP", compBackground);
+        return out;
     }
     //#endregion
 
