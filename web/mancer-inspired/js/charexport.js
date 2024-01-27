@@ -83,14 +83,19 @@ class CharacterExportFvtt{
         const spells = await CharacterExportFvtt.getAllSpells(builder.compSpell);
         console.log("Spells: ", spells, builder.compSpell);
         for(let srcIx = 0; srcIx < spells.length; ++srcIx){
-            let src = spells[srcIx];
-            for(let lvlix = 0; lvlix < src.spellsByLvl.length; ++lvlix){
-                let lvl = src.spellsByLvl[lvlix];
+            let spellSource = spells[srcIx];
+            for(let lvlix = 0; lvlix < spellSource.spellsByLvl.length; ++lvlix){
+                let lvl = spellSource.spellsByLvl[lvlix];
                 for(let spix = 0; spix < lvl.length; ++spix){
                     let sp = lvl[spix];
-                    metaDataStack.push({uid: sp.spell.name+"|"+sp.spell.source, _data:CharacterExportFvtt.getSourceMetaData(sp.spell)});
+                    metaDataStack.push({uid: sp.name+"|"+sp.source, _data:CharacterExportFvtt.getSourceMetaData(sp.spell)});
+                    //delete .spell info
+                    delete sp.spell;
+                    lvl[spix] = sp;
                 }
+                spellSource.spellsByLvl[lvlix] = lvl;
             }
+            spells[srcIx] = spellSource;
         }
         _char.spellsBySource = spells;
 
@@ -311,9 +316,13 @@ class CharacterExportFvtt{
             if(!comp){continue;}
             let className = comp._className;
             let classSource = comp._classSource;
-            let spellsByLvl = compSpell.compsSpellSpells[j]._test_getKnownSpells();
+            let spellsByLvl = compSpell.compsSpellSpells[j]._test_getKnownSpells().map(arr => arr.map(
+                spell => {return {name: spell.spell.name, source:spell.spell.source,
+                    isLearned:spell.isLearned, isPrepared:spell.isPrepared, spell:spell.spell};}
+            ));
             spellsBySource.push({className: className, classSource:classSource, spellsByLvl: spellsByLvl});
         }
+        console.log("OUTPUT", spellsBySource);
         return spellsBySource;
     }
     /**

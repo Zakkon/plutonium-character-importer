@@ -10079,19 +10079,18 @@ class ActorCharactermancerSpell extends ActorCharactermancerBaseComponent {
        console.log("SPELL DATA", data);
        console.log("SPELL COMP", this);
 
-       const printToState = (input, state) => {
-           for(let prop of Object.keys(input)){
-               let val = input[prop];
-               state[prop] = val;
-           }
-       }
+       for(let classIx = 0; classIx < data.length; ++classIx){
+            //Assume this is for a class, and it is going to _compsSpellSpells
+            //const ix = this._getIxOfSpell(src.spellsByLvl[0][0].spell);
 
-       for(let src of data){
-        //Assume this is for a class, and it is going to _compsSpellSpells
-        //const ix = this._getIxOfSpell(src.spellsByLvl[0][0].spell);
+            for(let lvlIx = 0; lvlIx < data[classIx].spellsByLvl.length; ++lvlIx){
+                for(let sp of  data[classIx].spellsByLvl[lvlIx]){
+                    this._setSpellAsLearned(classIx, sp);
+                }
+            }
        }
-       this._setSpellAsLearned(0, {name:"Guidance", source:"PHB"});
-       this._setSpellAsLearned(0, {name:"Goodberry", source:"PHB"});
+       /* this._setSpellAsLearned(0, {name:"Guidance", source:"PHB"});
+       this._setSpellAsLearned(0, {name:"Goodberry", source:"PHB"}); */
        
    }
    /**
@@ -10104,12 +10103,19 @@ class ActorCharactermancerSpell extends ActorCharactermancerBaseComponent {
         const ix = this._data.spell.indexOf(match[0]);
         return ix;
    }
+   /**
+    * @param {number} classIx
+    * @param {{name:string, source:string}} spell
+    */
    _setSpellAsLearned(classIx, spell){
+        //Get the uid index of the spell
         const ix = this._getIxOfSpell(spell);
+        //Use that to grab the full spell info from data
         const actualSpell = this._data.spell[ix];
-        console.log("COMPSPELLSSPELL", this.compsSpellSpells);
-        const comp = this.compsSpellSpells[classIx];
+        const comp = this.compsSpellSpells[classIx]; //Grab the component that handles spells for our class
+        //Use the level of the spell to determine which subcomponent to grab
         const subComp = comp._compsLevel[actualSpell.level];
+        //Tell the subcomponent to mark the spell as learned/known
         subComp.markSpellAsLearnedKnown(ix);
    }
     
@@ -12818,7 +12824,7 @@ class Charactermancer_Spell extends BaseComponent {
             //Get the component that handles spells for this level
             let comp = this._compsLevel[lvl];
             //Ask it for the known spells
-            let known = comp.getKnownSpells();
+            let known = comp.getKnownSpells().filter(sp => sp.isPrepared || sp.isLearned);
             //Add the known spells onto the array slot
             spellsByLvl[lvl] = spellsByLvl[lvl].concat(known);
         }
@@ -12965,7 +12971,6 @@ class Charactermancer_Spell_Level extends BaseComponent {
     _isAvailableSpell(sp) { return sp.level === this._spellLevel; }
 
     render($wrp) {
-        console.error("RENDER SPELL LEVEL", this._spellLevel);
         this._$wrpRows = $$`<div class="ve-flex-col manc__list mt-1 mb-3"></div>`;
 
         //This is only shown when we can't find any spells to offer
@@ -13037,10 +13042,6 @@ class Charactermancer_Spell_Level extends BaseComponent {
 
         const hkSpellLevel = ()=>{
             const isWithinRange = this._isWithinLevelRange();
-            if(!isWithinRange){
-                console.error("Level ", this._spellLevel, "is not within range", this._parent.spellLevelLow,
-                this._parent.spellLevelHigh);
-            }
             $wrpInner.toggleVe(isWithinRange);
             if (!isWithinRange){this._resetLevelSpells();}
         };
@@ -13298,6 +13299,8 @@ class Charactermancer_Spell_Level extends BaseComponent {
 
         //Get the spell
         const spell = this._spellDatas[spI];
+        //TODO: check spell.preparationMode
+        console.log("SPELL PREPARATION MODE", spell.name, spell.preparationMode);
         const existingSpellMeta = this._parent.getExistingSpellMeta_(spell);
         const {ixLearned, ixPrepared, ixAlwaysPrepared, ixAlwaysKnownSpell} = this.constructor._getProps(spI);
 
