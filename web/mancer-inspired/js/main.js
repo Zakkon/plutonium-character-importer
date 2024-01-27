@@ -371,7 +371,7 @@ class CharacterBuilder {
 
         this.compEquipment.pRenderStarting();
         this.compEquipment.pRenderShop();
-        this.compSpell.pRender();//.then(() => this.compSpell.setStateFromSaveFile(this.actor));
+        this.compSpell.pRender().then(() => this.compSpell.setStateFromSaveFile(this.actor));
         this.compFeat.render();
         this.compSheet.render();
 

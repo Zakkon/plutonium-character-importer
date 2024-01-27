@@ -10089,6 +10089,8 @@ class ActorCharactermancerSpell extends ActorCharactermancerBaseComponent {
         //const ix = this._getIxOfSpell(src.spellsByLvl[0][0].spell);
        }
        this._setSpellAsLearned(0, {name:"Friends", source:"PHB"});
+       this._setSpellAsLearned(0, {name:"Bane", source:"PHB"});
+       
    }
    /**
     * @param {{name:string, source:string, school:string}} spell
@@ -10102,9 +10104,11 @@ class ActorCharactermancerSpell extends ActorCharactermancerBaseComponent {
    }
    _setSpellAsLearned(classIx, spell){
         const ix = this._getIxOfSpell(spell);
+        const actualSpell = this._data.spell[ix];
         console.log("COMPSPELLSSPELL", this.compsSpellSpells);
         const comp = this.compsSpellSpells[classIx];
-        const listItem = comp._compsLevel[0].markSpellAsLearned(null, 212);
+        const subComp = comp._compsLevel[actualSpell.level];
+        subComp.markSpellAsLearnedKnown(ix);
    }
     
     /**
@@ -12587,8 +12591,7 @@ class Charactermancer_Spell extends BaseComponent {
     }
 
     getExistingSpellMeta_(spell) {
-        if (!this._existingCasterMeta || !this._existingSpellLookup)
-            return null;
+        if (!this._existingCasterMeta || !this._existingSpellLookup){return null;}
         const lookupName = spell.name.toLowerCase();
         const lookupSource = spell.source.toLowerCase();
         const lookupSourceAlt = Parser.sourceJsonToAbv(spell.source).toLowerCase();
@@ -13022,10 +13025,6 @@ class Charactermancer_Spell_Level extends BaseComponent {
 
         const hkSpellLevel = ()=>{
             const isWithinRange = this._isWithinLevelRange();
-            if(!isWithinRange && this._spellLevel == 0){
-                console.error("Our spell level", this._spellLevel, "is not within the level range. We are allowed ",
-                this._parent.maxLearnedCantrips, "max cantrips");
-            }
 
             $wrpInner.toggleVe(isWithinRange);
             if (!isWithinRange){this._resetLevelSpells();}
@@ -13039,11 +13038,6 @@ class Charactermancer_Spell_Level extends BaseComponent {
 
         if (this._spellLevel === 0){this._render_bindCantripHooks();}
         else {this._render_bindLevelledSpellHooks();}
-
-        
-        //Debug
-        //let spellsToLearn = [212];
-        if(this._spellLevel == 0){this.markSpellAsLearned(null, 212);}
     }
 
     _render_bindCantripHooks() {
@@ -13277,23 +13271,45 @@ class Charactermancer_Spell_Level extends BaseComponent {
 
         return listItem;
     }
-    markSpellAsLearned(spell, spI){
-        console.log("LIST", this._list._items);
+    markSpellAsLearnedKnown(spI){
         const items = this._list._items; //or _filteredItems?
         const matches = items.filter(it => it.ix == spI);
         const m = matches[0];
+        const lvl = this._spellLevel;
 
-        const {ixLearned} = this.constructor._getProps(spI);
-        console.log("Set state learned", ixLearned);
-        this._state[ixLearned] = true;
-        const btn = m.data.btnLearn;
-        console.log("Set button active");
-        btn.classList.add("active"); //Mark button as active
-        console.log("Set learned cantrips");
-        this._parent.cntLearnedCantrips++;
+        //We need to know if this spell is learned, prepared, alwaysPrepared, or alwaysKnown
+        //We can also assume the spell is the same level as this._spellLevel
+        //We can assume that cantrips are always learn
+
+        //Get the spell
+        const spell = this._spellDatas[spI];
+        const existingSpellMeta = this._parent.getExistingSpellMeta_(spell);
+        const {ixLearned, ixPrepared, ixAlwaysPrepared, ixAlwaysKnownSpell} = this.constructor._getProps(spI);
+
+        const isLearnDisabled = existingSpellMeta || this._state[ixAlwaysKnownSpell];
+
+        const isPrepareDisabledExistingSpell = !!existingSpellMeta && (lvl == 0 || existingSpellMeta.isLearned);
+        const isPrepareDisabled = isPrepareDisabledExistingSpell || this._state[ixAlwaysPrepared];
+
+        const isPreparedCaster = this._parent.isPreparedCaster;
+        //console.log("INFO", isLearnDisabled, isPrepareDisabledExistingSpell, isPrepareDisabled, existingSpellMeta, spell);
+
+        const doLearn = !isPreparedCaster || lvl == 0;
+        if(doLearn){
+            m.data.btnLearn.classList.add("active");
+            this._state[ixLearned] = true;
+            if (lvl == 0){this._parent.cntLearnedCantrips++;}
+            else{this._parent.cntPrepared++;}
+        }
+        else {
+            m.data.btnPrepare.classList.add("active");
+            this._state[ixPrepared] = true;
+            if (lvl == 0){this._parent.cntLearnedCantrips++;} //Should not happen, we never prepare cantrips
+            else{this._parent.cntPrepared++;}
+        }
 
         const known = this.getSpellsKnown(true);
-        console.log("KNOWN", known, this._state[ixLearned]);
+        console.log("LEARNED", known, this._state[ixLearned]);
     }
 
     _handleListItemBtnLearnClick_do_doLearn({btnLearn, btnPrepare, isActive, ixPrepared, ixLearned}) {
@@ -13552,8 +13568,7 @@ class Charactermancer_Spell_Level extends BaseComponent {
                     continue;
             }
 
-            if (!isLearned && isLearnedAtLevel)
-                continue;
+            if (!isLearned && isLearnedAtLevel){continue;}
 
             if (this._parent.isPreparedCaster && !isLearned && !isPrepared && !this._parent.pageFilter.toDisplay(filterValues, sp))
                 continue;
