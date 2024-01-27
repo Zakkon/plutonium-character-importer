@@ -1087,34 +1087,38 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
                     if(SETTINGS.TRANSFER_CHOICES || (this._actor.classes[ix].name == cls.name && this._actor.classes[ix].source == cls.source)){
                         const chooseOptions =  proficiencies[0]; //Proficiencies is an array, usually only with one entry
                         //This should be a secure way to get the options we have to pick from, regardless if it is choose from, or choose any
-                        const numToPick = comp._available[0].choose[0].count;
-                        const namesToPickFrom = comp._available[0].choose[0].from;
+                        //TODO: improve this save/load system, maybe just copy over states instead
+                        if(comp._available[0].choose){
+                            const numToPick = comp._available[0].choose[0].count;
+                            const namesToPickFrom = comp._available[0].choose[0].from;
 
-                        let mode = "skills";
-                        if(propCompsClass == "_compsClassToolProficiencies"){mode = "tools"};
+                            let mode = "skills";
+                            if(propCompsClass == "_compsClassToolProficiencies"){mode = "tools"};
 
-                        let chosenProficiencies = {}
-                        if(mode == "skills"){chosenProficiencies = this._actor.classes[ix].skillProficiencies?.data?.skillProficiencies;}
-                        else if (mode == "tools"){chosenProficiencies = this._actor.classes[ix].toolProficiencies?.data?.toolProficiencies;}
+                            let chosenProficiencies = {}
+                            if(mode == "skills"){chosenProficiencies = this._actor.classes[ix].skillProficiencies?.data?.skillProficiencies;}
+                            else if (mode == "tools"){chosenProficiencies = this._actor.classes[ix].toolProficiencies?.data?.toolProficiencies;}
 
 
-                        //Its possible that one class outputs null on either tools or skills because they dont provide an option
-                        const chosenNames = !!chosenProficiencies? Object.keys(chosenProficiencies) : [];
-                        for(let i = 0; i < chosenNames.length && i < numToPick; ++i){
-                            //Make sure we go from a {name:string} to just an array of strings, then match index
-                            //push to lowercase just for simplicity
-                            let ixOf = namesToPickFrom.map(n=>n.name.toLowerCase()).indexOf(chosenNames[i].toLowerCase());
-                            //Make sure a match is made
-                            if(ixOf<0){
-                                console.warn("Failed to match ", chosenNames[i].toLowerCase(), "to any option in",
-                                    namesToPickFrom.map(n=>n.name.toLowerCase()));
-                            }
-                            else{
-                                //TODO: change 0 to ix?
-                                const prop = `otherProfSelect_0__isActive_${ixOf}`;
-                                comp._state[prop] = true;
+                            //Its possible that one class outputs null on either tools or skills because they dont provide an option
+                            const chosenNames = !!chosenProficiencies? Object.keys(chosenProficiencies) : [];
+                            for(let i = 0; i < chosenNames.length && i < numToPick; ++i){
+                                //Make sure we go from a {name:string} to just an array of strings, then match index
+                                //push to lowercase just for simplicity
+                                let ixOf = namesToPickFrom.map(n=>n.name.toLowerCase()).indexOf(chosenNames[i].toLowerCase());
+                                //Make sure a match is made
+                                if(ixOf<0){
+                                    console.warn("Failed to match ", chosenNames[i].toLowerCase(), "to any option in",
+                                        namesToPickFrom.map(n=>n.name.toLowerCase()));
+                                }
+                                else{
+                                    //TODO: change 0 to ix?
+                                    const prop = `otherProfSelect_0__isActive_${ixOf}`;
+                                    comp._state[prop] = true;
+                                }
                             }
                         }
+                        
                     }
                 }
 
@@ -1489,57 +1493,55 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
       || comp.getCurLevel()).reduce((a, b) => a + b, 0);
     }
     class_getMinMaxSpellLevel() {
-      const _0x35ebcb = [];
-      const _0x5ba174 = [];
-      let _0x8a1dd5 = false;
-      for (let _0xa4aa35 = 0x0; _0xa4aa35 < this._state.class_ixMax + 0x1; ++_0xa4aa35) {
+      const spellLevelLows = [];
+      const spellLevelHighs = [];
+      let isAnyCantrips = false;
+      for (let classIx = 0; classIx < this._state.class_ixMax + 1; ++classIx) {
         const {
-          propIxClass: _0x27f359,
-          propIxSubclass: _0x215bda,
-          propCurLevel: _0x496498,
-          propTargetLevel: _0x4c7a29
-        } = ActorCharactermancerBaseComponent.class_getProps(_0xa4aa35);
-        const _0x2bea38 = this.getClass_({
-          'propIxClass': _0x27f359
+          propIxClass: propIxClass,
+          propIxSubclass: propIxSubclass,
+          propCurLevel: propCurLevel,
+          propTargetLevel: propTargetLevel
+        } = ActorCharactermancerBaseComponent.class_getProps(classIx);
+        const cls = this.getClass_({ propIxClass: propIxClass });
+        if (!cls) { continue; }
+        const subcls = this.getSubclass_({
+          'cls': cls,
+          'propIxSubclass': propIxSubclass
         });
-        if (!_0x2bea38) {
-          continue;
-        }
-        const _0x6aec7a = this.getSubclass_({
-          'cls': _0x2bea38,
-          'propIxSubclass': _0x215bda
-        });
-        const _0x19e990 = this._state[_0x496498];
-        const _0x275d07 = this._state[_0x4c7a29];
-        const _0x547cd0 = DataConverter.getMaxCasterProgression(_0x2bea38.casterProgression, _0x6aec7a?.["casterProgression"]);
-        const _0x52dd93 = Charactermancer_Spell_Util.getCasterProgressionMeta({
-          'casterProgression': _0x547cd0,
-          'curLevel': _0x19e990,
-          'targetLevel': _0x275d07,
+        const curLevel = this._state[propCurLevel];
+        const targetLevel = this._state[propTargetLevel];
+        const casterProgression = DataConverter.getMaxCasterProgression(cls.casterProgression, subcls?.["casterProgression"]);
+        const spellLevelLow = Charactermancer_Spell_Util.getCasterProgressionMeta({
+          'casterProgression': casterProgression,
+          'curLevel': curLevel,
+          'targetLevel': targetLevel,
           'isBreakpointsOnly': true
-        })?.["spellLevelLow"];
-        if (_0x52dd93 != null) {
-          _0x35ebcb.push(_0x52dd93);
+        })?.spellLevelLow;
+
+        if (spellLevelLow != null) {
+          spellLevelLows.push(spellLevelLow);
         }
-        const _0x38d005 = Charactermancer_Spell_Util.getCasterProgressionMeta({
-          'casterProgression': _0x547cd0,
-          'curLevel': _0x19e990,
-          'targetLevel': _0x275d07,
+        const spellLevelHigh = Charactermancer_Spell_Util.getCasterProgressionMeta({
+          'casterProgression': casterProgression,
+          'curLevel': curLevel,
+          'targetLevel': targetLevel,
           'isBreakpointsOnly': true
-        })?.["spellLevelHigh"];
-        if (_0x38d005 != null) {
-          _0x5ba174.push(_0x38d005);
+        })?.spellLevelHigh;
+
+        if (spellLevelHigh != null) {
+          spellLevelHighs.push(spellLevelHigh);
         }
-        _0x8a1dd5 = _0x8a1dd5 || Charactermancer_Spell_Util.getMaxLearnedCantrips({
-          'cls': _0x2bea38,
-          'sc': _0x6aec7a,
-          'targetLevel': _0x275d07
+        isAnyCantrips = isAnyCantrips || Charactermancer_Spell_Util.getMaxLearnedCantrips({
+          'cls': cls,
+          'sc': subcls,
+          'targetLevel': targetLevel
         }) != null;
       }
       return {
-        'min': _0x35ebcb.length ? Math.min(..._0x35ebcb) : null,
-        'max': _0x5ba174.length ? Math.max(..._0x5ba174) : null,
-        'isAnyCantrips': _0x8a1dd5
+        'min': spellLevelLows.length ? Math.min(...spellLevelLows) : null,
+        'max': spellLevelHighs.length ? Math.max(...spellLevelHighs) : null,
+        'isAnyCantrips': isAnyCantrips
       };
     }
 
@@ -10088,8 +10090,8 @@ class ActorCharactermancerSpell extends ActorCharactermancerBaseComponent {
         //Assume this is for a class, and it is going to _compsSpellSpells
         //const ix = this._getIxOfSpell(src.spellsByLvl[0][0].spell);
        }
-       this._setSpellAsLearned(0, {name:"Friends", source:"PHB"});
-       this._setSpellAsLearned(0, {name:"Bane", source:"PHB"});
+       this._setSpellAsLearned(0, {name:"Guidance", source:"PHB"});
+       this._setSpellAsLearned(0, {name:"Goodberry", source:"PHB"});
        
    }
    /**
@@ -10898,6 +10900,7 @@ class ActorCharactermancerSpell extends ActorCharactermancerBaseComponent {
             //Set high and low levels
             if (casterProgressionMeta) {
                 const { spellLevelLow: spellLvlLow, spellLevelHigh: spellLvlHigh } = casterProgressionMeta;
+                console.log("Setting low/high of class", classIx, "to", spellLvlLow, spellLvlHigh);
                 this._compsSpellSpells[classIx].spellLevelLow = spellLvlLow;
                 this._compsSpellSpells[classIx].spellLevelHigh = spellLvlHigh;
             }
@@ -11068,6 +11071,8 @@ class Charactermancer_Spell_Util {
      */
     static getCasterProgressionMeta({casterProgression, curLevel, targetLevel, isBreakpointsOnly=false}) {
         if (casterProgression == null || curLevel == null || targetLevel == null){return null;}
+
+        if(SETTINGS.GET_CASTERPROG_UP_TO_CURLEVEL){curLevel = 0;}
 
         const progression = UtilDataConverter.CASTER_TYPE_TO_PROGRESSION[casterProgression];
         if (!progression){return null;}
@@ -12394,9 +12399,13 @@ class Charactermancer_Spell extends BaseComponent {
         return this._state.maxPrepared != null;
     }
 
+    
     set spellLevelLow(val) {
         this._state.spellLevelLow = val;
     }
+    /**
+     * @returns {number}
+     */
     get spellLevelLow() {
         return this._state.spellLevelLow;
     }
@@ -12404,6 +12413,9 @@ class Charactermancer_Spell extends BaseComponent {
     set spellLevelHigh(val) {
         this._state.spellLevelHigh = val;
     }
+     /**
+     * @returns {number}
+     */
     get spellLevelHigh() {
         return this._state.spellLevelHigh;
     }
@@ -12953,7 +12965,7 @@ class Charactermancer_Spell_Level extends BaseComponent {
     _isAvailableSpell(sp) { return sp.level === this._spellLevel; }
 
     render($wrp) {
-        if(this._spellLevel == 0){console.error("RENDER SPELL_LEVEL");}
+        console.error("RENDER SPELL LEVEL", this._spellLevel);
         this._$wrpRows = $$`<div class="ve-flex-col manc__list mt-1 mb-3"></div>`;
 
         //This is only shown when we can't find any spells to offer
@@ -13025,7 +13037,10 @@ class Charactermancer_Spell_Level extends BaseComponent {
 
         const hkSpellLevel = ()=>{
             const isWithinRange = this._isWithinLevelRange();
-
+            if(!isWithinRange){
+                console.error("Level ", this._spellLevel, "is not within range", this._parent.spellLevelLow,
+                this._parent.spellLevelHigh);
+            }
             $wrpInner.toggleVe(isWithinRange);
             if (!isWithinRange){this._resetLevelSpells();}
         };

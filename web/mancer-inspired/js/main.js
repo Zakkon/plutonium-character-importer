@@ -235,6 +235,9 @@ class SETTINGS{
     /**Should changing class/race that transfer the already set choices (for like proficiencies?), so if both the new and the old race could pick Perception as a proficiency, and the old one did, make sure the new one also has that choice set */
     static TRANSFER_CHOICES = false;
     static DICE_TOMESSAGE = false;
+    //By default, this is off. This means that loading in a high level character, they dont get to pick any spells that they would have gained at earlier levels
+    //Turning this to true fixes that, and lets us pick spells from lower levels
+    static GET_CASTERPROG_UP_TO_CURLEVEL = true;
 }
 class CharacterBuilder {
   static _DATA_PROPS_EXPECTED = ['class', "subclass", 'classFeature', "subclassFeature",
