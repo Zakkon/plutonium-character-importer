@@ -3716,6 +3716,25 @@ class ActorCharactermancerAbility extends ActorCharactermancerBaseComponent {
     _getDefaultState() {
       return {};
     }
+
+    /**
+     * Sets the state of the StatgenUI based on a save file. This should be called just after first render.
+     * @param {{abilities:{mode:number, state:any}} actor
+     */
+    setStateFromSaveFile(actor){
+        const data = actor.abilities;
+
+        //Set the mode for the state
+        this._compStatgen._meta.ixActiveTab___default = data.mode;
+        //Set the UI select element to have the right value selected
+        this._compStatgen._selModeElement[0].value = data.mode;
+
+        //Print values over onto state
+        for(let prop of Object.keys(data.state)){
+            let val = data.state[prop];
+            this._compStatgen._state[prop] = val;
+        }
+    }
 }
 
 class StatGenUi extends BaseComponent {
