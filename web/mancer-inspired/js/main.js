@@ -358,21 +358,32 @@ class CharacterBuilder {
         await this.compFeat.pLoad();
     }
     renderComponents(){
-        this.compClass.render();
+        //this.compClass.render(); //Goes on for quite long, and will trigger hooks for many ms after
+
+        this.compClass.render().then(() => {
+
         this.compRace.render();
         this.compAbility.render();
-        if(SETTINGS.USE_EXISTING_WEB){this.compAbility.setStateFromSaveFile(this.actor);}
+        
 
         this.compBackground.render();
-        if(SETTINGS.USE_EXISTING_WEB){this.compBackground.setStateFromSaveFile(this.actor);}
+        
 
         this.compEquipment.pRenderStarting();
         this.compEquipment.pRenderShop();
-        this.compSpell.pRender();
+        this.compSpell.pRender();//.then(() => this.compSpell.setStateFromSaveFile(this.actor));
         this.compFeat.render();
         this.compSheet.render();
+
+        if(SETTINGS.USE_EXISTING_WEB){this.compAbility.setStateFromSaveFile(this.actor);}
+        if(SETTINGS.USE_EXISTING_WEB){this.compBackground.setStateFromSaveFile(this.actor);}
+        //if(SETTINGS.USE_EXISTING_WEB){this.compSpell.setStateFromSaveFile(this.actor);}
+      });
     }
     async loadFromSave(){
+      const delay = (ms) => {return new Promise(resolve => setTimeout(resolve, ms));}
+      //await delay(1000);
+      //if(SETTINGS.USE_EXISTING_WEB){this.compSpell.setStateFromSaveFile(this.actor);}
     }
 
     //#region Events

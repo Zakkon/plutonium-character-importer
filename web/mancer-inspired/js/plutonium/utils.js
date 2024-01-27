@@ -8502,8 +8502,7 @@ class DataConverter {
     static getMaxCasterProgression(...casterProgressions) {
         casterProgressions = casterProgressions.filter(Boolean);
         const ixs = casterProgressions.map(it=>this._CASTER_PROGRESSIONS.indexOf(it)).filter(ix=>~ix);
-        if (!ixs.length)
-            return null;
+        if (!ixs.length){return null;}
         return this._CASTER_PROGRESSIONS[Math.min(...ixs)];
     }
 
@@ -8514,10 +8513,8 @@ class DataConverter {
                 if (out[i] == null)
                     return out[i] = cnt;
                 out[i] = Math.max(out[i], cnt);
-            }
-            );
-        }
-        );
+            });
+        });
         return out;
     }
 

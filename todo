@@ -18,7 +18,7 @@ EXPORTABLE INFORMATION (json format is good enough)
 - Coins - done
 - Classes (with level and subclasses) - done
 - Race - done
-- Background - done
+- Background - done (needs custom background feature)
 - Ability Scores
 - Spells - done
 - Feats
@@ -30,6 +30,8 @@ LOADING SAVE FILES
 - Subclass - done
 - HP increase mode
 - Race - done
+- Ability - done
+- Background - mostly done
 
 SHEET DISPLAYABLE INFORMATION
 - Classes (with level and subclasses) - done

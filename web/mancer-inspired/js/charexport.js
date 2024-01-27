@@ -69,7 +69,7 @@ class CharacterExportFvtt{
 
         //Background information time
         const background = await CharacterExportFvtt.getBackground(builder.compBackground);
-        console.log("Background: ", background);
+        //console.log("Background: ", background);
         if(!!background){metaDataStack.push({uid: background.name+"|"+background.source, _data:CharacterExportFvtt.getSourceMetaData(background)});}
         _char.background = background;
 
@@ -81,7 +81,7 @@ class CharacterExportFvtt{
         console.log("Equipment: ", equipment);
         //known spells & cantrips
         const spells = await CharacterExportFvtt.getAllSpells(builder.compSpell);
-        console.log("Spells: ", spells);
+        console.log("Spells: ", spells, builder.compSpell);
         for(let srcIx = 0; srcIx < spells.length; ++srcIx){
             let src = spells[srcIx];
             for(let lvlix = 0; lvlix < src.spellsByLvl.length; ++lvlix){
@@ -300,7 +300,7 @@ class CharacterExportFvtt{
     }
     /**
      * @param {ActorCharactermancerSpell} compSpell
-     * @returns {{className:string, classSource:string, spellsByLvl:any[][]}[]}
+     * @returns {{className:string, classSource:string, spellsByLvl:Charactermancer_Spell_SpellMeta[][]}[]}
      */
     static getAllSpells(compSpell){
 
@@ -317,7 +317,7 @@ class CharacterExportFvtt{
         return spellsBySource;
     }
     /**
-     * Description
+     * Get background save data
      * @param {ActorCharactermancerBackground} compBackground
      * @returns {any}
      */
@@ -340,7 +340,7 @@ class CharacterExportFvtt{
         //Delete all properties that are null
         out = Object.fromEntries(Object.entries(out).filter(([_, v]) => v != null));
 
-        console.log("BACKCOMP", compBackground);
+        //console.log("BACKCOMP", compBackground);
         return out;
     }
     //#endregion

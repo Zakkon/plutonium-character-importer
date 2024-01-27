@@ -112,13 +112,13 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
       this._existingClassMetas = [];
 
     }
-    render() {
+    async render() {
         let wrptab = this._tabClass?.$wrpTab;
         if (!wrptab) { return; }
         let classChoiceElement = $(`<div class="ve-flex-col w-100 h-100 px-1 pt-1 overflow-y-auto ve-grow veapp__bg-foundry"></div>`);
         let sidebarElement = $(`<div class="ve-flex-col w-100 h-100 px-1 overflow-y-auto ve-grow veapp__bg-foundry"></div>`);
         for (let i = 0; i < this._state.class_ixMax + 1; ++i) {
-          this._class_renderClass(classChoiceElement, sidebarElement, i);
+          await this._class_renderClass(classChoiceElement, sidebarElement, i);
         }
         //Fire a pulse change whenever primary class is switched
         this._addHookBase("class_ixPrimaryClass", () => this._state.class_pulseChange = !this._state.class_pulseChange);
@@ -139,7 +139,7 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
         ${sidebarElement}
         </div>`.appendTo(wrptab);
     }
-    _class_renderClass(parentDiv_left, parentDiv_right, ix) {
+    async _class_renderClass(parentDiv_left, parentDiv_right, ix) {
         //Main properties for asking our _state for information on this class
         const {
             propPrefixClass: propPrefixClass,
@@ -249,12 +249,13 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
         });
 
         //#region Render Class
-        const renderClassComponents = async _0xd4d6f7 => {
+        const renderClassComponents = async doClearState => {
             if(SETTINGS.FILTERS){this._modalFilterClasses.pageFilter.filterBox.off(filter_evnt_valchange_subclass);}
             //FIXME SET STATE!
-            if (_0xd4d6f7) {
-                const toObj = Object.keys(this.__state).filter(propName => propName.startsWith(propPrefixClass) && propName !== propIxClass).mergeMap(_0x77ce3e => ({
-                    [_0x77ce3e]: null
+            if (doClearState) {
+                const toObj = Object.keys(this.__state).filter(propName => 
+                    propName.startsWith(propPrefixClass) && propName !== propIxClass).mergeMap(p => ({
+                    [p]: null
                 }));
                 this._proxyAssignSimple("state", toObj);
             }
@@ -321,13 +322,12 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
             disp_subclass.empty();
         };
 
-        const renderClassComponents_safe = async _0x7a25e5 => {
+        const renderClassComponents_safe = async doClearState => {
             try {
-            await this._pLock(lockChangeClass);
-            await renderClassComponents(_0x7a25e5);
-            } finally {
-            this._unlock(lockChangeClass);
+                await this._pLock(lockChangeClass);
+                await renderClassComponents(doClearState);
             }
+            finally { this._unlock(lockChangeClass); }
         };
 
         //Add a hook so that when propIxClass changes, we try to render the class components again
@@ -479,7 +479,11 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
             ${disp_subclass}
         </div>`.appendTo(parentDiv_right);
 
-        renderClassComponents_safe().then(() => renderSubclass_safe()).then(() => this._test_tryLoadFOS(ix));
+        //TEMPFIX
+        //renderClassComponents_safe().then(() => renderSubclass_safe()).then(() => this._test_tryLoadFOS(ix));
+        await renderClassComponents_safe();
+        await renderSubclass_safe();
+        this._test_tryLoadFOS(ix);
     }
 
     get modalFilterClasses() {
@@ -10033,17 +10037,24 @@ class ActorCharactermancerSpell extends ActorCharactermancerBaseComponent {
         const leftContent = $$`<div class="ve-flex-col w-100 h-100 px-1 overflow-y-auto ve-grow veapp__bg-foundry smooth-scroll"></div>`;
         const rightContent = $$`<div class="ve-flex-col w-100"></div>`;
         const dispSpell = $$`<div class="ve-flex-col w-100 h-100"></div>`;
+        //Render the filterbox
         await this._spell_pRenderFilterBox(leftContent);
-        for (let i = 0; i < this._parent.compClass.state.class_ixMax + 1; ++i) {
-          this._spell_renderClassSection(leftContent, rightContent, dispSpell, i);
+        //For each class, render a section
+        for (let classIx = 0; classIx < this._parent.compClass.state.class_ixMax + 1; ++classIx) {
+          this._spell_renderClassSection(leftContent, rightContent, dispSpell, classIx);
         }
+        //Prepare a hook if another class is added/removed
         const refreshClassMax = () => {
           this._spell_renderClassSection(leftContent, rightContent, dispSpell, this._parent.compClass.state.class_ixMax);
         };
         this._parent.compClass.addHookBase("class_ixMax", refreshClassMax);
+        //Render the race section
         this._spell_renderRaceSection(leftContent);
+        //Then the background
         this._spell_renderBackgroundSection(leftContent);
+        //And refresh the filter
         this._spell_handleFilterChange();
+        //Then put everything in the DOM
         $$`<div class="ve-flex w-100 h-100">
                 ${leftContent}
     
@@ -10056,7 +10067,54 @@ class ActorCharactermancerSpell extends ActorCharactermancerBaseComponent {
             </div>`.appendTo(wrpTab);
     }
 
+    /**
+     * Sets the state of the component and subcomponents based on a save file. This should be called just after first render.
+     * @param {{spellsBySource:{className: string, classSource: string, spellsByLvl: Charactermancer_Spell_SpellMeta[][]}} actor
+    */
+   setStateFromSaveFile(actor){
+       const data = actor.spellsBySource;
+
+       console.log("SPELL DATA", data);
+       console.log("SPELL COMP", this);
+
+       const printToState = (input, state) => {
+           for(let prop of Object.keys(input)){
+               let val = input[prop];
+               state[prop] = val;
+           }
+       }
+
+       for(let src of data){
+        //Assume this is for a class, and it is going to _compsSpellSpells
+        //const ix = this._getIxOfSpell(src.spellsByLvl[0][0].spell);
+       }
+       this._setSpellAsLearned(0, {name:"Friends", source:"PHB"});
+   }
+   /**
+    * @param {{name:string, source:string, school:string}} spell
+    * @returns {any}
+    */
+   _getIxOfSpell(spell){
+        const match = this._data.spell.filter(v => v.name == spell.name && v.source == spell.source);
+        if(!match?.length){return null;}
+        const ix = this._data.spell.indexOf(match[0]);
+        return ix;
+   }
+   _setSpellAsLearned(classIx, spell){
+        const ix = this._getIxOfSpell(spell);
+        console.log("COMPSPELLSSPELL", this.compsSpellSpells);
+        const comp = this.compsSpellSpells[classIx];
+        const listItem = comp._compsLevel[0].markSpellAsLearned(null, 212);
+   }
     
+    /**
+     * Create a section to handle drawing spells for a class, and set up hooks for it
+     * @param {any} div1
+     * @param {any} div2
+     * @param {any} dispSpell
+     * @param {number} classIndex
+     * @returns {any}
+     */
     _spell_renderClassSection(div1, div2, dispSpell, classIndex) {
         const {
           propIxClass: propIxClass,
@@ -10141,14 +10199,15 @@ class ActorCharactermancerSpell extends ActorCharactermancerBaseComponent {
           '$wrpPreparedLearnedRhs': wrpPreparedLearnedRhs
         });
         const hook_onChangeLevel = this._hk_onChangeLevel.bind(this, classIndex, {
-          '$wrpLeftInner': wrpLeftInner,
-          '$wrpRightInner': wrpRightInner
+          $wrpLeftInner: wrpLeftInner,
+          $wrpRightInner: wrpRightInner
         });
         const hook_onChangeAbilityScores = this._hk_onChangeAbilityScores.bind(this, classIndex);
         this._parent.compClass.addHookBase(propIxClass, hook_onChangeClass);
         this._parent.compClass.addHookBase(propIxSubclass, hook_onChangeSubclass);
         this._parent.compClass.addHookBase(propTargetLevel, hook_onChangeLevel);
         this._parent.compAbility.addHookAbilityScores(hook_onChangeAbilityScores);
+        //Fire the onChangeClass hook straight away, to build the UI
         hook_onChangeClass();
     }
     _spell_renderRaceSection(wrapperDiv) {
@@ -10385,19 +10444,23 @@ class ActorCharactermancerSpell extends ActorCharactermancerBaseComponent {
     }
 
     //#region Hooks
+    /**
+     * @param {number} classIndex
+     * @param {any} elements
+     */
     _hk_onChangeClass(classIndex, {
         $stgClassSpells: stgClassSpells,
         $stgSpellsTable: stgSpellsTable,
-        $dispClassNameLeft: _0x5277af,
-        $dispClassNameRight: _0x2eb7d0,
+        $dispClassNameLeft: dispClassNameLeft,
+        $dispClassNameRight: dispClassNameRight,
         $stgClassAdditionalSpells: stgClassAdditionalSpells,
-        $stgSubclassAdditionalSpells: _0xb823dd,
+        $stgSubclassAdditionalSpells: stgSubclassAdditionalSpells,
         $wrpLeftInner: wrpLeftInner,
         $wrpRightInner: wrpRightInner,
         $dispSpell: dispSpell,
         $wrpSlotLevelSelect: wrpSlotLevelSelect,
-        $wrpPreparedLearnedLhs: _0x1f316b,
-        $wrpPreparedLearnedRhs: _0x16ec1d
+        $wrpPreparedLearnedLhs: preparedLearnedLhs,
+        $wrpPreparedLearnedRhs: preparedLearnedRhs
         }) {
         const {
             propIxClass: propIxClass,
@@ -10405,16 +10468,17 @@ class ActorCharactermancerSpell extends ActorCharactermancerBaseComponent {
             propTargetLevel: propTargetLevel
         } = ActorCharactermancerBaseComponent.class_getProps(classIndex);
 
-        const cls = this._parent.compClass.getClass_({ 'propIxClass': propIxClass });
-        const subcls = this._parent.compClass.getSubclass_({ 'cls': cls, 'propIxSubclass': propIxSubclass });
+        const cls = this._parent.compClass.getClass_({ propIxClass: propIxClass });
+        const subcls = this._parent.compClass.getSubclass_({ cls: cls, propIxSubclass: propIxSubclass });
 
+        //If our class is null or it is not a caster, wipe the spells component for it (if it exists) and abort
         if (!cls || !this.constructor._spell_isClassCaster(cls, subcls)) {
             this._hk_shared_doCleanupClassSubclass({
-            '$stgClassSpells': stgClassSpells,
-            '$stgSpellsTable': stgSpellsTable,
-            '$wrpLeftInner': wrpLeftInner,
-            '$wrpRightInner': wrpRightInner,
-            'ix': classIndex
+                $stgClassSpells: stgClassSpells,
+                $stgSpellsTable: stgSpellsTable,
+                $wrpLeftInner: wrpLeftInner,
+                $wrpRightInner: wrpRightInner,
+                ix: classIndex
             });
             return;
         }
@@ -10422,56 +10486,66 @@ class ActorCharactermancerSpell extends ActorCharactermancerBaseComponent {
         stgClassSpells.empty();
         stgSpellsTable.empty();
 
+        //Create a component that can be found at this._compsSpellSpells[classIndex]
         this._hk_shared_doInitClassSubclass({
-            'ix': classIndex,
-            'cls': cls,
-            'sc': subcls,
-            '$wrpPreparedLearnedLhs': _0x1f316b,
-            '$wrpPreparedLearnedRhs': _0x16ec1d,
-            'propTargetLevel': propTargetLevel
+            ix: classIndex,
+            cls: cls,
+            sc: subcls,
+            $wrpPreparedLearnedLhs: preparedLearnedLhs,
+            $wrpPreparedLearnedRhs: preparedLearnedRhs,
+            propTargetLevel: propTargetLevel
         });
         stgClassAdditionalSpells.empty();
 
+        //If the class grants additional spells
         if (cls && cls.additionalSpells) {
             stgClassAdditionalSpells.showVe().append("<div class=\"bold mb-2\">Class Spells (" + cls.name + ")</div>");
+            //Create an element to display this
             this._compsSpellAdditionalSpellClass[classIndex] = new Charactermancer_AdditionalSpellsSelect({
-            'spellDatas': this._data.spell,
-            'additionalSpells': cls.additionalSpells,
-            'modalFilterSpells': this._modalFilterSpells
+                spellDatas: this._data.spell,
+                additionalSpells: cls.additionalSpells,
+                modalFilterSpells: this._modalFilterSpells
             });
             this._compsSpellAdditionalSpellClass[classIndex].render(stgClassAdditionalSpells);
 
+            //Create hooks to always mark these spells as prepared (just incase the component forgets sometime)
             const setAlwaysPrepared = () => {
-            if (this._compsSpellSpells[classIndex]) {
-                this._compsSpellSpells[classIndex].alwaysPreparedSpellsClass = MiscUtil.copy(this._compsSpellAdditionalSpellClass[classIndex].spellsAlwaysPrepared);
-            }
+                if (this._compsSpellSpells[classIndex]) {
+                    this._compsSpellSpells[classIndex].alwaysPreparedSpellsClass =
+                        MiscUtil.copy(this._compsSpellAdditionalSpellClass[classIndex].spellsAlwaysPrepared);
+                }
             };
             this._compsSpellAdditionalSpellClass[classIndex].addHookAlwaysPreparedSpells(setAlwaysPrepared);
             const setExpandedSpells = () => {
-            if (this._compsSpellSpells[classIndex]) {
-                this._compsSpellSpells[classIndex].expandedSpellsClass = MiscUtil.copy(this._compsSpellAdditionalSpellClass[classIndex].spellsExpanded);
-            }
+                if (this._compsSpellSpells[classIndex]) {
+                    this._compsSpellSpells[classIndex].expandedSpellsClass = 
+                        MiscUtil.copy(this._compsSpellAdditionalSpellClass[classIndex].spellsExpanded);
+                }
             };
             this._compsSpellAdditionalSpellClass[classIndex].addHookExpandedSpells(setExpandedSpells);
             const setAlwaysKnown = () => {
-            if (this._compsSpellSpells[classIndex]) {
-                this._compsSpellSpells[classIndex].alwaysKnownSpellsClass = MiscUtil.copy(this._compsSpellAdditionalSpellClass[classIndex].spellsAlwaysKnown);
-            }
+                if (this._compsSpellSpells[classIndex]) {
+                    this._compsSpellSpells[classIndex].alwaysKnownSpellsClass = 
+                    MiscUtil.copy(this._compsSpellAdditionalSpellClass[classIndex].spellsAlwaysKnown);
+                }
             };
             this._compsSpellAdditionalSpellClass[classIndex].addHookAlwaysKnownSpells(setAlwaysKnown);
         }
         else {
+            //Hide the element responsible for additional class spells
             stgClassAdditionalSpells.hideVe();
             this._compsSpellAdditionalSpellClass[classIndex] = null;
         }
+
+        //Fire the hook responsible for subclass stuff
         this._hk_onChangeSubclass(classIndex, {
-            '$dispClassNameLeft': _0x5277af,
-            '$dispClassNameRight': _0x2eb7d0,
-            '$stgClassSpells': stgClassSpells,
-            '$stgSpellsTable': stgSpellsTable,
-            '$stgSubclassAdditionalSpells': _0xb823dd,
-            '$wrpLeftInner': wrpLeftInner,
-            '$wrpRightInner': wrpRightInner
+            $dispClassNameLeft: dispClassNameLeft,
+            $dispClassNameRight: dispClassNameRight,
+            $stgClassSpells: stgClassSpells,
+            $stgSpellsTable: stgSpellsTable,
+            $stgSubclassAdditionalSpells: stgSubclassAdditionalSpells,
+            $wrpLeftInner: wrpLeftInner,
+            $wrpRightInner: wrpRightInner
         });
 
         if (this._compsSpellSpells[classIndex] && this._compsSpellAdditionalSpellClass[classIndex]) {
@@ -10490,28 +10564,40 @@ class ActorCharactermancerSpell extends ActorCharactermancerBaseComponent {
             this._compsSpellSpells[classIndex].alwaysKnownSpellsClass = [];
             }
         }
+
+        //And finally, render
         this._hk_shared_doRenderClassSubclass({
-            'ix': classIndex,
-            '$stgClassSpells': stgClassSpells,
-            '$stgSpellsTable': stgSpellsTable,
-            '$dispSpell': dispSpell,
-            '$wrpSlotLevelSelect': wrpSlotLevelSelect
+            ix: classIndex,
+            $stgClassSpells: stgClassSpells,
+            $stgSpellsTable: stgSpellsTable,
+            $dispSpell: dispSpell,
+            $wrpSlotLevelSelect: wrpSlotLevelSelect
         });
     }
     _hk_shared_doCleanupClassSubclass({
-      $stgClassSpells: _0x270abd,
-      $stgSpellsTable: _0x1c463d,
-      $wrpLeftInner: _0x5d1018,
-      $wrpRightInner: _0x371727,
-      ix: _0x3f7ee5
+      $stgClassSpells: stgClassSpells,
+      $stgSpellsTable: stgSpellsTable,
+      $wrpLeftInner: wrpLeftInner,
+      $wrpRightInner: wrpRightInner,
+      ix: ix
     }) {
-      _0x270abd.empty();
-      _0x1c463d.empty();
-      _0x5d1018.hideVe();
-      _0x371727.hideVe();
-      this._compsSpellSpells[_0x3f7ee5] = null;
-      this._compsSpellSpellSlotLevelSelect[_0x3f7ee5] = null;
+      stgClassSpells.empty();
+      stgSpellsTable.empty();
+      wrpLeftInner.hideVe();
+      wrpRightInner.hideVe();
+      this._compsSpellSpells[ix] = null;
+      this._compsSpellSpellSlotLevelSelect[ix] = null;
     }
+    /**
+     * Creates a Charactermancer_Spell and a Charactermancer_Spell_SlotLevelSelect for our class, and sets up hooks for updating learned progression. Does not render them.
+     * @param {number} {ix:ix
+     * @param {any} cls:cls
+     * @param {any} sc:subcls
+     * @param {any} $wrpPreparedLearnedLhs:wrpPreparedLearnedLhs
+     * @param {any} $wrpPreparedLearnedRhs:wrpPreparedLearnedRhs
+     * @param {number} propTargetLevel:propTargetLevel}
+     * @returns {any}
+     */
     _hk_shared_doInitClassSubclass({
         ix: ix,
         cls: cls,
@@ -10524,59 +10610,68 @@ class ActorCharactermancerSpell extends ActorCharactermancerBaseComponent {
 
         //Create a component that handles spells originating from our class and subclass
         this._compsSpellSpells[ix] = new Charactermancer_Spell({
-            'actor': this._actor,
-            'existingClass': classMeta ? this._data.class[classMeta.ixClass] : null,
-            'existingCasterMeta': this._spell_getExistingCasterMeta({
-                'ix': ix,
-                'cls': cls,
-                'sc': subcls,
-                'existingClassMeta': classMeta
+            actor: this._actor,
+            existingClass: classMeta ? this._data.class[classMeta.ixClass] : null,
+            existingCasterMeta: this._spell_getExistingCasterMeta({
+                ix: ix,
+                cls: cls,
+                sc: subcls,
+                existingClassMeta: classMeta
             }),
-            'spellDatas': this._data.spell,
-            'className': cls.name,
-            'classSource': cls.source,
-            'brewClassSpells': cls.classSpells,
-            'subclassName': subcls?.name,
-            'subclassShortName': subcls?.shortname,
-            'subclassSource': subcls?.source,
-            'brewSubclassSpells': subcls?.subclassSpells,
-            'brewSubSubclassSpells': subcls?.subSubclassSpells,
-            'pageFilter': this._pageFilterSpells,
-            '$wrpsPreparedLearned': [wrpPreparedLearnedLhs, wrpPreparedLearnedRhs]
+            spellDatas: this._data.spell,
+            className: cls.name,
+            classSource: cls.source,
+            brewClassSpells: cls.classSpells,
+            subclassName: subcls?.name,
+            subclassShortName: subcls?.shortname,
+            subclassSource: subcls?.source,
+            brewSubclassSpells: subcls?.subclassSpells,
+            brewSubSubclassSpells: subcls?.subSubclassSpells,
+            pageFilter: this._pageFilterSpells,
+            $wrpsPreparedLearned: [wrpPreparedLearnedLhs, wrpPreparedLearnedRhs]
         });
 
         this._compsSpellSpellSlotLevelSelect[ix] = new Charactermancer_Spell_SlotLevelSelect({
-            'className': cls.name,
-            'spellSlotLevelSelection': classMeta?.spellSlotLevelSelection
+            className: cls.name,
+            spellSlotLevelSelection: classMeta?.spellSlotLevelSelection
         });
+        //Create a hook for updating how many spells we can learn
         const onPulseFixedLearnedProgression = () => {
+            //Figure out the target level for this class
             const targetLevel = this._parent.compClass.state[propTargetLevel];
-            if (this._compsSpellSpells[ix]) {
-            this._compsSpellSpells[ix].fixedLearnedProgression = this._spell_getFixedLearnedProgression(ix, cls, subcls, targetLevel);
-            this._compsSpellSpells[ix].fixedLearnedProgressionDefault = this._spell_getFixedLearnedProgression(ix, cls, subcls, targetLevel, {
-                'isDefault': true
-            });
+            if (this._compsSpellSpells[ix]) { //Make sure we have a component to handle spells for this class
+                //Then update the component about how many spells we can learn
+                this._compsSpellSpells[ix].fixedLearnedProgression = this._spell_getFixedLearnedProgression(ix, cls, subcls, targetLevel);
+                this._compsSpellSpells[ix].fixedLearnedProgressionDefault = this._spell_getFixedLearnedProgression(ix, cls, subcls, targetLevel, { isDefault: true });
             }
         };
         this._compsSpellSpellSlotLevelSelect[ix].addHookPulseFixedLearnedProgression(onPulseFixedLearnedProgression);
+        //Then fire the hook once
         onPulseFixedLearnedProgression();
     }
-    ["_hk_shared_doRenderClassSubclass"]({
-      ix: _0x2eeb3f,
-      $stgClassSpells: _0x5ba943,
-      $stgSpellsTable: _0x2db431,
-      $dispSpell: _0x13c893,
-      $wrpSlotLevelSelect: _0x438fc7
+    _hk_shared_doRenderClassSubclass({
+      ix: ix,
+      $stgClassSpells: stgClassSpells,
+      $stgSpellsTable: stgSpellsTable,
+      $dispSpell: dispSpell,
+      $wrpSlotLevelSelect: wrpSlotLevelSelect
     }) {
-      this._compsSpellSpells[_0x2eeb3f].render(_0x5ba943, _0x13c893);
-      this._compsSpellSpellSlotLevelSelect[_0x2eeb3f].render(_0x438fc7);
+        //Render the spells component
+      this.compsSpellSpells[ix].render(stgClassSpells, dispSpell);
+      //Then render the spellslotlevelselect component
+      this._compsSpellSpellSlotLevelSelect[ix].render(wrpSlotLevelSelect);
+      //Get some filter values and apply them
       const filterValues = this._pageFilterSpells.filterBox.getValues();
-      this._compsSpellSpells[_0x2eeb3f].handleFilterChange(filterValues);
+      this._compsSpellSpells[ix].handleFilterChange(filterValues);
+      //If our race grants us additional spells, we need to make sure this component is aware of that
       if (this._compSpellAdditionalSpellRace) {
-        this._compsSpellSpells[_0x2eeb3f].expandedSpellsRace = MiscUtil.copy(this._compSpellAdditionalSpellRace.spellsExpanded);
+        this._compsSpellSpells[ix].expandedSpellsRace =
+            MiscUtil.copy(this._compSpellAdditionalSpellRace.spellsExpanded);
       }
+      //If our background grants us additional spells, we need to make sure this component is aware of that
       if (this._compSpellAdditionalSpellBackground) {
-        this._compsSpellSpells[_0x2eeb3f].expandedSpellsBackground = MiscUtil.copy(this._compSpellAdditionalSpellBackground.spellsExpanded);
+        this._compsSpellSpells[ix].expandedSpellsBackground = 
+            MiscUtil.copy(this._compSpellAdditionalSpellBackground.spellsExpanded);
       }
     }
     ["_hk_shared_doUpdateRenderedClassSubclass"]({
@@ -10606,131 +10701,131 @@ class ActorCharactermancerSpell extends ActorCharactermancerBaseComponent {
         this._compsSpellSpells[_0x2f45dd].maxPrepared = this._spell_getMaxPreparedSpells(_0x30db5b, _0x1df5a1, _0x4a29fe);
       }
     }
-    _hk_onChangeSubclass(_0x5b71a4, {
-      $stgClassSpells: _0x444f7b,
-      $stgSpellsTable: _0x4cb4f2,
-      $dispClassNameLeft: _0x52df82,
-      $dispClassNameRight: _0x1637ca,
-      $stgSubclassAdditionalSpells: _0x15b9ef,
-      $wrpLeftInner: _0x33539d,
-      $wrpRightInner: _0x40dd6e,
-      $wrpPreparedLearnedLhs: _0x43c8b8,
-      $wrpPreparedLearnedRhs: _0xa96e32,
-      $dispSpell: _0x1cc99a,
-      $wrpSlotLevelSelect: _0x15fd72
+    _hk_onChangeSubclass(classIndex, {
+      $stgClassSpells: stgClassSpells,
+      $stgSpellsTable: stgSpellsTable,
+      $dispClassNameLeft: dispClassNameLeft,
+      $dispClassNameRight: dispClassNameRight,
+      $stgSubclassAdditionalSpells: stgSubclassAdditionalSpells,
+      $wrpLeftInner: wrpLeftInner,
+      $wrpRightInner: wrpRightInner,
+      $wrpPreparedLearnedLhs: wrpPreparedLearnedLhs,
+      $wrpPreparedLearnedRhs: wrpPreparedLearnedRhs,
+      $dispSpell: dispSpell,
+      $wrpSlotLevelSelect: wrpSlotLevelSelect
     }) {
       const {
-        propIxClass: _0x1c68a2,
-        propIxSubclass: _0x483027,
-        propTargetLevel: _0x1d7d55
-      } = ActorCharactermancerBaseComponent.class_getProps(_0x5b71a4);
-      const _0x37e482 = this._parent.compClass.getClass_({
-        'propIxClass': _0x1c68a2
+        propIxClass: propIxClass,
+        propIxSubclass: propIxSubclass,
+        propTargetLevel: propTargetLevel
+      } = ActorCharactermancerBaseComponent.class_getProps(classIndex);
+      const cls = this._parent.compClass.getClass_({ propIxClass: propIxClass });
+      const subcls = this._parent.compClass.getSubclass_({ cls: cls, propIxSubclass: propIxSubclass });
+      const title = cls ? '' + cls.name + (subcls ? " (" + subcls.name + ')' : '') : '';
+      dispClassNameLeft.text(title);
+      dispClassNameRight.text(title);
+
+      this._hk_onChangeSubclass_pRenderSpellTable(classIndex, {
+        cls: cls,
+        sc: subcls,
+        $stgSpellsTable: stgSpellsTable
       });
-      const _0x7e6e11 = this._parent.compClass.getSubclass_({
-        'cls': _0x37e482,
-        'propIxSubclass': _0x483027
-      });
-      const _0x2311c2 = _0x37e482 ? '' + _0x37e482.name + (_0x7e6e11 ? " (" + _0x7e6e11.name + ')' : '') : '';
-      _0x52df82.text(_0x2311c2);
-      _0x1637ca.text(_0x2311c2);
-      this._hk_onChangeSubclass_pRenderSpellTable(_0x5b71a4, {
-        'cls': _0x37e482,
-        'sc': _0x7e6e11,
-        '$stgSpellsTable': _0x4cb4f2
-      });
-      const _0x5eff8e = this.constructor._spell_isClassCaster(_0x37e482, _0x7e6e11);
-      const _0x3599ff = _0x5eff8e && !this._compsSpellSpells[_0x5b71a4];
-      if (!_0x5eff8e && this._compsSpellSpells[_0x5b71a4]) {
+      const isClassCaster = this.constructor._spell_isClassCaster(cls, subcls);
+      const isMissingClassComp = isClassCaster && !this._compsSpellSpells[classIndex];
+      if (!isClassCaster && this._compsSpellSpells[classIndex]) {
         this._hk_shared_doCleanupClassSubclass({
-          '$stgClassSpells': _0x444f7b,
-          '$stgSpellsTable': _0x4cb4f2,
-          '$wrpLeftInner': _0x33539d,
-          '$wrpRightInner': _0x40dd6e,
-          'ix': _0x5b71a4
+          '$stgClassSpells': stgClassSpells,
+          '$stgSpellsTable': stgSpellsTable,
+          '$wrpLeftInner': wrpLeftInner,
+          '$wrpRightInner': wrpRightInner,
+          'ix': classIndex
         });
         return;
-      } else if (_0x3599ff) {
+      }
+      else if (isMissingClassComp) {
         this._hk_shared_doInitClassSubclass({
-          'ix': _0x5b71a4,
-          'cls': _0x37e482,
-          'sc': _0x7e6e11,
-          '$wrpPreparedLearnedLhs': _0x43c8b8,
-          '$wrpPreparedLearnedRhs': _0xa96e32,
-          'propTargetLevel': _0x1d7d55
+          'ix': classIndex,
+          'cls': cls,
+          'sc': subcls,
+          '$wrpPreparedLearnedLhs': wrpPreparedLearnedLhs,
+          '$wrpPreparedLearnedRhs': wrpPreparedLearnedRhs,
+          'propTargetLevel': propTargetLevel
         });
       }
-      _0x15b9ef.empty();
-      if (_0x7e6e11 && _0x7e6e11.additionalSpells) {
-        _0x15b9ef.showVe().append("<div class=\"bold mb-2\">Subclass Spells (" + _0x7e6e11.name + ")</div>");
-        this._compsSpellAdditionalSpellSubclass[_0x5b71a4] = new Charactermancer_AdditionalSpellsSelect({
+
+      //Handle if our subclass grants additional spells
+      stgSubclassAdditionalSpells.empty();
+      if (subcls && subcls.additionalSpells) {
+        stgSubclassAdditionalSpells.showVe().append("<div class=\"bold mb-2\">Subclass Spells (" + subcls.name + ")</div>");
+        this._compsSpellAdditionalSpellSubclass[classIndex] = new Charactermancer_AdditionalSpellsSelect({
           'spellDatas': this._data.spell,
-          'additionalSpells': _0x7e6e11.additionalSpells,
+          'additionalSpells': subcls.additionalSpells,
           'modalFilterSpells': this._modalFilterSpells
         });
-        this._compsSpellAdditionalSpellSubclass[_0x5b71a4].render(_0x15b9ef);
+        this._compsSpellAdditionalSpellSubclass[classIndex].render(stgSubclassAdditionalSpells);
         const _0x44f9bf = () => {
-          if (this._compsSpellSpells[_0x5b71a4]) {
-            this._compsSpellSpells[_0x5b71a4].alwaysPreparedSpellsSubclass = MiscUtil.copy(this._compsSpellAdditionalSpellSubclass[_0x5b71a4].spellsAlwaysPrepared);
+          if (this._compsSpellSpells[classIndex]) {
+            this._compsSpellSpells[classIndex].alwaysPreparedSpellsSubclass = MiscUtil.copy(this._compsSpellAdditionalSpellSubclass[classIndex].spellsAlwaysPrepared);
           }
         };
-        this._compsSpellAdditionalSpellSubclass[_0x5b71a4].addHookAlwaysPreparedSpells(_0x44f9bf);
+        this._compsSpellAdditionalSpellSubclass[classIndex].addHookAlwaysPreparedSpells(_0x44f9bf);
         const _0x12cd92 = () => {
-          if (this._compsSpellSpells[_0x5b71a4]) {
-            this._compsSpellSpells[_0x5b71a4].expandedSpellsSubclass = MiscUtil.copy(this._compsSpellAdditionalSpellSubclass[_0x5b71a4].spellsExpanded);
+          if (this._compsSpellSpells[classIndex]) {
+            this._compsSpellSpells[classIndex].expandedSpellsSubclass = MiscUtil.copy(this._compsSpellAdditionalSpellSubclass[classIndex].spellsExpanded);
           }
         };
-        this._compsSpellAdditionalSpellSubclass[_0x5b71a4].addHookExpandedSpells(_0x12cd92);
+        this._compsSpellAdditionalSpellSubclass[classIndex].addHookExpandedSpells(_0x12cd92);
         const _0xe969c1 = () => {
-          if (this._compsSpellSpells[_0x5b71a4]) {
-            this._compsSpellSpells[_0x5b71a4].alwaysKnownSpellsSubclass = MiscUtil.copy(this._compsSpellAdditionalSpellSubclass[_0x5b71a4].spellsAlwaysKnown);
+          if (this._compsSpellSpells[classIndex]) {
+            this._compsSpellSpells[classIndex].alwaysKnownSpellsSubclass = MiscUtil.copy(this._compsSpellAdditionalSpellSubclass[classIndex].spellsAlwaysKnown);
           }
         };
-        this._compsSpellAdditionalSpellSubclass[_0x5b71a4].addHookAlwaysKnownSpells(_0xe969c1);
-      } else {
-        _0x15b9ef.hideVe();
-        this._compsSpellAdditionalSpellSubclass[_0x5b71a4] = null;
+        this._compsSpellAdditionalSpellSubclass[classIndex].addHookAlwaysKnownSpells(_0xe969c1);
       }
-      this._hk_onChangeLevel(_0x5b71a4, {
-        '$wrpLeftInner': _0x33539d,
-        '$wrpRightInner': _0x40dd6e
+      else {
+        stgSubclassAdditionalSpells.hideVe();
+        this._compsSpellAdditionalSpellSubclass[classIndex] = null;
+      }
+
+      this._hk_onChangeLevel(classIndex, {
+        '$wrpLeftInner': wrpLeftInner,
+        '$wrpRightInner': wrpRightInner
       });
-      const _0xec4f0f = DataConverter.getMaxCasterProgression(_0x37e482?.["casterProgression"], _0x7e6e11?.["casterProgression"]);
-      if (this._compsSpellSpells[_0x5b71a4]) {
-        this._compsSpellSpells[_0x5b71a4].subclassName = _0x7e6e11?.["name"];
-        this._compsSpellSpells[_0x5b71a4].subclassShortName = _0x7e6e11?.["shortName"];
-        this._compsSpellSpells[_0x5b71a4].subclassSource = _0x7e6e11?.['source'];
-        this._compsSpellSpells[_0x5b71a4].casterProgression = _0xec4f0f;
+      const maxCasterProgression = DataConverter.getMaxCasterProgression(cls?.casterProgression, subcls?.casterProgression);
+      if (this._compsSpellSpells[classIndex]) {
+        this._compsSpellSpells[classIndex].subclassName = subcls?.["name"];
+        this._compsSpellSpells[classIndex].subclassShortName = subcls?.["shortName"];
+        this._compsSpellSpells[classIndex].subclassSource = subcls?.['source'];
+        this._compsSpellSpells[classIndex].casterProgression = maxCasterProgression;
       }
-      if (this._compsSpellSpellSlotLevelSelect[_0x5b71a4]) {
-        this._compsSpellSpellSlotLevelSelect[_0x5b71a4].casterProgression = _0xec4f0f;
+      if (this._compsSpellSpellSlotLevelSelect[classIndex]) {
+        this._compsSpellSpellSlotLevelSelect[classIndex].casterProgression = maxCasterProgression;
       }
-      if (this._compsSpellSpells[_0x5b71a4] && this._compsSpellAdditionalSpellSubclass[_0x5b71a4]) {
-        this._compsSpellSpells[_0x5b71a4].alwaysPreparedSpellsSubclass = MiscUtil.copy(this._compsSpellAdditionalSpellSubclass[_0x5b71a4].spellsAlwaysPrepared);
-        this._compsSpellSpells[_0x5b71a4].expandedSpellsSubclass = MiscUtil.copy(this._compsSpellAdditionalSpellSubclass[_0x5b71a4].spellsExpanded);
-        this._compsSpellSpells[_0x5b71a4].alwaysKnownSpellsSubclass = MiscUtil.copy(this._compsSpellAdditionalSpellSubclass[_0x5b71a4].spellsAlwaysKnown);
+      if (this._compsSpellSpells[classIndex] && this._compsSpellAdditionalSpellSubclass[classIndex]) {
+        this._compsSpellSpells[classIndex].alwaysPreparedSpellsSubclass = MiscUtil.copy(this._compsSpellAdditionalSpellSubclass[classIndex].spellsAlwaysPrepared);
+        this._compsSpellSpells[classIndex].expandedSpellsSubclass = MiscUtil.copy(this._compsSpellAdditionalSpellSubclass[classIndex].spellsExpanded);
+        this._compsSpellSpells[classIndex].alwaysKnownSpellsSubclass = MiscUtil.copy(this._compsSpellAdditionalSpellSubclass[classIndex].spellsAlwaysKnown);
       } else {
-        if (this._compsSpellSpells[_0x5b71a4]) {
-          this._compsSpellSpells[_0x5b71a4].alwaysPreparedSpellsSubclass = [];
+        if (this._compsSpellSpells[classIndex]) {
+          this._compsSpellSpells[classIndex].alwaysPreparedSpellsSubclass = [];
         }
-        if (this._compsSpellSpells[_0x5b71a4]) {
-          this._compsSpellSpells[_0x5b71a4].expandedSpellsSubclass = [];
+        if (this._compsSpellSpells[classIndex]) {
+          this._compsSpellSpells[classIndex].expandedSpellsSubclass = [];
         }
-        if (this._compsSpellSpells[_0x5b71a4]) {
-          this._compsSpellSpells[_0x5b71a4].alwaysKnownSpellsSubclass = [];
+        if (this._compsSpellSpells[classIndex]) {
+          this._compsSpellSpells[classIndex].alwaysKnownSpellsSubclass = [];
         }
       }
-      if (_0x3599ff) {
+      if (isMissingClassComp) {
         this._hk_shared_doRenderClassSubclass({
-          'ix': _0x5b71a4,
-          '$stgClassSpells': _0x444f7b,
-          '$dispSpell': _0x1cc99a,
-          '$wrpSlotLevelSelect': _0x15fd72
+          ix: classIndex,
+          $stgClassSpells: stgClassSpells,
+          $dispSpell: dispSpell,
+          $wrpSlotLevelSelect: wrpSlotLevelSelect
         });
-      } else {
-        this._hk_shared_doUpdateRenderedClassSubclass({
-          'ix': _0x5b71a4
-        });
+      }
+      else {
+        this._hk_shared_doUpdateRenderedClassSubclass({ ix: classIndex });
       }
     }
     async ["_hk_onChangeSubclass_pRenderSpellTable"](_0x260cc7, {
@@ -10790,28 +10885,30 @@ class ActorCharactermancerSpell extends ActorCharactermancerBaseComponent {
         const targetLevel = this._parent.compClass.state[propTargetLevel];
         const casterProgression = DataConverter.getMaxCasterProgression(cls?.casterProgression, subcls?.casterProgression);
         const casterProgressionMeta = Charactermancer_Spell_Util.getCasterProgressionMeta({
-            'casterProgression': casterProgression,
-            'curLevel': curLevel,
-            'targetLevel': targetLevel
+            casterProgression: casterProgression,
+            curLevel: curLevel,
+            targetLevel: targetLevel
         });
 
         if (this._compsSpellSpells[classIx]) {
+            //Set high and low levels
             if (casterProgressionMeta) {
-            const {
-                spellLevelLow: _0x2987bb,
-                spellLevelHigh: _0x4adfd0
-            } = casterProgressionMeta;
-            this._compsSpellSpells[classIx].spellLevelLow = _0x2987bb;
-            this._compsSpellSpells[classIx].spellLevelHigh = _0x4adfd0;
-            } else {
-            this._compsSpellSpells[classIx].spellLevelLow = null;
-            this._compsSpellSpells[classIx].spellLevelHigh = null;
+                const { spellLevelLow: spellLvlLow, spellLevelHigh: spellLvlHigh } = casterProgressionMeta;
+                this._compsSpellSpells[classIx].spellLevelLow = spellLvlLow;
+                this._compsSpellSpells[classIx].spellLevelHigh = spellLvlHigh;
             }
+            else {
+                this._compsSpellSpells[classIx].spellLevelLow = null;
+                this._compsSpellSpells[classIx].spellLevelHigh = null;
+            }
+
+            //Set max learned cantrips
             this._compsSpellSpells[classIx].maxLearnedCantrips = Charactermancer_Spell_Util.getMaxLearnedCantrips({
-            'cls': cls,
-            'sc': subcls,
-            'targetLevel': targetLevel
+                cls: cls,
+                sc: subcls,
+                targetLevel: targetLevel
             });
+            console.log("CLASS", cls.name, "is allowed ", this._compsSpellSpells[classIx].maxLearnedCantrips, "max cantrips!");
             this._compsSpellSpells[classIx].fixedLearnedProgression = this._spell_getFixedLearnedProgression(classIx, cls, subcls, targetLevel);
             this._compsSpellSpells[classIx].fixedLearnedProgressionDefault = this._spell_getFixedLearnedProgression(classIx, cls, subcls, targetLevel, {
             'isDefault': true
@@ -10933,23 +11030,24 @@ class ActorCharactermancerSpell extends ActorCharactermancerBaseComponent {
       return !!_0x2d0ad1?.[_0x1d6ef4 - 0x1];
     }
     _spell_getExistingCasterMeta({
-      ix: _0x357258,
-      cls: _0x59d9ff,
-      sc: _0x5b73e4,
-      existingClassMeta: _0x5783cd
+      ix: ix,
+      cls: cls,
+      sc: sc,
+      existingClassMeta: existingClassMeta
     }) {
-      if (!_0x5783cd?.["level"]) {
+      if (!existingClassMeta?.level) {
         return null;
       }
-      const _0x458757 = this._compsSpellSpellSlotLevelSelect[_0x357258] ? this._compsSpellSpellSlotLevelSelect[_0x357258].getFormData() : null;
-      const _0x5d87e1 = this._parent.compAbility.getTotals();
+      const slotForm = this._compsSpellSpellSlotLevelSelect[ix] ?
+        this._compsSpellSpellSlotLevelSelect[ix].getFormData() : null;
+      const abilityTotals = this._parent.compAbility.getTotals();
       return Charactermancer_Spell_Util.getExistingCasterMeta({
-        'cls': _0x59d9ff,
-        'sc': _0x5b73e4,
-        'actor': this._actor,
-        'targetLevel': _0x5783cd.level,
-        'formDataSlotSelectFromComp': _0x458757,
-        'abilityScoresFromComp': _0x5d87e1
+        cls: cls,
+        sc: sc,
+        actor: this._actor,
+        targetLevel: existingClassMeta.level,
+        formDataSlotSelectFromComp: slotForm,
+        abilityScoresFromComp: abilityTotals
       });
     }
     _getDefaultState() {
@@ -10959,13 +11057,16 @@ class ActorCharactermancerSpell extends ActorCharactermancerBaseComponent {
     }
 }
 class Charactermancer_Spell_Util {
+    /**
+     * Description
+     * @param {{casterProgression:any, curLevel:number, targetLevel:number, isBreakpointsOnly:boolean}} options
+     * @returns {any}
+     */
     static getCasterProgressionMeta({casterProgression, curLevel, targetLevel, isBreakpointsOnly=false}) {
-        if (casterProgression == null || curLevel == null || targetLevel == null)
-            return null;
+        if (casterProgression == null || curLevel == null || targetLevel == null){return null;}
 
         const progression = UtilDataConverter.CASTER_TYPE_TO_PROGRESSION[casterProgression];
-        if (!progression)
-            return null;
+        if (!progression){return null;}
 
         const levelToSpellLevel = [];
         let lastSpellLevel = 0;
@@ -10981,17 +11082,14 @@ class Charactermancer_Spell_Util {
                 }
             }
             if (!isFound) {
-                if (isBreakpointsOnly)
-                    levelToSpellLevel.push(null);
-                else
-                    levelToSpellLevel.push(levelToSpellLevel.length ? levelToSpellLevel.last() : null);
+                if (isBreakpointsOnly){levelToSpellLevel.push(null);}
+                else{levelToSpellLevel.push(levelToSpellLevel.length ? levelToSpellLevel.last() : null);}
             }
         }
         );
 
         const spannedLevels = levelToSpellLevel.slice(curLevel, targetLevel).filter(Boolean);
-        if (!spannedLevels.length)
-            return null;
+        if (!spannedLevels.length){return null;}
 
         const spellLevelLow = Math.min(...spannedLevels);
         const spellLevelHigh = Math.max(...spannedLevels);
@@ -11036,8 +11134,7 @@ class Charactermancer_Spell_Util {
     }
 
     static getMaxLearnedCantrips({cls, sc, targetLevel}) {
-        if (!cls || targetLevel == null)
-            return null;
+        if (!cls || targetLevel == null){return null;}
 
         let cantripProgression = DataConverter.getMaxCantripProgression(cls.cantripProgression, sc?.cantripProgression);
 
@@ -11314,9 +11411,19 @@ class Charactermancer_Spell_Util {
         return `<$level$> ${casterProgression !== "full" ? `/ 2 ` : ""}+ ${cls.spellcastingAbility ? `<$${cls.spellcastingAbility}_mod$>` : "5"}`;
     }
 
+    /**
+     * Description
+     * @param {any} {cls
+     * @param {any} sc
+     * @param {any} actor
+     * @param {any} targetLevel
+     * @param {any} formDataSlotSelectFromComp=null
+     * @param {any} abilityScoresFromComp=null}
+     * @returns {{maxLearnedCantrips:any, fixedLearnedProgression:any,
+     * maxPreparedSpells:any, spellLevelLow:any, spellLevelLowHigh:any}}
+     */
     static getExistingCasterMeta({cls, sc, actor, targetLevel, formDataSlotSelectFromComp=null, abilityScoresFromComp=null}) {
-        if (!targetLevel)
-            return null;
+        if (!targetLevel){return null;}
 
         const casterProgression = DataConverter.getMaxCasterProgression(cls?.casterProgression, sc?.casterProgression);
         const casterProgressionMeta = Charactermancer_Spell_Util.getCasterProgressionMeta({
@@ -11984,7 +12091,8 @@ class Charactermancer_Spell extends BaseComponent {
         this._subclassShortName = opts.subclassShortName;
         this._subclassSource = opts.subclassSource;
         //Create an array of new components to handle picking spells at each level
-        this._compsLevel = [...new Array(opts.maxLevel != null ? (opts.maxLevel + 1) : 10)].map((_,i)=>new Charactermancer_Spell_Level({
+        this._compsLevel = [...new Array(opts.maxLevel != null ? (opts.maxLevel + 1) : 10)]
+            .map((_,i)=>new Charactermancer_Spell_Level({
             spellDatas: opts.spellDatas,
             spellLevel: i,
             parent: this
@@ -12684,12 +12792,19 @@ class Charactermancer_Spell extends BaseComponent {
         };
     }
 
+    /**
+     * Get the known spells sorted by level
+     * @returns {Charactermancer_Spell_SpellMeta[][]}
+     */
     _test_getKnownSpells(){
         let spellsByLvl = [];
         for(let lvl = 0; lvl < this._compsLevel.length; ++lvl){
             if(!spellsByLvl[lvl]){spellsByLvl[lvl] = [];}
+            //Get the component that handles spells for this level
             let comp = this._compsLevel[lvl];
+            //Ask it for the known spells
             let known = comp.getKnownSpells();
+            //Add the known spells onto the array slot
             spellsByLvl[lvl] = spellsByLvl[lvl].concat(known);
         }
         return spellsByLvl;
@@ -12816,6 +12931,9 @@ class Charactermancer_Spell_Modal extends Charactermancer_Spell {
  * An object that handles choosing spells for a particular level (including cantrips)
  */
 class Charactermancer_Spell_Level extends BaseComponent {
+    /**
+     * @param {{parent:Charactermancer_Spell}} opts
+     */
     constructor(opts) {
         super();
         opts = opts || {};
@@ -12832,6 +12950,7 @@ class Charactermancer_Spell_Level extends BaseComponent {
     _isAvailableSpell(sp) { return sp.level === this._spellLevel; }
 
     render($wrp) {
+        if(this._spellLevel == 0){console.error("RENDER SPELL_LEVEL");}
         this._$wrpRows = $$`<div class="ve-flex-col manc__list mt-1 mb-3"></div>`;
 
         //This is only shown when we can't find any spells to offer
@@ -12903,6 +13022,10 @@ class Charactermancer_Spell_Level extends BaseComponent {
 
         const hkSpellLevel = ()=>{
             const isWithinRange = this._isWithinLevelRange();
+            if(!isWithinRange && this._spellLevel == 0){
+                console.error("Our spell level", this._spellLevel, "is not within the level range. We are allowed ",
+                this._parent.maxLearnedCantrips, "max cantrips");
+            }
 
             $wrpInner.toggleVe(isWithinRange);
             if (!isWithinRange){this._resetLevelSpells();}
@@ -12916,14 +13039,18 @@ class Charactermancer_Spell_Level extends BaseComponent {
 
         if (this._spellLevel === 0){this._render_bindCantripHooks();}
         else {this._render_bindLevelledSpellHooks();}
+
+        
+        //Debug
+        //let spellsToLearn = [212];
+        if(this._spellLevel == 0){this.markSpellAsLearned(null, 212);}
     }
 
     _render_bindCantripHooks() {
         const hkIsMaxLearnedCantrips = ()=>{
             this._$wrpRows.toggleClass("manc-sp__is-max-learned-cantrips", !this._parent.canLearnMoreCantrips_());
             this._$wrpRows.toggleClass("manc-sp__is-max-learned-cantrips--is-over-limit", this._parent.isOverLearnCantripsLimit_());
-        }
-        ;
+        };
         this._parent.addHookIsMaxLearnedCantrips(hkIsMaxLearnedCantrips);
         hkIsMaxLearnedCantrips();
     }
@@ -12977,6 +13104,12 @@ class Charactermancer_Spell_Level extends BaseComponent {
         && this._spellLevel <= (this._parent.spellLevelHigh ?? Number.MIN_SAFE_INTEGER);
     }
 
+    /**
+     * Create a new list item UI element
+     * @param {{source:string, _isConc:boolean, school:string}} spell
+     * @param {number} spI
+     * @returns {any}
+     */
     _getListItem(spell, spI) {
         const {ixLearned, ixPrepared, ixAlwaysPrepared, ixAlwaysKnownSpell} = this.constructor._getProps(spI);
 
@@ -13144,8 +13277,27 @@ class Charactermancer_Spell_Level extends BaseComponent {
 
         return listItem;
     }
+    markSpellAsLearned(spell, spI){
+        console.log("LIST", this._list._items);
+        const items = this._list._items; //or _filteredItems?
+        const matches = items.filter(it => it.ix == spI);
+        const m = matches[0];
+
+        const {ixLearned} = this.constructor._getProps(spI);
+        console.log("Set state learned", ixLearned);
+        this._state[ixLearned] = true;
+        const btn = m.data.btnLearn;
+        console.log("Set button active");
+        btn.classList.add("active"); //Mark button as active
+        console.log("Set learned cantrips");
+        this._parent.cntLearnedCantrips++;
+
+        const known = this.getSpellsKnown(true);
+        console.log("KNOWN", known, this._state[ixLearned]);
+    }
 
     _handleListItemBtnLearnClick_do_doLearn({btnLearn, btnPrepare, isActive, ixPrepared, ixLearned}) {
+        if(this._spellLevel == 0){console.error("_handleListItemBtnLearnClick_do_doLearn");}
         if (isActive && this._parent.isPreparedCaster && this._state[ixPrepared]) {
             this._state[ixPrepared] = false;
             btnPrepare.classList.remove("active");
@@ -13157,6 +13309,7 @@ class Charactermancer_Spell_Level extends BaseComponent {
     }
 
     _handleListItemBtnLearnClick_doFixed({btnLearn, btnPrepare, isActive, ixPrepared, ixLearned}) {
+        if(this._spellLevel == 0){console.error("_handleListItemBtnLearnClick_doFixed");}
         if (!isActive && !this._parent.canLearnMoreFixedSpellsOfLevel_(this._spellLevel))
             return false;
 
@@ -13179,12 +13332,10 @@ class Charactermancer_Spell_Level extends BaseComponent {
             const sp = this._spellDatas[it.ix];
 
             //_parent is a Charactermancer_Spell object
-            if (!this._parent.isAvailableClassSpell_(sp) && !this._parent.isAvailableSubclassSpell_(sp) && !this._parent.isAvailableExpandedSpell_(sp))
-            {
-                return false;
-            }
-
-
+            if (!this._parent.isAvailableClassSpell_(sp)
+            && !this._parent.isAvailableSubclassSpell_(sp)
+            && !this._parent.isAvailableExpandedSpell_(sp))
+            { return false; }
 
             const {ixLearned, ixPrepared, ixAlwaysPrepared, ixAlwaysKnownSpell} = this.constructor._getProps(it.ix);
 
@@ -13250,7 +13401,8 @@ class Charactermancer_Spell_Level extends BaseComponent {
                     it.data[propBtn].classList.add("active");
                     it.data[propBtn].disabled = true;
                 }
-            } else {
+            }
+            else {
                 if (this._state[propIxAlwaysProp] && it.data[propBtn]) {
                     it.data[propBtn].classList.remove("active");
                     it.data[propBtn].disabled = false;
@@ -13271,68 +13423,63 @@ class Charactermancer_Spell_Level extends BaseComponent {
         };
     }
 
+    /**
+     * This function will reset(clear) any learned or prepared spells
+     */
     _resetLevelSpells() {
+        if(this._spellLevel == 0){console.error("_resetLevelSpells");}
         let numDeLearned = 0;
         let numDePrepared = 0;
+        //Create a new blank state
         const nxtState = {};
 
         const len = this._spellDatas.length;
         for (let i = 0; i < len; ++i) {
             const sp = this._spellDatas[i];
 
-            if (!this._isAvailableSpell(sp))
-                continue;
+            if (!this._isAvailableSpell(sp)){continue;}
 
             const existingSpellMeta = this._parent.getExistingSpellMeta_(sp);
-            if (existingSpellMeta)
-                continue;
+            if (existingSpellMeta){continue;}
 
             const {ixLearned, ixPrepared, ixAlwaysPrepared, ixAlwaysKnownSpell} = this.constructor._getProps(i);
 
-            if (this._state[ixLearned]) {
-                nxtState[ixLearned] = false;
-                numDeLearned++;
-            }
+            //If the spell was learned, de-learn it
+            if (this._state[ixLearned]) { nxtState[ixLearned] = false; numDeLearned++; }
 
-            if (this._state[ixPrepared]) {
-                nxtState[ixPrepared] = false;
-                numDePrepared++;
-            }
+            if (this._state[ixPrepared]) { nxtState[ixPrepared] = false; numDePrepared++; }
 
-            if (this._state[ixAlwaysPrepared])
-                nxtState[ixAlwaysPrepared] = false;
+            if (this._state[ixAlwaysPrepared]){nxtState[ixAlwaysPrepared] = false;}
 
-            if (this._state[ixAlwaysKnownSpell])
-                nxtState[ixAlwaysKnownSpell] = false;
+            if (this._state[ixAlwaysKnownSpell]){nxtState[ixAlwaysKnownSpell] = false;}
         }
 
         this._proxyAssignSimple("state", nxtState);
+
+        
+        
 
         if (numDeLearned) {
             if (this._spellLevel === 0) {
                 this._parent.cntLearnedCantrips -= numDeLearned;
                 this._$wrpRows[0].querySelectorAll(`.manc-sp__btn-learn-cantrip`).forEach(it=>{
-                    if (it.dataset?.["plut-is-existing-spell"])
-                        return;
+                    if (it.dataset?.["plut-is-existing-spell"]){return;}
                     it.classList.remove("active");
-                }
-                );
-            } else {
+                });
+            }
+            else {
                 this._parent.cntLearnedSpells -= numDeLearned;
                 this._$wrpRows[0].querySelectorAll(`.manc-sp__btn-learn-spell`).forEach(it=>{
-                    if (it.dataset?.["plut-is-existing-spell"])
-                        return;
+                    if (it.dataset?.["plut-is-existing-spell"]){return;}
                     it.classList.remove("active");
-                }
-                );
+                });
             }
         }
 
         if (numDePrepared) {
             this._parent.cntPrepared -= numDePrepared;
             this._$wrpRows[0].querySelectorAll(`.manc-sp__btn-prepare`).forEach(it=>{
-                if (it.dataset?.["plut-is-existing-spell"])
-                    return;
+                if (it.dataset?.["plut-is-existing-spell"]){return;}
                 it.classList.remove("active");
             }
             );
@@ -13343,8 +13490,9 @@ class Charactermancer_Spell_Level extends BaseComponent {
      * Returns all spells chosen to be learned at this level. Does not handle level 0 (cantrips)
      * @returns {{ix:number, spell:any}[]}
      */
-    getSpellsKnown() {
-        if (!this._isWithinLevelRange() || this._spellLevel === 0) {return [];}
+    getSpellsKnown(includeCantrips = false) {
+        //TEMPFIX, quite lazy
+        if ((!this._isWithinLevelRange() || this._spellLevel === 0) && !includeCantrips) {return [];}
 
         const out = [];
 
@@ -13352,21 +13500,15 @@ class Charactermancer_Spell_Level extends BaseComponent {
         for (let i = 0; i < len; ++i) {
             const sp = this._spellDatas[i];
 
-            if (!this._isAvailableSpell(sp))
-                continue;
+            if (!this._isAvailableSpell(sp)){continue;}
             if (!this._parent.isAvailableClassSpell_(sp) && !this._parent.isAvailableSubclassSpell_(sp)
-            && !this._parent.isAvailableExpandedSpell_(sp))
-                continue;
+            && !this._parent.isAvailableExpandedSpell_(sp)){continue;}
 
             const {ixLearned} = this.constructor._getProps(i);
 
-            if (!this._state[ixLearned])
-                continue;
+            if (!this._state[ixLearned]){continue;}
 
-            out.push({
-                ix: i,
-                spell: this._spellDatas[i],
-            });
+            out.push({ ix: i, spell: this._spellDatas[i]});
         }
 
         return out;
