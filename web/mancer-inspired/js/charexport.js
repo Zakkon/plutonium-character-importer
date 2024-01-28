@@ -76,9 +76,12 @@ class CharacterExportFvtt{
         //ability scores (our choices, maybe not the total)
         const abilities = await CharacterExportFvtt.getAbilityScoreData(builder.compAbility);
         _char.abilities = abilities;
+
         //equipment (including gold, and bought items)
         const equipment = await CharacterExportFvtt.getEquipmentData(builder.compEquipment);
-        console.log("Equipment: ", equipment);
+        console.log("Equipment: ", equipment, builder.compEquipment);
+        _char.equipment = equipment;
+
         //known spells & cantrips
         const spells = await CharacterExportFvtt.getAllSpells(builder.compSpell);
         console.log("Spells: ", spells, builder.compSpell);
@@ -276,31 +279,21 @@ class CharacterExportFvtt{
      * @param {ActorCharactermancerEquipment} compEquipment
      */
     static async getEquipmentData(compEquipment){
-
         //Get gold
         const compGold = compEquipment._compEquipmentCurrency;
-        const remainingCp = compGold.getRemainingCp();
-        const out = {remainingCp: remainingCp};
 
         const compDefault = compEquipment._compEquipmentStartingDefault;
-        //const validStandard = compDefault._isValid_standard();
-        //const isAvailable = compDefault.isAvailable;
-        const formDefault = await compDefault.pGetFormData();
-        if(!formDefault.isFormComplete){ console.error(formDefault.messageInvalid); return null;}
-        out.itemsDefault = formDefault.data.equipmentItemEntries;
-
-        const isStartingEquipmentActive = compEquipment.isStandardStartingEquipmentActive_();
-        if(isStartingEquipmentActive){
-            out.mode = "starting";
-        }
-        else{
-            out.mode = "shop";
-        }
-
+        //Get the _state from compDefault, it contains info about which items were selected
+        const stateDefault = compDefault.__state;
+        //We also need info on if we rolled for gold or not. We can get this from compGold
+        const cpRolled = compGold.__state.cpRolled;
+        //Then we need info on which items were purchased in the item shop
         const compShop = compEquipment._compEquipmentShopGold;
-        const formShop = await compShop.pGetFormData();
-        if(!formShop.isFormComplete){ console.error(formShop.messageInvalid); return null;}
-        out.itemsShop = formShop.data.equipmentItemEntries;
+        const boughtItems = compShop.__state.itemPurchases.map(it =>  { 
+            return {isIgnoreCost: it.data.isIgnoreCost, quantity: it.data.quantity, value: it.data.value, uid: it.data.uid};});
+
+        const out = {stateDefault:stateDefault, cpRolled:cpRolled, boughtItems:boughtItems};
+
         return out;
     }
     /**

@@ -14,6 +14,7 @@ class Roll{
         let total = roll.total;
         let terms = [];
         let ex = roll.export(rpgDiceRoller.exportFormats.OBJECT);
+        console.log("ROLLS", ex, "FORMULA", this._formula);
         for(let r of ex.rolls){
             let results = [];
             for(let r2 of r.rolls){

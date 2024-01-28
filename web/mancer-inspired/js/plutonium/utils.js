@@ -2907,7 +2907,7 @@ let ListUiUtil$1 = class ListUiUtil {
             const nxtHtml = $btnAll.html() === ListUiUtil$1.HTML_GLYPHICON_EXPAND ? ListUiUtil$1.HTML_GLYPHICON_CONTRACT : ListUiUtil$1.HTML_GLYPHICON_EXPAND;
 
             if (nxtHtml === ListUiUtil$1.HTML_GLYPHICON_CONTRACT && list.visibleItems.length > 500) {
-                const isSure = await InputUiUtil$1.pGetUserBoolean({
+                const isSure = await InputUiUtil.pGetUserBoolean({
                     title: "Are You Sure?",
                     htmlDescription: `You are about to expand ${list.visibleItems.length} rows. This may seriously degrade performance.<br>Are you sure you want to continue?`,
                 });
@@ -3710,7 +3710,7 @@ class ComponentUiUtil {
         let $btnAdd;
         if (opts.isFreeText) {
             $btnAdd = $(`<button class="btn btn-xxs btn-default ui-pick__btn-add ml-auto">+</button>`).click(async()=>{
-                const input = await InputUiUtil$1.pGetUserString();
+                const input = await InputUiUtil.pGetUserString();
                 if (input == null || input === VeCt.SYM_UI_SKIP)
                     return;
                 const inputClean = opts.isCaseInsensitive ? input.trim().toLowerCase() : input.trim();
@@ -11947,7 +11947,7 @@ class InputUiUtil {
         if (defaultVal !== undefined)
             $iptNumber.val(defaultVal);
 
-        const {$modalInner, doClose, pGetResolved, doAutoResize: doAutoResizeModal} = await InputUiUtil$1._pGetShowModal({
+        const {$modalInner, doClose, pGetResolved, doAutoResize: doAutoResizeModal} = await InputUiUtil._pGetShowModal({
             title: opts.title || "Enter a Number",
             isMinHeight0: true,
         });
@@ -12040,7 +12040,7 @@ class InputUiUtil {
         }
         );
 
-        const {$modalInner, doClose, pGetResolved, doAutoResize: doAutoResizeModal} = await InputUiUtil$1._pGetShowModal({
+        const {$modalInner, doClose, pGetResolved, doAutoResize: doAutoResizeModal} = await InputUiUtil._pGetShowModal({
             title: opts.title || "Choose",
             isMinHeight0: true,
         });
@@ -12090,7 +12090,7 @@ class InputUiUtil {
         else
             $selEnum[0].selectedIndex = 0;
 
-        const {$modalInner, doClose, pGetResolved, doAutoResize: doAutoResizeModal} = await InputUiUtil$1._pGetShowModal({
+        const {$modalInner, doClose, pGetResolved, doAutoResize: doAutoResizeModal} = await InputUiUtil._pGetShowModal({
             title: opts.title || "Select an Option",
             isMinHeight0: true,
         });
@@ -12172,7 +12172,7 @@ class InputUiUtil {
         const {$ele: $wrpList, $iptSearch, propIsAcceptable} = ComponentUiUtil$1.getMetaWrpMultipleChoice(comp, prop, opts);
         $wrpList.addClass(`mb-1`);
 
-        const {$modalInner, doClose, pGetResolved, doAutoResize: doAutoResizeModal} = await InputUiUtil$1._pGetShowModal({
+        const {$modalInner, doClose, pGetResolved, doAutoResize: doAutoResizeModal} = await InputUiUtil._pGetShowModal({
             ...(opts.modalOpts || {}),
             title,
             isMinHeight0: true,
@@ -12241,7 +12241,7 @@ class InputUiUtil {
         let lastIx = opts.default != null ? opts.default : -1;
         const onclicks = [];
 
-        const {$modalInner, doClose, pGetResolved, doAutoResize: doAutoResizeModal} = await InputUiUtil$1._pGetShowModal({
+        const {$modalInner, doClose, pGetResolved, doAutoResize: doAutoResizeModal} = await InputUiUtil._pGetShowModal({
             title: opts.title || "Select an Option",
             isMinHeight0: true,
         });
@@ -12335,7 +12335,7 @@ class InputUiUtil {
             hkIsValid();
         }
 
-        const {$modalInner, doClose, pGetResolved, doAutoResize: doAutoResizeModal} = await InputUiUtil$1._pGetShowModal({
+        const {$modalInner, doClose, pGetResolved, doAutoResize: doAutoResizeModal} = await InputUiUtil._pGetShowModal({
             title: opts.title || "Enter Text",
             isMinHeight0: true,
             isWidth100: true,
@@ -12399,7 +12399,7 @@ class InputUiUtil {
         if (opts.isCode)
             $iptStr.addClass("code");
 
-        const {$modalInner, doClose, pGetResolved, doAutoResize: doAutoResizeModal} = await InputUiUtil$1._pGetShowModal({
+        const {$modalInner, doClose, pGetResolved, doAutoResize: doAutoResizeModal} = await InputUiUtil._pGetShowModal({
             title: opts.title || "Enter Text",
             isMinHeight0: true,
         });
@@ -12444,7 +12444,7 @@ class InputUiUtil {
 
         const $iptRgb = $(`<input class="form-control mb-2" ${opts.default != null ? `value="${opts.default}"` : ""} type="color">`);
 
-        const {$modalInner, doClose, pGetResolved, doAutoResize: doAutoResizeModal} = await InputUiUtil$1._pGetShowModal({
+        const {$modalInner, doClose, pGetResolved, doAutoResize: doAutoResizeModal} = await InputUiUtil._pGetShowModal({
             title: opts.title || "Choose Color",
             isMinHeight0: true,
         });
@@ -12578,7 +12578,7 @@ class InputUiUtil {
         }
         )() : null;
 
-        const {$modalInner, doClose, pGetResolved, doAutoResize: doAutoResizeModal} = await InputUiUtil$1._pGetShowModal({
+        const {$modalInner, doClose, pGetResolved, doAutoResize: doAutoResizeModal} = await InputUiUtil._pGetShowModal({
             title: opts.title || "Select Direction",
             isMinHeight0: true,
         });
@@ -12669,7 +12669,7 @@ class InputUiUtil {
         }
         ;
 
-        const {$modalInner, doClose, pGetResolved, doAutoResize: doAutoResizeModal} = await InputUiUtil$1._pGetShowModal({
+        const {$modalInner, doClose, pGetResolved, doAutoResize: doAutoResizeModal} = await InputUiUtil._pGetShowModal({
             title: opts.title || "Enter Dice",
             isMinHeight0: true,
         });
@@ -12708,7 +12708,7 @@ class InputUiUtil {
 
         let slider;
 
-        const {$modalInner, doClose, pGetResolved, doAutoResize: doAutoResizeModal} = await InputUiUtil$1._pGetShowModal({
+        const {$modalInner, doClose, pGetResolved, doAutoResize: doAutoResizeModal} = await InputUiUtil._pGetShowModal({
             title: opts.title || "Select Challenge Rating",
             isMinHeight0: true,
             cbClose: ()=>{

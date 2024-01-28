@@ -8418,8 +8418,8 @@ class ActorCharactermancerEquipment extends ActorCharactermancerBaseComponent {
         compDefault: compDefault,
         compGold: compGold
       } = Charactermancer_StartingEquipment.getComponents(this._actor, {
-        'itemDatas': { 'item': this._data.item },
-        'fnDoShowShop': () => this._parent.activeTab_ = this._tabShop
+        itemDatas: { item: this._data.item },
+        fnDoShowShop: () => this._parent.activeTab_ = this._tabShop
       });
       this._compEquipmentCurrency = compCurrency;
       this._compEquipmentStartingDefault = compDefault;
@@ -8432,13 +8432,13 @@ class ActorCharactermancerEquipment extends ActorCharactermancerBaseComponent {
 
         const redraw = () => {
             const primaryClass = this._parent.compClass.class_getPrimaryClass();
-            const customizedBackground = this._parent.compBackground.getFeatureCustomizedBackground_({ 'isAllowStub': false });
+            const customizedBackground = this._parent.compBackground.getFeatureCustomizedBackground_({ isAllowStub: false });
             const startingEquipment = MiscUtil.copy(primaryClass?.startingEquipment || {});
             //Check if we should push more options to choose from by looking at the background
             if ((!primaryClass || primaryClass && !primaryClass.startingEquipment || primaryClass && primaryClass.startingEquipment.additionalFromBackground)
             && customizedBackground?.startingEquipment?.length) {
-            startingEquipment.defaultData = startingEquipment.defaultData || [];
-            startingEquipment.defaultData.push(...MiscUtil.copy(customizedBackground.startingEquipment));
+                startingEquipment.defaultData = startingEquipment.defaultData || [];
+                startingEquipment.defaultData.push(...MiscUtil.copy(customizedBackground.startingEquipment));
             }
 
             //Let our components know what we're working with
@@ -8456,6 +8456,56 @@ class ActorCharactermancerEquipment extends ActorCharactermancerBaseComponent {
         const wrpTab = this._tabShop?.$wrpTab;
         if (!wrpTab) { return; }
         await this._compEquipmentShopGold.pRender(wrpTab);
+    }
+
+    /**
+     * Sets the state of the component based on a save file. This should be called just after first render.
+     * @param {{stateDefault:any, cpRolled:number, boughtItems:{uid:string, quantity:number, isIgnoreCost:boolean, value:number}[]}} actor
+    */
+    setStateFromSaveFile(actor){
+        const data = actor.equipment;
+        const compDefault = this._compEquipmentStartingDefault;
+        const compGold = this._compEquipmentCurrency;
+        const compShop = this._compEquipmentShopGold;
+        
+        const printToState = (input, state) => {
+            for(let prop of Object.keys(input)){
+                let val = input[prop];
+                state[prop] = val;
+            }
+        }
+
+        //If we rolled gold instead of picking default starting items, no need to paste default starting items state
+        if(!data.cpRolled){
+            printToState(data.stateDefault, compDefault._state);
+        }
+        else{
+            compGold._state.cpRolled = data.cpRolled;
+        }
+
+        //Then paste items into the shopping cart
+        const findItemByUID = (uid) => {
+            const itemDatas = compShop.__state.itemDatas.item;
+            const matches = itemDatas.filter(it => {
+                //Create a uid from the item
+                let itemUid = `${it.name}|${it.source}`.toLowerCase();//UrlUtil.URL_TO_HASH_BUILDER[UrlUtil.PG_ITEMS]({ name:n, source:src });
+                //then try to match it
+                return uid == itemUid;
+            });
+            return matches;
+        }
+        for(let it of data.boughtItems){
+            let results = findItemByUID(it.uid);
+            if(results.length > 1){throw new Error("Not supposed to return more than one result", it.uid);}
+            else if(results.length < 1){
+                console.error("Could not find a match to item", it.uid, "among our loaded items. Did you forget to load a source?");
+            }
+            else {
+                //Add it to list of bought items (it will auto draw from remaining currency)
+                compShop.addBoughtItem(it.uid, {quantity:it.quantity, isIgnoreCost:it.isIgnoreCost});
+            }
+        }
+        
     }
 
     get compEquipmentCurrency() {
@@ -8989,9 +9039,14 @@ Charactermancer_StartingEquipment.ComponentBase = class extends BaseComponent {
         return [...Parser.COIN_ABVS].reverse().map(coin=>asCoins[coin] ? `${asCoins[coin].toLocaleString()} ${coin}` : null).filter(Boolean).join(", ") || "0 gp";
     }
 
+    /**
+     * Show a popup dialog that warns the user that rolling for gold is an alternative to using starting equipment.
+     * If the user has already been shown this warning, it does not appear again
+     * @returns {any}
+     */
     async _pIsIgnoreGoldWarning() {
-        if (!Object.keys(this._compCurrency.startingEquipment || {}).length || this._compCurrency.hasShownGoldWarning)
-            return true;
+        if (!Object.keys(this._compCurrency.startingEquipment || {}).length
+        || this._compCurrency.hasShownGoldWarning){return true;}
 
         const isUseGold = await InputUiUtil.pGetUserBoolean({
             title: `Are you sure?`,
@@ -8999,37 +9054,49 @@ Charactermancer_StartingEquipment.ComponentBase = class extends BaseComponent {
             textYes: "Yes",
             textNo: "Cancel",
         });
-        if (!isUseGold)
-            return false;
+        if (!isUseGold){return false;}
 
         this._compCurrency.hasShownGoldWarning = true;
         return true;
     }
 
+    /**
+     * Returns a button that handles rolling for starting gold
+     * @returns {any}
+     */
     _$getBtnRollStartingGold() {
         return $(`<button class="btn btn-default btn-xs btn-5et">Roll Starting Gold</button>`).click(async()=>{
-            if (!(await this._pIsIgnoreGoldWarning()))
-                return;
+            //Wait for a popup warning to return true. If it returns false, it means the user cancelled
+            //if (!(await this._pIsIgnoreGoldWarning())){return;}
+            console.error("Roll gold warning not implemented");
 
-            const roll = new Roll(this._compCurrency.rollableExpressionGold);
-            await roll.evaluate({
-                async: true
-            });
-            this._compCurrency.cpRolled = roll.total * 100;
-
-            const optsToMessage = {
-                sound: null
-            };
-            if (this._actor) {
-                optsToMessage.speaker = {
-                    actor: this._actor.id
-                };
-                optsToMessage.flavor = `<div>${this._actor.name} rolls starting gold!</div>`;
+            //Expression can be "2d12 * 10"
+            const expression = this._compCurrency.rollableExpressionGold;
+            //Assume every part after index 0 is a multiplier
+            let expressionParts = expression.replace(/\s/g, '').split("*");
+            const roll = new Roll(expressionParts[0]);
+            await roll.evaluate({async: true});
+            let result = roll.total;
+            //Apply multipliers
+            for(let i = 1; i < expressionParts.length; ++i){
+                result *= expressionParts[i];
             }
+            //Convert gold pieces to copper pieces
+            this._compCurrency.cpRolled = result * 100;
 
-            roll.toMessage(optsToMessage).then(null);
-        }
-        );
+            //Print how much gold we rolled to chat in FoundryVTT
+            if(SETTINGS.USE_FVTT){
+                const optsToMessage = {sound: null};
+                if (this._actor) {
+                    optsToMessage.speaker = {actor: this._actor.id};
+                    optsToMessage.flavor = `<div>${this._actor.name} rolls starting gold!</div>`;
+                }
+                roll.toMessage(optsToMessage).then(null);
+            }
+            else{
+                console.log("Rolled", result, "gold!");
+            }
+        });
     }
 
     _$getBtnEnterStartingGold() {
@@ -9086,15 +9153,14 @@ Charactermancer_StartingEquipment.ComponentBase = class extends BaseComponent {
             if ($spcRollOrManual)
                 $spcRollOrManual.toggleVe(!this._isPredefinedItemDatas && this._compCurrency.startingEquipment);
             $wrpRollOrManual.toggleVe(this._compCurrency.startingEquipment);
-        }
-        ;
+        };
         this._compCurrency.addHookStartingEquipment(hkRollableExpressionGold);
         this._compCurrency.addHookRollableExpressionGold(hkRollableExpressionGold);
         hkRollableExpressionGold();
     }
 };
 
-/**A component for displaying choices related to default starting equipment */
+/**A component for displaying choices related to default starting equipment. Includes a button for rolling starting gold */
 Charactermancer_StartingEquipment.ComponentDefault = class extends Charactermancer_StartingEquipment.ComponentBase {
     constructor(opts) {
         super(opts);
@@ -9135,12 +9201,13 @@ Charactermancer_StartingEquipment.ComponentDefault = class extends Charactermanc
 		</div>`.appendTo($wrpTabStandard);
 
         const $btnResetStartingGold = $(`<button class="btn btn-default btn-xs btn-5et">Reset Starting Gold</button>`).click(async()=>{
-            const isSure = await InputUiUtil.pGetUserBoolean({
+            //Create a popup that asks the user if they are sure
+            /* const isSure = await InputUiUtil.pGetUserBoolean({
                 title: `Are you sure?`,
                 htmlDescription: `This will discard your current starting gold roll or value.`,
             });
-            if (!isSure)
-                return;
+            if (!isSure){return;} */
+            console.error("Reset rolled gold warning not implemented");
             this._compCurrency.cpRolled = null;
         }
         );
@@ -10085,7 +10152,7 @@ class ActorCharactermancerSpell extends ActorCharactermancerBaseComponent {
 
             for(let lvlIx = 0; lvlIx < data[classIx].spellsByLvl.length; ++lvlIx){
                 for(let sp of  data[classIx].spellsByLvl[lvlIx]){
-                    this._setSpellAsLearned(classIx, sp);
+                    this.markSpellAsLearnedKnown(classIx, sp);
                 }
             }
        }
@@ -10104,12 +10171,13 @@ class ActorCharactermancerSpell extends ActorCharactermancerBaseComponent {
         return ix;
    }
    /**
-    * @param {number} classIx
-    * @param {{name:string, source:string}} spell
+    * Mark a spell as prepared or learned. Only used when loading from a save file.
+    * @param {number} classIx Index of the class we are learning the spell on
+    * @param {{name:string, source:string}} spellStub
     */
-   _setSpellAsLearned(classIx, spell){
-        //Get the uid index of the spell
-        const ix = this._getIxOfSpell(spell);
+   markSpellAsLearnedKnown(classIx, spellStub){
+        //Get the uid index of the spells
+        const ix = this._getIxOfSpell(spellStub);
         //Use that to grab the full spell info from data
         const actualSpell = this._data.spell[ix];
         const comp = this.compsSpellSpells[classIx]; //Grab the component that handles spells for our class
@@ -10369,7 +10437,7 @@ class ActorCharactermancerSpell extends ActorCharactermancerBaseComponent {
       await this._modalFilterSpells.pPreloadHidden();
     }
     
-    async _spell_pRenderFilterBox(_0x4d3419) {
+    async _spell_pRenderFilterBox(leftContent) {
       const _0x58361b = $("<button class=\"btn-5et veapp__btn-filter\">Filter</button>");
       const _0x6136bd = $("<button class=\"btn btn-5et\" title=\"Toggle Filter Summary Display\"><span class=\"glyphicon glyphicon-resize-small\"></span></button>");
       const _0x40698b = $("<input type=\"search\" class=\"search w-100 form-control h-initial\" placeholder=\"Find spell...\">");
@@ -10385,7 +10453,7 @@ class ActorCharactermancerSpell extends ActorCharactermancerBaseComponent {
       const _0x37412f = () => this._compsSpellSpells.filter(Boolean).forEach(_0x2638d9 => _0x2638d9.isIncludeUaEtcSpellLists = this._state.spells_isIncludeUaEtcSpellLists);
       this._addHookBase("spells_isIncludeUaEtcSpellLists", _0x37412f);
       _0x37412f();
-      $$(_0x4d3419)`
+      $$(leftContent)`
               <div class="ve-flex-v-stretch input-group input-group--top no-shrink">
                   ${_0x58361b}
                   ${_0x6136bd}
@@ -13287,6 +13355,10 @@ class Charactermancer_Spell_Level extends BaseComponent {
 
         return listItem;
     }
+    /**
+     * Mark a spell as prepared or learned. Only used when loading from a save file.
+     * @param {number} spI index of the spell
+     */
     markSpellAsLearnedKnown(spI){
         const items = this._list._items; //or _filteredItems?
         const matches = items.filter(it => it.ix == spI);
@@ -13299,8 +13371,6 @@ class Charactermancer_Spell_Level extends BaseComponent {
 
         //Get the spell
         const spell = this._spellDatas[spI];
-        //TODO: check spell.preparationMode
-        console.log("SPELL PREPARATION MODE", spell.name, spell.preparationMode);
         const existingSpellMeta = this._parent.getExistingSpellMeta_(spell);
         const {ixLearned, ixPrepared, ixAlwaysPrepared, ixAlwaysKnownSpell} = this.constructor._getProps(spI);
 
@@ -13325,9 +13395,6 @@ class Charactermancer_Spell_Level extends BaseComponent {
             if (lvl == 0){this._parent.cntLearnedCantrips++;} //Should not happen, we never prepare cantrips
             else{this._parent.cntPrepared++;}
         }
-
-        const known = this.getSpellsKnown(true);
-        console.log("LEARNED", known, this._state[ixLearned]);
     }
 
     _handleListItemBtnLearnClick_do_doLearn({btnLearn, btnPrepare, isActive, ixPrepared, ixLearned}) {
