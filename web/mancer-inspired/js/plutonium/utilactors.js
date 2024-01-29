@@ -954,4 +954,51 @@ class UtilEntityBackground extends UtilEntityBase {
         return ent?.name === "Custom Background" && ent?.source === Parser.SRC_PHB;
     }
 }
+
+class UtilEntityGeneric extends UtilEntityBase {
+    static getName(ent) {
+        if (ent._fvttCustomizerState) {
+            const rename = CustomizerStateBase.fromJson(ent._fvttCustomizerState)?.rename?.rename;
+            if (rename)
+                return rename;
+        }
+
+        return ent._displayName || ent.name || "";
+    }
+
+    static _RE_RECHARGE_TAG = /{@recharge(?: (?<rechargeValue>\d+))?}/gi;
+    static _RE_RECHARGE_TEXT = /\(Recharge (?<rechargeValue>\d+)(?:[-\u2011-\u2014]\d+)?\)/gi;
+
+    static isRecharge(ent) {
+        if (!ent.name)
+            return false;
+
+        this._RE_RECHARGE_TAG.lastIndex = 0;
+        this._RE_RECHARGE_TEXT.lastIndex = 0;
+
+        return this._RE_RECHARGE_TAG.test(ent.name) || this._RE_RECHARGE_TEXT.test(ent.name);
+    }
+
+    static getRechargeMeta(name) {
+        if (!name)
+            return null;
+
+        let rechargeValue = null;
+
+        name = name.replace(this._RE_RECHARGE_TAG, (...m)=>{
+            rechargeValue ??= Number(m.last().rechargeValue || 6);
+            return "";
+        }
+        ).trim().replace(/ +/g, " ").replace(this._RE_RECHARGE_TEXT, (...m)=>{
+            rechargeValue ??= Number(m.last().rechargeValue);
+            return "";
+        }
+        ).trim().replace(/ +/g, " ");
+
+        return {
+            name,
+            rechargeValue,
+        };
+    }
+}
 //#endregion
