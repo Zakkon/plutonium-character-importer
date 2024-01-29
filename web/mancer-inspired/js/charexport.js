@@ -19,15 +19,17 @@ class CharacterExportFvtt{
         let metaDataStack = [];
 
         //Lets start by getting the character race
-        const race = builder.compRace.getRace_();
-        if(!!race){
+        const raceData = this.getRaceData(builder.compRace);
+        if(!!raceData){
+            console.log("RACEDATA", raceData);
+            let race = raceData.meta.race;
             const hash = UrlUtil.URL_TO_HASH_BUILDER.race(race);
-            _char.race = {name:race.name, source:race.source, hash: hash, srd:race.srd,
+            _char.race = {stateInfo: raceData.stateInfo, race: {name:race.name, source:race.source, hash: hash, srd:race.srd,
                 isSubRace: race._isSubRace, raceName:race.raceName, raceSource:race.raceSource, isBaseSrd:race._baseSrd,
-                versionBaseName:race._versionBase_name, versionBaseSource:race._versionBase_source };
+                versionBaseName:race._versionBase_name, versionBaseSource:race._versionBase_source }};
             metaDataStack.push({uid: race.name+"|"+race.source, _data:CharacterExportFvtt.getSourceMetaData(race)});
-
         }
+        console.log("RACECOMP", builder.compRace);
 
         //Now lets get the class information
         const classData = await CharacterExportFvtt.getClassData(builder.compClass);
@@ -173,6 +175,46 @@ class CharacterExportFvtt{
             classList.push(block);
         }
         return classList;
+    }
+    /**
+     * @param {ActorCharactermancerRace} compRace
+     * @returns {any}
+     */
+    static getRaceData(compRace){
+        let out = null;
+        const grabForm = (subCompName) => {
+            if(compRace[subCompName]){
+                const form = compRace[subCompName].pGetFormData();
+                out.formInfo.subcomps[subCompName] = form;
+            }
+        }
+        const grabState = (subCompName) => {
+            if(compRace[subCompName]){
+                out.stateInfo.subcomps[subCompName] = compRace[subCompName].__state;
+            }
+        }
+        const race = compRace.getRace_();
+        if(!!race){
+            out = {meta:{race:race}, stateInfo:{subcomps:{}}};
+            
+            //Get states from subcomponents
+            grabState("_compRaceSkillProficiencies");
+            grabState("_compRaceArmorProficiencies");
+            grabState("_compRaceConditionImmunity");
+            grabState("_compRaceDamageImmunity");
+            grabState("_compRaceDamageResistance");
+            grabState("_compRaceDamageVulnerability");
+            grabState("_compRaceExpertise");
+            grabState("_compRaceLanguageProficiencies");
+            grabState("_compRaceSkillToolLanguageProficiencies");
+            grabState("_compRaceToolProficiencies");
+            grabState("_compRaceWeaponProficiencies");
+            
+        }
+        else{
+            console.log("Race is null");
+        }
+        return out;
     }
     /**
      * @param {ActorCharactermancerClass} compClass

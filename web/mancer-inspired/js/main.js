@@ -371,6 +371,7 @@ class CharacterBuilder {
         this.compClass.render().then(() => {
 
         this.compRace.render();
+        if(SETTINGS.USE_EXISTING_WEB){this.compRace.setStateFromSaveFile(this.actor);}
         this.compAbility.render();
         
 

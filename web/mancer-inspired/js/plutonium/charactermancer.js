@@ -73,6 +73,29 @@ class ActorCharactermancerBaseComponent extends BaseComponent {
         this[_0x528966] = null;
       }
     }
+
+    /**
+     * @param {string} type
+     * @param {{name:string, source:string}} item
+     * @returns {any}
+     */
+    matchItemToData(type, item){
+        const handleStrangeResults = (matches) => {
+            if(matches.length > 1){console.error("Found more than 1 instance of ", (item.name + "_"+item.source).toLowerCase(), "in data ", type);}
+            else if(matches.length < 1){console.error("Could not find item", (item.name + "_"+item.source).toLowerCase(), "in data ", type);}
+        }
+        switch(type){
+            case "background": {
+                const matches = this._data[type].filter((it) => it.name == item.name && it.source == item.source);
+                handleStrangeResults(matches);
+                return matches[0] || null;
+            }
+            default: {
+                console.error("Not implemented");
+                return null;
+            }
+        }
+    }
 }
 //#endregion
 
@@ -6863,7 +6886,10 @@ class ActorCharactermancerRace extends ActorCharactermancerBaseComponent {
     get ["compRaceSkillToolLanguageProficiencies"]() {
       return this._compRaceSkillToolLanguageProficiencies;
     }
-    get ["compRaceSkillProficiencies"]() {
+    /**
+     * @returns {Charactermancer_OtherProficiencySelect}
+     */
+    get compRaceSkillProficiencies() {
       return this._compRaceSkillProficiencies;
     }
     get ["compRaceLanguageProficiencies"]() {
@@ -6896,7 +6922,8 @@ class ActorCharactermancerRace extends ActorCharactermancerBaseComponent {
     async pLoad() {
       await this._modalFilterRaces.pPreloadHidden();
       if(SETTINGS.USE_EXISTING_WEB){
-        this._test_DoHandleExistingRace(this._actor?.race);
+        //console.log(this._actor?.race);
+        //this._test_DoHandleExistingRace(this._actor?.race);
         return;
       }
       if(!SETTINGS.USE_EXISTING){return;}
@@ -6952,8 +6979,9 @@ class ActorCharactermancerRace extends ActorCharactermancerBaseComponent {
     //#endregion
     //#region WEB
     _test_DoHandleExistingRace(existingRace){
-        if(!existingRace){return;}
-        const { ixRace: ixRace, ixRaceVersion: ixRaceVersion } = this._test_getExistingRaceIndex(existingRace);
+        if(!existingRace || !existingRace.race){return;}
+        const raceInfo = existingRace.race;
+        const { ixRace: ixRace, ixRaceVersion: ixRaceVersion } = this._test_getExistingRaceIndex(raceInfo);
         const isRacePresent = !!ixRace;
         if(!isRacePresent){
             //throw error
@@ -6962,6 +6990,16 @@ class ActorCharactermancerRace extends ActorCharactermancerBaseComponent {
         }
         this._state.race_ixRace = ixRace;
         this._state.race_ixRace_version = ixRaceVersion;
+
+        //Apply state info to subcomponents
+        for(let subCompName of Object.keys(existingRace.stateInfo.subcomps)){
+            console.log("Applying states to ", subCompName, this);
+            if(!this[subCompName]){continue;}
+            const subComp = this[subCompName];
+            for(let prop of Object.keys(existingRace.stateInfo[subCompName])){
+                this._state[prop] = existingRace.stateInfo[subCompName][prop];
+            }
+        }
     }
     _test_getExistingRaceIndex(race){
         const raceNameLower = race.name.trim().toLowerCase();//(IntegrationBabele.getOriginalName(race) || '').trim().toLowerCase();
@@ -6984,6 +7022,35 @@ class ActorCharactermancerRace extends ActorCharactermancerBaseComponent {
             }
         }
         return { ixRace: outIxRace, ixRaceVersion: outIxRaceVersion };
+    }
+    /**
+     * Sets the state of the StatgenUI based on a save file. This should be called just after first render.
+     * @param {{race:{race:any, stateInfo:any}}} actor
+     */
+    setStateFromSaveFile(actor){
+        const data = actor.race;
+
+        if(!data || !data.race){return;}
+        const raceInfo = data.race;
+        const { ixRace: ixRace, ixRaceVersion: ixRaceVersion } = this._test_getExistingRaceIndex(raceInfo);
+        const isRacePresent = !!ixRace;
+        if(!isRacePresent){
+            //throw error
+            throw new Error("Could not match cached race to any race in data", data);
+            return;
+        }
+        this._state.race_ixRace = ixRace;
+        this._state.race_ixRace_version = ixRaceVersion;
+
+        //Apply state info to subcomponents
+        for(let subCompName of Object.keys(data.stateInfo.subcomps)){
+            console.log("Applying states to ", subCompName, data.stateInfo.subcomps[subCompName], this[subCompName]);
+            if(!this[subCompName]){continue;}
+            const subComp = this[subCompName];
+            for(let prop of Object.keys(data.stateInfo.subcomps[subCompName])){
+                subComp._state[prop] = data.stateInfo.subcomps[subCompName][prop];
+            }
+        }
     }
     //#endregion
     //#endregion
@@ -14968,8 +15035,12 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
         hkSpells();
         //#endregion
 
+        this.grabSkillProficiencies(this._parent.compClass, this._parent.compBackground, this._parent.compRace);
+
         const sectionParent = $$`<div class="ve-flex-col w-100 h-100 px-1 overflow-y-auto ve-grow veapp__bg-foundry"></div>`;
         
+
+
         $$`<div class="ve-flex w-100 h-100">
                 <div class="ve-flex-col w-100">
                     ${wrapper}
@@ -15093,6 +15164,57 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
         if(info.mode == "none"){return {mode: info.mode, values: {str:0,dex:0, con:0, int:0, wis:0, cha:0}};}
         const result = info.totals[info.mode];
         return {mode: info.mode, values: result};
+    }
+
+    /**
+     * Description
+     * @param {ActorCharactermancerClass} compClass
+     * @param {ActorCharactermancerBackground} compBackground
+     * @param {ActorCharactermancerRace} compRace
+     * @returns {any}
+     */
+    grabSkillProficiencies(compClass, compBackground, compRace){
+        //What can give us proficiencies?
+        //Classes
+        //Subclasses
+        //Backgrounds
+        //Races
+        //Feats
+
+        let skillsDb = {};
+        const pasteSkillVals = (fromSkills) => {
+            if(fromSkills==null){return;}
+            for(let skillName of Object.keys(fromSkills)){
+                skillName = skillName.toLowerCase(); //enforce lower case, just for safety
+                let skillVal = fromSkills[skillName];
+                let existingSkillVal = skillsDb[skillName] || 0;
+                //Only replace values if higher
+                //1 means proficiency, 2 means expertise
+                if(skillVal > existingSkillVal){skillsDb[skillName] = skillVal;}
+            }
+        }
+        //Get number of classes
+        const highestClassIndex = compClass._state.class_ixMax;
+        //Then paste skills gained from each class
+        for(let ix = 0; ix <= highestClassIndex; ++ix){
+            const subComp = compClass.compsClassSkillProficiencies[ix];
+            if(subComp==null){return null;}
+            const classSkillsForm = subComp._getFormData();
+            pasteSkillVals(classSkillsForm.data.skillProficiencies);
+        }
+        //Then paste skills gained from race
+        if(compRace.compRaceSkillProficiencies){
+            const raceSkillsForm = compRace.compRaceSkillProficiencies.pGetFormData();
+            console.log("RACESKILLSFORM", raceSkillsForm, compRace.compRaceSkillProficiencies);
+            pasteSkillVals(raceSkillsForm.data.skillProficiencies);
+        }
+        console.log("COMPRACE", compRace);
+        //Then paste skills gained from background
+        if(compBackground.compBackgroundSkillProficiencies){
+            const bkSkillsForm = compBackground.compBackgroundSkillProficiencies.pGetFormData();
+            pasteSkillVals(bkSkillsForm.data.skillProficiencies);
+        }
+        console.log("GAINED SKILLS", skillsDb);
     }
 
     /**
