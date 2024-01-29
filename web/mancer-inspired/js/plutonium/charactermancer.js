@@ -3453,12 +3453,9 @@ class Charactermancer_Class_StartingProficiencies extends BaseComponent {
             $wrpDisplay.empty();
             const isPrimary = this._state.mode === Charactermancer_Class_ProficiencyImportModeSelect.MODE_PRIMARY;
 
-            console.log("HKMode render");
 
             const profs = isPrimary ? this._primaryProficiencies : this._multiclassProficiencies;
             if (profs) {
-                console.log("existing armor prof: ", this._existingProficienciesVetArmor);
-                console.log("existing custom armor prof: ", this._existingProficienciesCustomArmor);
                 this._render_profType({
                     profList: profs.armor,
                     title: "Armor",
@@ -3735,7 +3732,6 @@ class ActorCharactermancerAbility extends ActorCharactermancerBaseComponent {
         //Set the UI select element to have the right value selected
         this._compStatgen._selModeElement[0].value = data.mode;
 
-        console.log("loaded state", data.state);
         //Print values over onto state
         for(let prop of Object.keys(data.state)){
             let val = data.state[prop];
@@ -3855,7 +3851,6 @@ class StatGenUi extends BaseComponent {
         if (this._isFvttMode) {
             if (!this._isLevelUp) {
                 const {propActive: propActiveTab, propProxy: propProxyTabs} = this._getTabProps();
-                console.log("BEFORE", this.__hooks.meta.ixActiveTab___default.length);
                 const $selMode = ComponentUiUtil.$getSelEnum(this, propActiveTab, {
                     values: iptTabMetas.map((_,ix)=>ix),
                     fnDisplay: ix=>iptTabMetas[ix].name,
@@ -7371,11 +7366,9 @@ class ActorCharactermancerBackground extends ActorCharactermancerBaseComponent {
         }
 
         //Go through our data and try to match to the background
-        console.log("DATA", this._data);
         const matches = this._data.background.filter((b, ix) => {if(b.name == data.name && b.source == data.source){
             return {ix:ix, match:b};
         }else{return null;}});
-        console.log("MATCHES", matches);
         if(matches.length > 1){}
         else if(matches.length < 1){
 
@@ -10150,8 +10143,6 @@ class ActorCharactermancerSpell extends ActorCharactermancerBaseComponent {
    setStateFromSaveFile(actor){
        const data = actor.spellsBySource;
 
-       console.log("SPELL DATA", data);
-       console.log("SPELL COMP", this);
 
        for(let classIx = 0; classIx < data.length; ++classIx){
             //Assume this is for a class, and it is going to _compsSpellSpells
@@ -10981,7 +10972,6 @@ class ActorCharactermancerSpell extends ActorCharactermancerBaseComponent {
             //Set high and low levels
             if (casterProgressionMeta) {
                 const { spellLevelLow: spellLvlLow, spellLevelHigh: spellLvlHigh } = casterProgressionMeta;
-                console.log("Setting low/high of class", classIx, "to", spellLvlLow, spellLvlHigh);
                 this._compsSpellSpells[classIx].spellLevelLow = spellLvlLow;
                 this._compsSpellSpells[classIx].spellLevelHigh = spellLvlHigh;
             }
@@ -10996,7 +10986,6 @@ class ActorCharactermancerSpell extends ActorCharactermancerBaseComponent {
                 sc: subcls,
                 targetLevel: targetLevel
             });
-            console.log("CLASS", cls.name, "is allowed ", this._compsSpellSpells[classIx].maxLearnedCantrips, "max cantrips!");
             this._compsSpellSpells[classIx].fixedLearnedProgression = this._spell_getFixedLearnedProgression(classIx, cls, subcls, targetLevel);
             this._compsSpellSpells[classIx].fixedLearnedProgressionDefault = this._spell_getFixedLearnedProgression(classIx, cls, subcls, targetLevel, {
             'isDefault': true
@@ -14895,7 +14884,6 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
             //Grab constitution score
             const conScore = this.test_grabAbilityScoreTotals(this._parent.compAbility).values.con;
             const conMod = (conScore-10)/2;
-            console.log("CON MODIFIER:", conScore);
             //Grab HP increase mode from class component (from each of the classes!)
             const classList = this.getClassData(this._parent.compClass);
             let hpTotal = 0; //Calculate max
@@ -14943,7 +14931,6 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
         //#region Spells
         const $colSpells = $$`<div></div>`.appendTo($wrpDisplay);
         const hkSpells = () => {
-            console.log("hkspells");
             $colSpells.empty();
             $colSpells.append("<hr class=\"hr-2\"><div class=\"bold mb-2\">Spells</div>");
             
