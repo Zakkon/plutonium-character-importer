@@ -3740,6 +3740,12 @@ class ActorCharactermancerAbility extends ActorCharactermancerBaseComponent {
             let val = data.state[prop];
             this._compStatgen._state[prop] = val;
         }
+
+        //Now do the same for props regarding ASI's and feat choices
+        for(let prop of Object.keys(data.stateAsi)){
+            let val = data.stateAsi[prop];
+            this._compStatgen._state[prop] = val;
+        }
     }
 }
 
@@ -5856,8 +5862,7 @@ StatGenUi.CompAsi = class extends BaseComponent {
                     continue;
                 this._metasAsi[namespace][ix].$row.hideVe().removeClass("statgen-asi__row");
             }
-        }
-        ;
+        };
         this._parent.addHookBase(propCnt, hk);
         hk();
     }
@@ -5983,18 +5988,17 @@ StatGenUi.CompAsi = class extends BaseComponent {
 
         const $btnChooseFeat = featStatic ? null : $(`<button class="btn btn-xxs btn-default mr-2" title="Choose a Feat"><span class="glyphicon glyphicon-search"></span></button>`).click(async()=>{
             const selecteds = await this._parent.modalFilterFeats.pGetUserSelection();
-            if (selecteds == null || !selecteds.length)
-                return;
+            if (selecteds == null || !selecteds.length){return;}
 
             const selected = selecteds[0];
             const ix = this._parent.feats.findIndex(it=>it.name === selected.name && it.source === selected.values.sourceJson);
             if (!~ix)
                 throw new Error(`Could not find selected entity: ${JSON.stringify(selected)}`);
+            console.log(this._parent.constructor.name, propIxFeat);
             this._parent.state[propIxFeat] = ix;
 
             this._doPulseThrottled();
-        }
-        );
+        });
 
         const $dispFeat = $(`<div class="ve-flex-v-center mr-2"></div>`);
         const $stgSelectAbilitySet = $$`<div class="ve-flex-v-center mr-2"></div>`;

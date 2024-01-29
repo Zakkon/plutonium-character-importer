@@ -103,6 +103,7 @@ class CharacterExportFvtt{
         _char.spellsBySource = spells;
 
         //Feats
+        console.log("ABILITY COMP", builder.compAbility);
 
         //optional feature stuff?
 
@@ -273,7 +274,16 @@ class CharacterExportFvtt{
             manual_int_abilValue:s["manual_int_abilValue"],
             manual_cha_abilValue:s["manual_cha_abilValue"]};
         }
-        return {state:out, mode:chosenModeIx};
+
+        //ASI data
+        let asiData = {};
+        for(let prop of Object.keys(s)){
+            if(prop.startsWith("common_asi_ability_")){
+                asiData[prop] = s[prop];
+            }
+        }
+
+        return {state:out, stateAsi:asiData, mode:chosenModeIx};
     }
     /**
      * @param {ActorCharactermancerEquipment} compEquipment
@@ -325,6 +335,7 @@ class CharacterExportFvtt{
      */
     static getBackground(compBackground){
         let bk = compBackground.getBackground_();
+        if(!bk){return null;}
         const bkSource = bk.source;
         const bkName = bk.name;
         const isCompletelyCustom = bk.name == "Custom Background";

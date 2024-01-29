@@ -287,8 +287,12 @@ class Vetools {
             }
         };
 
-        UiUtil.pGetShowModal = opts=>UtilApplications.pGetShowApplicationModal(opts);
-        InputUiUtil._pGetShowModal = opts=>UtilApplications.pGetShowApplicationModal(opts);
+        if(SETTINGS.USE_FVTT){
+            //Switches pGetShowModal to instead use the FoundryVTT Application class
+            UiUtil.pGetShowModal = opts=>UtilApplications.pGetShowApplicationModal(opts);
+            InputUiUtil._pGetShowModal = opts=>UtilApplications.pGetShowApplicationModal(opts);
+        }
+        
 
         this._CACHED_DATA_UTIL_LOAD_JSON = DataUtil.loadJSON.bind(DataUtil);
         this._CACHED_DATA_UTIL_LOAD_RAW_JSON = DataUtil.loadRawJSON.bind(DataUtil);

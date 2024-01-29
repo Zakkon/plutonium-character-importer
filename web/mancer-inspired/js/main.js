@@ -349,6 +349,10 @@ class CharacterBuilder {
         this.tabSpells = newPanel();
         this.tabFeats = newPanel();
         this.tabSheet = newPanel();
+
+        /* const modal = TestModal2.createNew();
+        console.log(modal);
+        modal.show(); */
     }
     async pLoad(){
         if(!SETTINGS.FILTERS){return;}
@@ -373,21 +377,19 @@ class CharacterBuilder {
         
 
         this.compEquipment.pRenderStarting().then(() => this.compEquipment.pRenderShop())
-          .then(() =>  this.compEquipment.setStateFromSaveFile(this.actor));
-        //this.compEquipment.pRenderShop();
+          .then(() => {if(SETTINGS.USE_EXISTING_WEB){this.compEquipment.setStateFromSaveFile(this.actor)}});
+        
         this.compSpell.pRender().then(() => this.compSpell.setStateFromSaveFile(this.actor));
         this.compFeat.render();
         this.compSheet.render();
 
         if(SETTINGS.USE_EXISTING_WEB){this.compAbility.setStateFromSaveFile(this.actor);}
         if(SETTINGS.USE_EXISTING_WEB){this.compBackground.setStateFromSaveFile(this.actor);}
-        //if(SETTINGS.USE_EXISTING_WEB){this.compSpell.setStateFromSaveFile(this.actor);}
       });
     }
     async loadFromSave(){
       const delay = (ms) => {return new Promise(resolve => setTimeout(resolve, ms));}
       //await delay(1000);
-      //if(SETTINGS.USE_EXISTING_WEB){this.compSpell.setStateFromSaveFile(this.actor);}
     }
 
     //#region Events
