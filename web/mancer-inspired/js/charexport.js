@@ -275,11 +275,19 @@ class CharacterExportFvtt{
             manual_cha_abilValue:s["manual_cha_abilValue"]};
         }
 
+
         //ASI data
         let asiData = {};
+        //We can get feats from ASIs, Races, and... what else? Backgrounds?
+        //TODO: Add background support here
         for(let prop of Object.keys(s)){
-            if(prop.startsWith("common_asi_ability_")){
+            if(prop.startsWith("common_asi_ability_") || prop.startsWith("common_additionalFeats_race_")
+            || prop.startsWith("common_additionalFeats_background_")){
                 asiData[prop] = s[prop];
+            }
+            //Some races provide ASI choices, include them here while we are at it
+            else if(prop.startsWith("common_raceChoice")){
+                out[prop] = s[prop];
             }
         }
 
