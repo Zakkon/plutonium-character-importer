@@ -14893,10 +14893,12 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
             let totals = this.test_grabAbilityScoreTotals(this._parent.compAbility);
             //Let's try to estimate HP
             //Grab constitution score
-            const constitution = this.test_grabAbilityScoreTotals(this._parent.compAbility).values.con;
+            const conScore = this.test_grabAbilityScoreTotals(this._parent.compAbility).values.con;
+            const conMod = (conScore-10)/2;
+            console.log("CON MODIFIER:", conScore);
             //Grab HP increase mode from class component (from each of the classes!)
             const classList = this.getClassData(this._parent.compClass);
-            let hpTotal = 0;
+            let hpTotal = 0; //Calculate max
             let levelTotal = 0;
             for(let ix = 0; ix < classList.length; ++ix){
                 const data = classList[ix];
@@ -14922,12 +14924,11 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
                 }
                 
                 const hp = ActorCharactermancerSheet.calcHitPointsAtLevel(data.cls.hd.number, data.cls.hd.faces, targetLevel, hpMode, customFormula);
-                console.log("HP", hp, hpMode, constitution);
                 hpTotal += hp;
                 levelTotal += targetLevel;
             }
 
-            hpTotal += (constitution * levelTotal);
+            hpTotal += (conMod * levelTotal);
 
             $colHpSpeed.append(`<div>HP: ${hpTotal}</div>`);
         };
@@ -15031,8 +15032,20 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
         }
         return classList;
     }
-    getClassHpInfo(compClass){
+    /**
+     * Description
+     * @param {ActorCharactermancerClass} compClass
+     * @param {number} ix
+     * @param {number} conMod
+     * @returns {number}
+     */
+    getClassHpInfo(compClass, ix, conMod){
+        const hpModeComp = compClass._compsClassHpIncreaseMode[ix];
+        const hpInfoComp = compClass._compsClassHpInfo[ix];
 
+        //HP at level 1
+        const lvl1Hp = (((hpInfoComp._hitDice.faces / 2) + 1) * hpInfoComp._hitDice.number) + conMod;
+        let totalHp = lvl1Hp;
     }
     getBackground(){
         return this._parent.compBackground.getBackground_(); 
@@ -15126,7 +15139,7 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
     static calcHitPointsAtLevel(hitDiceNumber, hitDiceFaces, level, mode, customFormula){
         switch(mode){
             case 0: //Take Average
-                return (hitDiceFaces * hitDiceNumber) + (((hitDiceFaces * hitDiceNumber) / 2) * (level-1));
+                return (hitDiceFaces * hitDiceNumber) + ((((hitDiceFaces * hitDiceNumber) / 2)+1) * (level-1));
             case 1: //Minimum Value
                 return (hitDiceFaces * hitDiceNumber) + ((1) * (level-1));
             case 2: //Maximum Value

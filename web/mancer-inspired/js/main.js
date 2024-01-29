@@ -382,11 +382,11 @@ class CharacterBuilder {
         
         this.compSpell.pRender().then(() => this.compSpell.setStateFromSaveFile(this.actor));
         this.compFeat.render();
-        this.compSheet.render();
+        
 
         if(SETTINGS.USE_EXISTING_WEB){this.compAbility.setStateFromSaveFile(this.actor);}
         if(SETTINGS.USE_EXISTING_WEB){this.compBackground.setStateFromSaveFile(this.actor);}
-      });
+      }).then(()=> {this.compSheet.render();});
     }
     async loadFromSave(){
       const delay = (ms) => {return new Promise(resolve => setTimeout(resolve, ms));}
