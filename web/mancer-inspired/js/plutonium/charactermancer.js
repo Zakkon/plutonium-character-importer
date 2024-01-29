@@ -3735,6 +3735,7 @@ class ActorCharactermancerAbility extends ActorCharactermancerBaseComponent {
         //Set the UI select element to have the right value selected
         this._compStatgen._selModeElement[0].value = data.mode;
 
+        console.log("loaded state", data.state);
         //Print values over onto state
         for(let prop of Object.keys(data.state)){
             let val = data.state[prop];
@@ -3742,9 +3743,11 @@ class ActorCharactermancerAbility extends ActorCharactermancerBaseComponent {
         }
 
         //Now do the same for props regarding ASI's and feat choices
-        for(let prop of Object.keys(data.stateAsi)){
-            let val = data.stateAsi[prop];
-            this._compStatgen._state[prop] = val;
+        if(data.stateAsi){
+            for(let prop of Object.keys(data.stateAsi)){
+                let val = data.stateAsi[prop];
+                this._compStatgen._state[prop] = val;
+            }
         }
     }
 }

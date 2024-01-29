@@ -275,23 +275,40 @@ class CharacterExportFvtt{
             manual_cha_abilValue:s["manual_cha_abilValue"]};
         }
 
+        const specifiedSave = true; //Keep true for now, otherwise for some reason ASI feats dont get properly saved/loaded
 
-        //ASI data
-        let asiData = {};
-        //We can get feats from ASIs, Races, and... what else? Backgrounds?
-        //TODO: Add background support here
-        for(let prop of Object.keys(s)){
-            if(prop.startsWith("common_asi_ability_") || prop.startsWith("common_additionalFeats_race_")
-            || prop.startsWith("common_additionalFeats_background_")){
-                asiData[prop] = s[prop];
+        if(specifiedSave){
+            //ASI data
+            let asiData = {};
+            //We can get feats from ASIs, Races, and... what else? Backgrounds?
+            //TODO: Add background support here
+            for(let prop of Object.keys(s)){
+                if(prop.startsWith("common_asi_") || prop.startsWith("common_additionalFeats_")){
+                    asiData[prop] = s[prop];
+                }
+                //Some races provide ASI choices, include them here while we are at it
+                else if(prop.startsWith("common_raceChoice")){
+                    out[prop] = s[prop];
+                }
+                //Keep track of number of custom feats
+                //TODO: only include custom feats with index lower than this number
+                else if (prop.startsWith("common_cntFeatsCustom")){
+                    out[prop] = s[prop];
+                }
             }
-            //Some races provide ASI choices, include them here while we are at it
-            else if(prop.startsWith("common_raceChoice")){
-                out[prop] = s[prop];
-            }
+
+            return {state:out, stateAsi:asiData, mode:chosenModeIx};
         }
-
-        return {state:out, stateAsi:asiData, mode:chosenModeIx};
+        else{
+            //We can just grab every property starting with common_ and include that
+            for(let prop of Object.keys(s)){
+                if(prop.startsWith("common_")){
+                    out[prop] = s[prop];
+                }
+            }
+            return {state:out, mode:chosenModeIx};
+        }
+      
     }
     /**
      * @param {ActorCharactermancerEquipment} compEquipment
