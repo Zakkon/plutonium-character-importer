@@ -10203,54 +10203,54 @@ class ActorCharactermancerSpell extends ActorCharactermancerBaseComponent {
             </div>`.appendTo(wrpTab);
     }
 
-    /**
-     * Sets the state of the component and subcomponents based on a save file. This should be called just after first render.
-     * @param {{spellsBySource:{className: string, classSource: string, spellsByLvl: Charactermancer_Spell_SpellMeta[][]}} actor
-    */
-   setStateFromSaveFile(actor){
-       const data = actor.spellsBySource;
+        /**
+         * Sets the state of the component and subcomponents based on a save file. This should be called just after first render.
+         * @param {{spellsBySource:{className: string, classSource: string, spellsByLvl: Charactermancer_Spell_SpellMeta[][]}} actor
+        */
+    setStateFromSaveFile(actor){
+        const data = actor.spellsBySource;
 
 
-       for(let classIx = 0; classIx < data.length; ++classIx){
-            //Assume this is for a class, and it is going to _compsSpellSpells
-            //const ix = this._getIxOfSpell(src.spellsByLvl[0][0].spell);
+        for(let classIx = 0; classIx < data.length; ++classIx){
+                //Assume this is for a class, and it is going to _compsSpellSpells
+                //const ix = this._getIxOfSpell(src.spellsByLvl[0][0].spell);
 
-            for(let lvlIx = 0; lvlIx < data[classIx].spellsByLvl.length; ++lvlIx){
-                for(let sp of  data[classIx].spellsByLvl[lvlIx]){
-                    this.markSpellAsLearnedKnown(classIx, sp);
+                for(let lvlIx = 0; lvlIx < data[classIx].spellsByLvl.length; ++lvlIx){
+                    for(let sp of  data[classIx].spellsByLvl[lvlIx]){
+                        this.markSpellAsLearnedKnown(classIx, sp);
+                    }
                 }
-            }
-       }
-       /* this._setSpellAsLearned(0, {name:"Guidance", source:"PHB"});
-       this._setSpellAsLearned(0, {name:"Goodberry", source:"PHB"}); */
-       
-   }
-   /**
-    * @param {{name:string, source:string, school:string}} spell
-    * @returns {any}
-    */
-   _getIxOfSpell(spell){
-        const match = this._data.spell.filter(v => v.name == spell.name && v.source == spell.source);
-        if(!match?.length){return null;}
-        const ix = this._data.spell.indexOf(match[0]);
-        return ix;
-   }
-   /**
-    * Mark a spell as prepared or learned. Only used when loading from a save file.
-    * @param {number} classIx Index of the class we are learning the spell on
-    * @param {{name:string, source:string}} spellStub
-    */
-   markSpellAsLearnedKnown(classIx, spellStub){
-        //Get the uid index of the spells
-        const ix = this._getIxOfSpell(spellStub);
-        //Use that to grab the full spell info from data
-        const actualSpell = this._data.spell[ix];
-        const comp = this.compsSpellSpells[classIx]; //Grab the component that handles spells for our class
-        //Use the level of the spell to determine which subcomponent to grab
-        const subComp = comp._compsLevel[actualSpell.level];
-        //Tell the subcomponent to mark the spell as learned/known
-        subComp.markSpellAsLearnedKnown(ix);
-   }
+        }
+        /* this._setSpellAsLearned(0, {name:"Guidance", source:"PHB"});
+        this._setSpellAsLearned(0, {name:"Goodberry", source:"PHB"}); */
+        
+    }
+    /**
+        * @param {{name:string, source:string, school:string}} spell
+        * @returns {any}
+        */
+    _getIxOfSpell(spell){
+            const match = this._data.spell.filter(v => v.name == spell.name && v.source == spell.source);
+            if(!match?.length){return null;}
+            const ix = this._data.spell.indexOf(match[0]);
+            return ix;
+    }
+    /**
+        * Mark a spell as prepared or learned. Only used when loading from a save file.
+        * @param {number} classIx Index of the class we are learning the spell on
+        * @param {{name:string, source:string}} spellStub
+        */
+    markSpellAsLearnedKnown(classIx, spellStub){
+            //Get the uid index of the spells
+            const ix = this._getIxOfSpell(spellStub);
+            //Use that to grab the full spell info from data
+            const actualSpell = this._data.spell[ix];
+            const comp = this.compsSpellSpells[classIx]; //Grab the component that handles spells for our class
+            //Use the level of the spell to determine which subcomponent to grab
+            const subComp = comp._compsLevel[actualSpell.level];
+            //Tell the subcomponent to mark the spell as learned/known
+            subComp.markSpellAsLearnedKnown(ix);
+    }
     
     /**
      * Create a section to handle drawing spells for a class, and set up hooks for it
@@ -10773,7 +10773,8 @@ class ActorCharactermancerSpell extends ActorCharactermancerBaseComponent {
             brewSubclassSpells: subcls?.subclassSpells,
             brewSubSubclassSpells: subcls?.subSubclassSpells,
             pageFilter: this._pageFilterSpells,
-            $wrpsPreparedLearned: [wrpPreparedLearnedLhs, wrpPreparedLearnedRhs]
+            $wrpsPreparedLearned: [wrpPreparedLearnedLhs, wrpPreparedLearnedRhs],
+            parent: this
         });
 
         this._compsSpellSpellSlotLevelSelect[ix] = new Charactermancer_Spell_SlotLevelSelect({
@@ -12236,6 +12237,8 @@ class Charactermancer_Spell extends BaseComponent {
         this._subclassName = opts.subclassName;
         this._subclassShortName = opts.subclassShortName;
         this._subclassSource = opts.subclassSource;
+        this._parent = opts.parent;
+        console.log("PARENT", !!this._parent);
         //Create an array of new components to handle picking spells at each level
         this._compsLevel = [...new Array(opts.maxLevel != null ? (opts.maxLevel + 1) : 10)]
             .map((_,i)=>new Charactermancer_Spell_Level({
@@ -12260,8 +12263,9 @@ class Charactermancer_Spell extends BaseComponent {
 
             (this._$wrpsPreparedLearned || []).forEach($it=>{
                 $it.toggleVe(parts.length).html(parts.join(`<div class="mx-1">\u2014</div>`));
-            }
-            );
+            });
+            //Adding a pulse here so other components can listen to CompSpell for a pulse instead of listening to its subcomponents (like us)
+            this._parent._state["pulsePreparedLearned"] = !this._parent.state["pulsePreparedLearned"];
         };
         this._addHookBase("cntPrepared", hkPreparedLearned);
         this._addHookBase("maxPrepared", hkPreparedLearned);
@@ -12271,14 +12275,20 @@ class Charactermancer_Spell extends BaseComponent {
         this._addHookBase("maxLearnedCantrips", hkPreparedLearned);
         hkPreparedLearned();
 
-        const hkAlwaysPreparedSpells = ()=>this._handleAlwaysPreparedSpells();
+        const hkAlwaysPreparedSpells = ()=>{
+            this._handleAlwaysPreparedSpells();
+            this._parent._state["pulseAlwaysPrepared"] = !this._parent.state["pulseAlwaysPrepared"];
+        }
         this._addHookBase("alwaysPreparedSpellsRace", hkAlwaysPreparedSpells);
         this._addHookBase("alwaysPreparedSpellsBackground", hkAlwaysPreparedSpells);
         this._addHookBase("alwaysPreparedSpellsClass", hkAlwaysPreparedSpells);
         this._addHookBase("alwaysPreparedSpellsSubclass", hkAlwaysPreparedSpells);
         hkAlwaysPreparedSpells();
 
-        const hkExpandedSpells = ()=>this.handleFilterChange();
+        const hkExpandedSpells = ()=>{
+            this.handleFilterChange();
+            this._parent._state["pulseExpandedSpells"] = !this._parent.state["pulseExpandedSpells"];
+        }
         this._addHookBase("expandedSpellsRace", hkExpandedSpells);
         this._addHookBase("expandedSpellsBackground", hkExpandedSpells);
         this._addHookBase("expandedSpellsClass", hkExpandedSpells);
@@ -12287,7 +12297,10 @@ class Charactermancer_Spell extends BaseComponent {
         this._addHookBase("isIncludeUaEtcSpellLists", hkExpandedSpells);
         hkExpandedSpells();
 
-        const hkAlwaysKnownSpells = ()=>this._handleAlwaysKnownSpells();
+        const hkAlwaysKnownSpells = ()=>{
+            this._handleAlwaysKnownSpells();
+            this._parent._state["pulseAlwaysKnown"] = !this._parent.state["pulseAlwaysKnown"];
+        }
         this._addHookBase("alwaysKnownSpellsRace", hkAlwaysKnownSpells);
         this._addHookBase("alwaysKnownSpellsBackground", hkAlwaysKnownSpells);
         this._addHookBase("alwaysKnownSpellsClass", hkAlwaysKnownSpells);

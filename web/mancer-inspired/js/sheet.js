@@ -227,7 +227,6 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
         hkSkills();
         //#endregion
 
-
         //#region Spells
         const $colSpells = $$`<div></div>`.appendTo($wrpDisplay);
         const hkSpells = () => {
@@ -257,18 +256,19 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
 
                 let spellsStr = "";
                 for(let i = 0; i < spellsAtLvl.length; ++i){
-                    spellsStr += spellsAtLvl[i].name;
+                    spellsStr += spellsAtLvl[i];
                     if(i+1 < spellsAtLvl.length){spellsStr += ", ";}
                 }
                 $colSpells.append(`<div>${spellsStr}</div>`);
             }
         };
-        this._parent.compSpell.addHookBase("cntLearnedCantrips", hkSpells);
-        this._parent.compSpell.addHookBase("pulseFixedLearned", hkSpells);
+        this._parent.compSpell.addHookBase("pulsePreparedLearned", hkSpells);
+        this._parent.compSpell.addHookBase("pulseAlwaysPrepared", hkSpells);
+        this._parent.compSpell.addHookBase("pulseAlwaysKnown", hkSpells);
+        this._parent.compSpell.addHookBase("pulseExpandedSpells", hkSpells); //Not sure if this one is needed
         hkSpells();
         //#endregion
 
-        this.grabSkillProficiencies(this._parent.compClass, this._parent.compBackground, this._parent.compRace);
 
         const sectionParent = $$`<div class="ve-flex-col w-100 h-100 px-1 overflow-y-auto ve-grow veapp__bg-foundry"></div>`;
         
@@ -404,7 +404,7 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
      * @param {ActorCharactermancerClass} compClass
      * @param {ActorCharactermancerBackground} compBackground
      * @param {ActorCharactermancerRace} compRace
-     * @returns {any}
+     * @returns {{acrobatics:number, athletics:number}} Returned object has a bunch of parameters named after skills, their values are either 1 (proficient) or 2 (expertise)
      */
     grabSkillProficiencies(compClass, compBackground, compRace){
         //What can give us proficiencies?
@@ -452,7 +452,11 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
         console.log("GAINED SKILLS", skillsDb);
         return skillsDb;
     }
-    _getProfBonus(compClass){
+    /**
+     * Get the proficiency bonus of our character (depends on character level)
+     * @returns {number}
+     */
+    _getProfBonus(){
         const classList = this.getClassData(this._parent.compClass);
         let levelTotal = 0;
         for(let ix = 0; ix < classList.length; ++ix){
@@ -470,9 +474,10 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
             const totals = this.test_grabAbilityScoreTotals(this._parent.compAbility);
             total = totals.values[abl_abrivation];
         }
-        return (total-10) / 2;
+        return Math.floor((total-10) / 2);
     }
 
+    
 
     /**
      * @param {ActorCharactermancerSpell} compSpells
@@ -525,22 +530,26 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
      * @returns {any[][]}
      */
     static getAllSpells(compSpells){
-        let spellsBylevel = new Array(10);
+        let spellsBylevel = [[],[],[],[],[],[],[],[],[],[]];
+        //Go through each component that can add spells
         for(let j = 0; j < compSpells.compsSpellSpells.length; ++j)
         {
             const comp1 = compSpells.compsSpellSpells[j];
+            //Go through each level for the component
             for(let spellLevelIx = 0; spellLevelIx < comp1._compsLevel.length; ++spellLevelIx)
             {
+                //Grab the subcomponent that handles that specific level
                 const subcomponent = comp1._compsLevel[spellLevelIx];
-                const known = subcomponent.getSpellsKnown();
-                for(let arrayEntry of known){
-                    spellsBylevel[spellLevelIx].push(arrayEntry.spell.name);
+                const known = subcomponent.getSpellsKnown(true); //Get the spells known by that subcomponent
+                for(let i = 0; i < known.length; ++i){
+                    spellsBylevel[spellLevelIx].push(known[i].spell.name);
                 }
             }
         }
 
         return spellsBylevel;
     }
+
 
 
 }
