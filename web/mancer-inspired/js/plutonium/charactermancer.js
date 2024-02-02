@@ -8550,29 +8550,12 @@ class ActorCharactermancerEquipment extends ActorCharactermancerBaseComponent {
             compGold._state.cpRolled = data.cpRolled;
         }
 
-        //Then paste items into the shopping cart
-        const findItemByUID = (uid) => {
-            const itemDatas = compShop.__state.itemDatas.item;
-            const matches = itemDatas.filter(it => {
-                //Create a uid from the item
-                let itemUid = `${it.name}|${it.source}`.toLowerCase();//UrlUtil.URL_TO_HASH_BUILDER[UrlUtil.PG_ITEMS]({ name:n, source:src });
-                //then try to match it
-                return uid == itemUid;
-            });
-            return matches;
-        }
         for(let it of data.boughtItems){
-            let results = findItemByUID(it.uid);
-            if(results.length > 1){throw new Error("Not supposed to return more than one result", it.uid);}
-            else if(results.length < 1){
-                console.error("Could not find a match to item", it.uid, "among our loaded items. Did you forget to load a source?");
-            }
-            else {
-                //Add it to list of bought items (it will auto draw from remaining currency)
-                compShop.addBoughtItem(it.uid, {quantity:it.quantity, isIgnoreCost:it.isIgnoreCost});
-            }
+            let matchedItem = ActorCharactermancerEquipment.findItemByUID(it.uid, compShop.__state.itemDatas.item);
+            if(!matchedItem){continue;}
+            //Add it to list of bought items (it will auto draw from remaining currency)
+            compShop.addBoughtItem(it.uid, {quantity:it.quantity, isIgnoreCost:it.isIgnoreCost});
         }
-        
     }
 
     get compEquipmentCurrency() {
@@ -8587,6 +8570,20 @@ class ActorCharactermancerEquipment extends ActorCharactermancerBaseComponent {
    
     isStandardStartingEquipmentActive_() {
       return this._compEquipmentCurrency.isStandardStartingEquipmentActive();
+    }
+
+    static findItemByUID(itemUid, itemDatas){
+        const matches = itemDatas.filter(it => {
+            //Create a uid from the item
+            const uid = `${it.name}|${it.source}`.toLowerCase();//UrlUtil.URL_TO_HASH_BUILDER[UrlUtil.PG_ITEMS]({ name:n, source:src });
+            //then try to match it
+            return itemUid == uid;
+        });
+        if(matches.length > 1){throw new Error("Not supposed to return more than one result", itemUid);}
+        else if(matches.length < 1){
+            console.error("Could not find a match to item", itemUid, "among our loaded items. Did you forget to load a source?");
+        }
+        return matches[0];
     }
 }
 

@@ -140,8 +140,9 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
         hkAbilities();
         //#endregion
 
-        //#region HP, Speed
+        //#region HP, Speed, AC
         const $colHpSpeed = $$`<div></div>`.appendTo($wrpDisplay);
+        const $lblAC = $$`<div></div>`.appendTo($wrpDisplay); 
         const hkHpSpeed = () => {
             $colHpSpeed.empty();
             $colHpSpeed.append("<hr class=\"hr-2\"><div class=\"bold mb-2\">Hit Points</div>");
@@ -194,6 +195,7 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
         hkHpSpeed();
         //#endregion
 
+        //#region Proficiencies
         //#region Skills
         const $colSkills = $$`<div></div>`.appendTo($wrpDisplay);
         const hkSkills = () => {
@@ -203,7 +205,7 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
             //We need to get the proficiency bonus, which is based upon combined class levels
             const profBonus = this._getProfBonus(this._parent.compClass);
             //We now need to get the names of all skill proficiencies
-            const proficientSkills = this.grabSkillProficiencies(this._parent.compClass, this._parent.compBackground, this._parent.compRace);
+            const proficientSkills = this._grabSkillProficiencies();
             const allSkillNames = Parser.SKILL_TO_ATB_ABV;
             for(let skillName of Object.keys(allSkillNames)){
                 //Get the modifier for the ability score
@@ -225,6 +227,52 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
         this._parent.featureSourceTracker_._addHookBase("pulseSkillProficiencies", hkSkills);
         this._parent.compClass.addHookBase("class_totalLevels", hkSkills);
         hkSkills();
+        //#endregion
+
+        //#region Tools
+        const $colTools = $$`<div></div>`.appendTo($wrpDisplay);
+        const hkTools = () => {
+            console.log("hkTools");
+            $colTools.empty();
+            $colTools.append("<hr class=\"hr-2\"><div class=\"bold mb-2\">Tools</div>");
+            //We now need to get the names of all tool proficiencies
+            const proficientTools = this._grabToolProficiencies();
+            console.log("PROFTOOLS", proficientTools);
+            for(let toolName of Object.keys(proficientTools)){
+                console.log("TOOL NAME", toolName);
+                $colTools.append(`<div>${toolName}</div>`);
+            }
+        }
+        //We need a hook here to understand when proficiencies are lost/gained, and when we level up
+        //We can listen to feature source tracker for a pulse regarding skill proficiencies
+        this._parent.featureSourceTracker_._addHookBase("pulseToolsProficiencies", hkTools);
+        this._parent.compClass.addHookBase("class_totalLevels", hkTools);
+        hkTools();
+        //#endregion
+        //#region Weapons
+        const $colWeaponsArmor = $$`<div></div>`.appendTo($wrpDisplay);
+        const hkWeaponsArmor = () => {
+            $colWeaponsArmor.empty();
+            $colWeaponsArmor.append("<hr class=\"hr-2\"><div class=\"bold mb-2\">Weapon Proficiencies</div>");
+            //We now need to get the names of all tool proficiencies
+            const weapons = this._grabWeaponProficiencies();
+            for(let name of Object.keys(weapons)){
+                $colWeaponsArmor.append(`<div>${name}</div>`);
+            }
+            $colWeaponsArmor.append("<hr class=\"hr-2\"><div class=\"bold mb-2\">Armor Proficiencies</div>");
+            const armors = this._grabArmorProficiencies();
+            for(let name of Object.keys(armors)){
+                $colWeaponsArmor.append(`<div>${name}</div>`);
+            }
+        }
+        //We need a hook here to understand when proficiencies are lost/gained, and when we level up
+        //We can listen to feature source tracker for a pulse regarding skill proficiencies
+        this._parent.featureSourceTracker_._addHookBase("pulseToolsProficiencies", hkWeaponsArmor);
+        this._parent.compClass.addHookBase("class_totalLevels", hkWeaponsArmor);
+        hkWeaponsArmor();
+        //#endregion
+        //#region Armor
+        //#endregion
         //#endregion
 
         //#region Spells
@@ -269,6 +317,16 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
         hkSpells();
         //#endregion
 
+        const hkEquipment = () => {
+            this._calcArmorClass().then(result=>{
+                $lblAC.empty();
+                const str = `AC: ${result.ac} (${result.name})`;
+                $lblAC.append(`<div>${str}</div>`);
+            });
+        }
+        this._parent.compEquipment._compEquipmentShopGold._addHookBase("itemPurchases", hkEquipment);
+        hkEquipment();
+        
 
         const sectionParent = $$`<div class="ve-flex-col w-100 h-100 px-1 overflow-y-auto ve-grow veapp__bg-foundry"></div>`;
         
@@ -399,6 +457,33 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
         return {mode: info.mode, values: result};
     }
 
+    _pullProficienciesFromComponentForm(component, output, prop, isStringArray = false){
+        const pasteVals = (fromSkills, isStringArray) => {
+            if(fromSkills){
+                if(isStringArray){
+                    for(let str of fromSkills){
+                        output[str] = 1;
+                    }
+                }
+                else{
+                    for(let skillName of Object.keys(fromSkills)){
+                        skillName = skillName.toLowerCase(); //enforce lower case, just for safety
+                        let skillVal = fromSkills[skillName];
+                        let existingSkillVal = output[skillName] || 0;
+                        //Only replace values if higher
+                        //1 means proficiency, 2 means expertise
+                        if(skillVal > existingSkillVal){output[skillName] = skillVal;}
+                    }
+                }
+            }
+        }
+
+        if(!component){return;}
+        const form = component.pGetFormData();
+        console.log("FORM", prop, form);
+        pasteVals(form.data[prop], isStringArray);
+    }
+
     /**
      * Description
      * @param {ActorCharactermancerClass} compClass
@@ -406,7 +491,7 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
      * @param {ActorCharactermancerRace} compRace
      * @returns {{acrobatics:number, athletics:number}} Returned object has a bunch of parameters named after skills, their values are either 1 (proficient) or 2 (expertise)
      */
-    grabSkillProficiencies(compClass, compBackground, compRace){
+    _grabSkillProficiencies(){
         //What can give us proficiencies?
         //Classes
         //Subclasses
@@ -414,44 +499,113 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
         //Races
         //Feats
 
-        let skillsDb = {};
-        const pasteSkillVals = (fromSkills) => {
-            if(fromSkills){
-                for(let skillName of Object.keys(fromSkills)){
-                    skillName = skillName.toLowerCase(); //enforce lower case, just for safety
-                    let skillVal = fromSkills[skillName];
-                    let existingSkillVal = skillsDb[skillName] || 0;
-                    //Only replace values if higher
-                    //1 means proficiency, 2 means expertise
-                    if(skillVal > existingSkillVal){skillsDb[skillName] = skillVal;}
-                }
-            }
-        }
+        const compClass = this._parent.compClass;
+        const compBackground = this._parent.compBackground;
+        const compRace = this._parent.compRace;
+        const dataProp = "skillProficiencies";
+
+        let out = {};
+
         //Get number of classes
         const highestClassIndex = compClass._state.class_ixMax;
         //Then paste skills gained from each class
         for(let ix = 0; ix <= highestClassIndex; ++ix){
-            const subComp = compClass.compsClassSkillProficiencies[ix];
-            if(subComp){
-                const classSkillsForm = subComp._getFormData();
-                pasteSkillVals(classSkillsForm.data.skillProficiencies);
-            }
+            this._pullProficienciesFromComponentForm(compClass.compsClassSkillProficiencies[ix], out, dataProp);
         }
-        //Then paste skills gained from race
-        if(compRace.compRaceSkillProficiencies){
-            const raceSkillsForm = compRace.compRaceSkillProficiencies.pGetFormData();
-            console.log("RACESKILLSFORM", raceSkillsForm, compRace.compRaceSkillProficiencies);
-            pasteSkillVals(raceSkillsForm.data.skillProficiencies);
-        }
-        console.log("COMPRACE", compRace);
-        //Then paste skills gained from background
-        if(compBackground.compBackgroundSkillProficiencies){
-            const bkSkillsForm = compBackground.compBackgroundSkillProficiencies.pGetFormData();
-            pasteSkillVals(bkSkillsForm.data.skillProficiencies);
-        }
-        console.log("GAINED SKILLS", skillsDb);
-        return skillsDb;
+        this._pullProficienciesFromComponentForm(compRace.compRaceSkillProficiencies, out, dataProp);
+        this._pullProficienciesFromComponentForm(compBackground.compBackgroundSkillProficiencies, out, dataProp);
+
+        return out;
     }
+     /**
+     * Description
+     * @param {ActorCharactermancerClass} compClass
+     * @param {ActorCharactermancerBackground} compBackground
+     * @param {ActorCharactermancerRace} compRace
+     * @returns {{"disguise kit":number, "musical instrument":number}} Returned object has a bunch of parameters named after skills, their values are either 1 (proficient) or 2 (expertise)
+     */
+     _grabToolProficiencies(){
+        //What can give us proficiencies?
+        //Classes
+        //Subclasses
+        //Backgrounds
+        //Races
+        //Feats
+        const compClass = this._parent.compClass;
+        const compBackground = this._parent.compBackground;
+        const compRace = this._parent.compRace;
+        const dataProp = "toolProficiencies";
+
+        let out = {};
+        //Get number of classes
+        const highestClassIndex = compClass._state.class_ixMax;
+        //Then paste skills gained from each class
+        for(let ix = 0; ix <= highestClassIndex; ++ix){
+            this._pullProficienciesFromComponentForm(compClass.compsClassToolProficiencies[ix], out, dataProp);
+        }
+        this._pullProficienciesFromComponentForm(compRace.compRaceToolProficiencies, out, dataProp);
+        this._pullProficienciesFromComponentForm(compBackground.compBackgroundToolProficiencies, out, dataProp);
+
+        console.log("GAINED TOOLS", out);
+        return out;
+    }
+    
+    /**
+     * @returns {{"simple":number, "dagger":number}} Returned object has a bunch of parameters named after skills, their values are either 1 (proficient) or 2 (expertise)
+     */
+     _grabWeaponProficiencies(){
+        //What can give us proficiencies?
+        //Classes
+        //Feats?
+        const compClass = this._parent.compClass;
+        const dataProp = "weapons";
+
+        let out = {};
+        //Get number of classes
+        const highestClassIndex = compClass._state.class_ixMax;
+        //Then paste skills gained from each class
+        for(let ix = 0; ix <= highestClassIndex; ++ix){
+            this._pullProficienciesFromComponentForm(compClass.compsClassStartingProficiencies[ix], out, dataProp, true);
+        }
+
+        //We need to do some additional parsing (we will get stuff like "shortsword|phb", "dart|phb");
+        for(let prop of Object.keys(out)){
+            if(!prop.includes("|")){continue;}
+            out[prop.split("|")[0]] = out[prop];
+            delete out[prop];
+        }
+
+        return out;
+    }
+     /**
+     * @returns {{"light":number, "medium":number}} Returned object has a bunch of parameters named after skills, their values are either 1 (proficient) or 2 (expertise)
+     */
+     _grabArmorProficiencies(){
+        //What can give us proficiencies?
+        //Classes
+        //Feats?
+        const compClass = this._parent.compClass;
+        const dataProp = "armor";
+
+        let out = {};
+        //Get number of classes
+        const highestClassIndex = compClass._state.class_ixMax;
+        //Then paste skills gained from each class
+        for(let ix = 0; ix <= highestClassIndex; ++ix){
+            this._pullProficienciesFromComponentForm(compClass.compsClassStartingProficiencies[ix], out, dataProp, true);
+        }
+
+        //We need to do some additional parsing (we will get stuff like "light|phb", "medium|phb");
+        for(let prop of Object.keys(out)){
+            if(!prop.includes("|")){continue;}
+            out[prop.split("|")[0]] = out[prop];
+            delete out[prop];
+        }
+
+        return out;
+    }
+
+
     /**
      * Get the proficiency bonus of our character (depends on character level)
      * @returns {number}
@@ -477,7 +631,59 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
         return Math.floor((total-10) / 2);
     }
 
+    async _calcArmorClass(){
+        const dexModifier = this._getAbilityModifier("dex");
+        //Try to get items from bought items (we will do starting items later)
+        const compEquipShop = this._parent.compEquipment._compEquipmentShopGold;
+
+        let bestArmorAC = Number.MIN_VALUE;
+        let bestArmor = null;
+
+        const tryUseArmor = (item) => {
+            //Account for if proficient in armor? nah not yet
+            //check if strength requirement is met?
+            const armorAC = item.ac;
+            const armorType = item.type.toUpperCase(); //LA, MA, HA
+            //Light armor has no dex cap. Medium and heavy has +2 as an upper cap
+            const dexBonus = armorType == "LA"? dexModifier : Math.min(dexModifier, 2);
+            const finalAC = armorAC + dexBonus;
+            if(finalAC > bestArmorAC){bestArmor = {ac:armorAC, dexBonus:dexBonus, name:item.name}; bestArmorAC = finalAC; }
+        }
+
+        const tryGetArmors = async () => {
+            //Go through bought items
+            const itemKeys = compEquipShop.__state.itemPurchases;
+            const itemDatas = compEquipShop.__state.itemDatas.item;
+            for(let item of itemKeys){
+                //cant be trusted to not be null
+                const foundItem = ActorCharactermancerEquipment.findItemByUID(item.data.uid, itemDatas);
+                if(!foundItem){continue;}
+                if(foundItem.armor == true){tryUseArmor(foundItem);}
+            }
     
+            //We also need to go through starting items
+            const rolledForGold = !!this._parent.compEquipment._compEquipmentCurrency._state.cpRolled;
+            if(!rolledForGold)
+            {
+                //If we rolled for gold, it means we dont get any default starting equipment
+                const compEquipDefault = this._parent.compEquipment._compEquipmentStartingDefault;
+                const form = await compEquipDefault.pGetFormData();
+                const items = form.data.equipmentItemEntries;
+                for(let it of items){if(it.armor == true){tryUseArmor(it);}}
+            }
+        }
+
+        await tryGetArmors();
+        //TODO: unarmored defense?
+
+        const naturalAC = 10 + dexModifier; //unarmored defense here?
+        if(bestArmorAC > naturalAC){
+            return {ac:bestArmorAC, name:bestArmor.name};
+        }
+        else{
+            return {ac:naturalAC, name:"Natural Armor"};
+        }
+    }
 
     /**
      * @param {ActorCharactermancerSpell} compSpells
