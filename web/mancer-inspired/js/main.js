@@ -314,7 +314,7 @@ class CharacterBuilder {
       .then(() => this.renderComponents()) //Then render the components
       .then(() => this.loadFromSave())
       .then(() => testApplyDefaultSources()) //Use our test function to set only certain sources as active in the filter
-      .then(() => this.e_switchTab("class")); //Then switch to the tab we want to start off with
+      .then(() => this.e_switchTab("sheet")); //Then switch to the tab we want to start off with
     }
 
     createTabs(){

@@ -64,9 +64,300 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
         const wrapper = $$`<div class="ve-flex-col w-100 h-100 px-1 pt-1 overflow-y-auto ve-grow veapp__bg-foundry"></div>`;
         //const noFeatsWarningLbl = $("<div><i class=\"ve-muted\">No feats are available for your current build.</i><hr class=\"hr-1\"></div>").appendTo(wrapper);
         console.log("RENDER SHEET");
+
+        const sheet = $$`<div></div>`.appendTo(wrapper);
+        /* const $wrpSheetHeader = $$`<div></div>`.appendTo(sheet);
+        const $wrpCharName = $$`<div class="charname"><label>Character Name</label></div>`.appendTo($wrpSheetHeader);
+        const $wrpMisc = $$`<div class="misc"></div>`.appendTo($wrpSheetHeader);
+
+        const $wrpSheetMain = $$`<div></div>`.appendTo(sheet);
+        const $wrpAttributes = $$`<div class="attributes"></div>`.appendTo($wrpSheetMain);
+        const $scores = $$`<div class="scores"></div>`.appendTo($wrpAttributes);
+        const $scoresUl = $$`<ul></ul>`.appendTo($scores);
         
+        //One score as test
+        $$`<li>
+            <div class="score">
+                <label for="Strengthscore">Strength</label><label class="stat"/>10</label>
+            </div>
+            <div class="modifier">
+                <label class="statmod"/>+0</label>
+            </div>
+        </li>`.appendTo($scoresUl); */
+
+        const $form = $$`<form class="charsheet"></form>`;
+
+        const $lblRace = $$`<label class="lblResult"/></label>`;
+        $lblRace.html("No Race Selected");
+
+        const headerSection = $$`<header><section class="charname">
+        <label for="charname">Character Name</label><input name="charname" placeholder="Thoradin Fireforge" />
+      </section>
+      <section class="misc">
+        <ul>
+          <li>
+            <label for="classlevel">Class & Level</label><input name="classlevel" placeholder="Paladin 2" />
+          </li>
+          <li>
+            <label for="background">Background</label><input name="background" placeholder="Acolyte" />
+          </li>
+          <li>
+            <label for="playername">Player Name</label><input name="playername" placeholder="Player McPlayerface">
+          </li>
+          <li>
+            <label for="race">Race</label>${$lblRace}
+          </li>
+          <li>
+            <label for="alignment">Alignment</label><input name="alignment" placeholder="Lawful Good" />
+          </li>
+          <li>
+            <label for="experiencepoints">Experience Points</label><input name="experiencepoints" placeholder="3240" />
+          </li>
+        </ul>
+      </section>
+    </header>`.appendTo($form);
+
+    const $sectionAttributeScores = $$`<div class="scores"></div>`;
+    const $lblProfBonus = $$`<label class ="lblProfScore">+2</label>`;
+    const $sectionSkills = $$`<ul></ul>`;
+
+    const mainSection = $$`<main>
+    <section>
+      <section class="attributes">
+        ${$sectionAttributeScores}
+        <div class="attr-applications">
+          <div class="inspiration box">
+            <div class="label-container">
+              <label for="inspiration">Inspiration</label>
+            </div>
+            <input name="inspiration" type="checkbox" />
+          </div>
+          <div class="proficiencybonus box">
+            <div class="label-container">
+              <label for="proficiencybonus">Proficiency Bonus</label>
+            </div>
+            ${$lblProfBonus}
+          </div>
+          <div class="saves list-section box">
+            <ul>
+              <li>
+                <label for="Strength-save">Strength</label><input name="Strength-save" placeholder="+0" type="text" /><input name="Strength-save-prof" type="checkbox" />
+              </li>
+              <li>
+                <label for="Dexterity-save">Dexterity</label><input name="Dexterity-save" placeholder="+0" type="text" /><input name="Dexterity-save-prof" type="checkbox" />
+              </li>
+              <li>
+                <label for="Constitution-save">Constitution</label><input name="Constitution-save" placeholder="+0" type="text" /><input name="Constitution-save-prof" type="checkbox" />
+              </li>
+              <li>
+                <label for="Wisdom-save">Wisdom</label><input name="Wisdom-save" placeholder="+0" type="text" /><input name="Wisdom-save-prof" type="checkbox" />
+              </li>
+              <li>
+                <label for="Intelligence-save">Intelligence</label><input name="Intelligence-save" placeholder="+0" type="text" /><input name="Intelligence-save-prof" type="checkbox" />
+              </li>
+              <li>
+                <label for="Charisma-save">Charisma</label><input name="Charisma-save" placeholder="+0" type="text" /><input name="Charisma-save-prof" type="checkbox" />
+              </li>
+            </ul>
+            <div class="label">
+              Saving Throws
+            </div>
+          </div>
+          <div class="skills list-section box">
+            ${$sectionSkills}
+            <div class="label">
+              Skills
+            </div>
+          </div>
+        </div>
+      </section>
+      <div class="passive-perception box">
+        <div class="label-container">
+          <label for="passiveperception">Passive Wisdom (Perception)</label>
+        </div>
+        <input name="passiveperception" placeholder="10" />
+      </div>
+      <div class="otherprofs box textblock">
+        <label for="otherprofs">Other Proficiencies and Languages</label><textarea name="otherprofs"></textarea>
+      </div>
+    </section>
+    <section>
+      <section class="combat">
+        <div class="armorclass">
+          <div>
+            <label for="ac">Armor Class</label><input name="ac" placeholder="10" type="text" />
+          </div>
+        </div>
+        <div class="initiative">
+          <div>
+            <label for="initiative">Initiative</label><input name="initiative" placeholder="+0" type="text" />
+          </div>
+        </div>
+        <div class="speed">
+          <div>
+            <label for="speed">Speed</label><input name="speed" placeholder="30" type="text" />
+          </div>
+        </div>
+        <div class="hp">
+          <div class="regular">
+            <div class="max">
+              <label for="maxhp">Hit Point Maximum</label><input name="maxhp" placeholder="10" type="text" />
+            </div>
+            <div class="current">
+              <label for="currenthp">Current Hit Points</label><input name="currenthp" type="text" />
+            </div>
+          </div>
+          <div class="temporary">
+            <label for="temphp">Temporary Hit Points</label><input name="temphp" type="text" />
+          </div>
+        </div>
+        <div class="hitdice">
+          <div>
+            <div class="total">
+              <label onclick="totalhd_clicked()" for="totalhd">Total</label><input name="totalhd" placeholder="2d10" type="text" />
+            </div>
+            <div class="remaining">
+              <label for="remaininghd">Hit Dice</label><input name="remaininghd" type="text" />
+            </div>
+          </div>
+        </div>
+        <div class="deathsaves">
+          <div>
+            <div class="label">
+              <label>Death Saves</label>
+            </div>
+            <div class="marks">
+              <div class="deathsuccesses">
+                <label>Successes</label>
+                <div class="bubbles">
+                  <input name="deathsuccess1" type="checkbox" />
+                  <input name="deathsuccess2" type="checkbox" />
+                  <input name="deathsuccess3" type="checkbox" />
+                </div>
+              </div>
+              <div class="deathfails">
+                <label>Failures</label>
+                <div class="bubbles">
+                  <input name="deathfail1" type="checkbox" />
+                  <input name="deathfail2" type="checkbox" />
+                  <input name="deathfail3" type="checkbox" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <section class="attacksandspellcasting">
+        <div>
+          <label>Attacks & Spellcasting</label>
+          <table>
+            <thead>
+              <tr>
+                <th>
+                  Name
+                </th>
+                <th>
+                  Atk Bonus
+                </th>
+                <th>
+                  Damage/Type
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>
+                  <input name="atkname1" type="text" />
+                </td>
+                <td>
+                  <input name="atkbonus1" type="text" />
+                </td>
+                <td>
+                  <input name="atkdamage1" type="text" />
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <input name="atkname2" type="text" />
+                </td>
+                <td>
+                  <input name="atkbonus2" type="text" />
+                </td>
+                <td>
+                  <input name="atkdamage2" type="text" />
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <input name="atkname3" type="text" />
+                </td>
+                <td>
+                  <input name="atkbonus3" type="text" />
+                </td>
+                <td>
+                  <input name="atkdamage3" type="text" />
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <textarea></textarea>
+        </div>
+      </section>
+      <section class="equipment">
+        <div>
+          <label>Equipment</label>
+          <div class="money">
+            <ul>
+              <li>
+                <label for="cp">cp</label><input name="cp" />
+              </li>
+              <li>
+                <label for="sp">sp</label><input name="sp" />
+              </li>
+              <li>
+                <label for="ep">ep</label><input name="ep" />
+              </li>
+              <li>
+                <label for="gp">gp</label><input name="gp" />
+              </li>
+              <li>
+                <label for="pp">pp</label><input name="pp" />
+              </li>
+            </ul>
+          </div>
+          <textarea placeholder="Equipment list here"></textarea>
+        </div>
+      </section>
+    </section>
+    <section>
+      <section class="flavor">
+        <div class="personality">
+          <label for="personality">Personality</label><textarea name="personality"></textarea>
+        </div>
+        <div class="ideals">
+          <label for="ideals">Ideals</label><textarea name="ideals"></textarea>
+        </div>
+        <div class="bonds">
+          <label for="bonds">Bonds</label><textarea name="bonds"></textarea>
+        </div>
+        <div class="flaws">
+          <label for="flaws">Flaws</label><textarea name="flaws"></textarea>
+        </div>
+      </section>
+      <section class="features">
+        <div>
+          <label for="features">Features & Traits</label><textarea name="features"></textarea>
+        </div>
+      </section>
+    </section>
+  </main>`;
+  mainSection.appendTo($form);
+
+    $form.appendTo(sheet);
+
+
         const $wrpDisplay = $(`<div class="ve-flex-col min-h-0 ve-small"></div>`).appendTo(wrapper);
-        
+
         //#region Class
         const $colClass = $$`<div></div>`.appendTo($wrpDisplay);
         //When class changes, redraw the elements
@@ -126,10 +417,31 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
             $colAbilityScores.append(`<div>STR: ${totals.values.str}</div>`);
             $colAbilityScores.append(`<div>DEX: ${totals.values.dex}</div>`);
             $colAbilityScores.append(`<div>CON: ${totals.values.con}</div>`);
-            $colAbilityScores.append(`<div>INT: ${totals.values.int}</div>`);
             $colAbilityScores.append(`<div>WIS: ${totals.values.wis}</div>`);
+            $colAbilityScores.append(`<div>INT: ${totals.values.int}</div>`);
             $colAbilityScores.append(`<div>CHA: ${totals.values.cha}</div>`);
-            
+
+
+            //NEW UI STUFF
+            const createElement = (label, score, modifier) => {
+                return $$`<li>
+                <div class="score">
+                  <label class="ablName">${label}</label><label class="stat"/>${score}</label>
+                </div>
+                <div class="modifier">
+                  <label class="statmod"/>${modifier}</label>
+                </div>
+              </li>`;
+            }
+            $sectionAttributeScores.empty();
+            const ul = $$`<ul></ul>`;
+            ul.append(createElement("Strength", totals.values.str, "+0"));
+            ul.append(createElement("Dexterity", totals.values.dex, "+0"));
+            ul.append(createElement("Constitution", totals.values.con, "+0"));
+            ul.append(createElement("Wisdom", totals.values.wis, "+0"));
+            ul.append(createElement("Intelligence", totals.values.int, "+0"));
+            ul.append(createElement("Charisma", totals.values.cha, "+0"));
+            ul.appendTo($sectionAttributeScores);
         };
         this._parent.compAbility.compStatgen.addHookBase("common_export_str", hkAbilities);
         this._parent.compAbility.compStatgen.addHookBase("common_export_dex", hkAbilities);
@@ -201,6 +513,7 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
         const hkSkills = () => {
             console.log("Hkskills");
             $colSkills.empty();
+            $sectionSkills.empty();
             $colSkills.append("<hr class=\"hr-2\"><div class=\"bold mb-2\">Skills</div>");
             //We need to get the proficiency bonus, which is based upon combined class levels
             const profBonus = this._getProfBonus(this._parent.compClass);
@@ -214,7 +527,21 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
                 if(proficientSkills[skillName] == 1){score += profBonus;}
                 else if(proficientSkills[skillName] == 2){score += (profBonus * 2);}
                 $colSkills.append(`<div>${skillName}: ${score>=0?"+"+score : score}</div>`);
+
+                const checkbox = $$`<input type="checkbox"></input>`;
+                //TODO: Add another class to it if expertise? this could change the color of the checkbox
+                //Alternatively, just create two smaller checkboxes instead?
+                //Alternatively, just replace the checkbox with an icon
+                //Check it if proficient or expertise
+                checkbox.prop("checked", proficientSkills[skillName] > 0);
+                
+                $$`<li>
+                <label for="Acrobatics">${skillName} <span class="skill">(${Parser.SKILL_TO_ATB_ABV[skillName]})</span></label>
+                <label class="modifier">${score>=0?"+"+score : score}</label>${checkbox}
+                </li>`.appendTo($sectionSkills);
             }
+
+            
         }
         this._parent.compAbility.compStatgen.addHookBase("common_export_str", hkSkills);
         this._parent.compAbility.compStatgen.addHookBase("common_export_dex", hkSkills);
@@ -337,20 +664,8 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
         }
         this._parent.compEquipment._compEquipmentShopGold._addHookBase("itemPurchases", hkEquipment);
         hkEquipment();
-        
-        
 
-        const sectionParent = $$`<div class="ve-flex-col w-100 h-100 px-1 overflow-y-auto ve-grow veapp__bg-foundry"></div>`;
-        
-
-
-        $$`<div class="ve-flex w-100 h-100">
-                <div class="ve-flex-col w-100">
-                    ${wrapper}
-                </div>
-                <div class="vr-1"></div>
-                ${sectionParent}
-        </div>`.appendTo(tabSheet);
+        wrapper.appendTo(tabSheet);
 
         
        /*  this.setAdditionalFeatStateFromStatgen_();
