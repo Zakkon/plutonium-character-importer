@@ -232,7 +232,6 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
         //#region Tools
         const $colTools = $$`<div></div>`.appendTo($wrpDisplay);
         const hkTools = () => {
-            console.log("hkTools");
             $colTools.empty();
             $colTools.append("<hr class=\"hr-2\"><div class=\"bold mb-2\">Tools</div>");
             //We now need to get the names of all tool proficiencies
@@ -271,7 +270,19 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
         this._parent.compClass.addHookBase("class_totalLevels", hkWeaponsArmor);
         hkWeaponsArmor();
         //#endregion
-        //#region Armor
+        //#region Language
+        const $colLanguages = $$`<div></div>`.appendTo($wrpDisplay);
+        const hkLanguages = () => {
+            $colLanguages.empty();
+            $colLanguages.append("<hr class=\"hr-2\"><div class=\"bold mb-2\">Languages</div>");
+            const languages = this._grabLanguageProficiencies();
+            for(let name of Object.keys(languages)){
+                $colLanguages.append(`<div>${name}</div>`);
+            }
+        }
+        this._parent.featureSourceTracker_._addHookBase("pulseLanguageProficiencies", hkLanguages);
+        this._parent.compClass.addHookBase("class_totalLevels", hkLanguages);
+        hkLanguages();
         //#endregion
         //#endregion
 
@@ -326,6 +337,7 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
         }
         this._parent.compEquipment._compEquipmentShopGold._addHookBase("itemPurchases", hkEquipment);
         hkEquipment();
+        
         
 
         const sectionParent = $$`<div class="ve-flex-col w-100 h-100 px-1 overflow-y-auto ve-grow veapp__bg-foundry"></div>`;
@@ -604,7 +616,47 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
 
         return out;
     }
+    /**
+     * @returns {{"common":number, "dwarvish":number}} Returned object has a bunch of parameters named after skills, their values are either 1 (proficient) or 2 (expertise)
+     */
+    _grabLanguageProficiencies(){
+        //What can give us proficiencies?
+        //Races
+        //Backgrounds
+        //Classes
+        const compClass = this._parent.compClass;
+        const compRace = this._parent.compRace;
+        const dataProp = "languageProficiencies";
 
+        let out = {};
+        //Get number of classes
+        const highestClassIndex = compClass._state.class_ixMax;
+        //Then paste languages gained from each class
+        for(let ix = 0; ix <= highestClassIndex; ++ix){
+            for(let fos of compClass.compsClassFeatureOptionsSelect[ix]){
+                for(let subcomp of fos._subCompsLanguageProficiencies){
+                    this._pullProficienciesFromComponentForm(subcomp, out, dataProp);
+                }
+                for(let subcomp of fos._subCompsSkillToolLanguageProficiencies){
+                    this._pullProficienciesFromComponentForm(subcomp, out, dataProp);
+                }
+                
+            }
+            
+        }
+
+        this._pullProficienciesFromComponentForm(compRace._compRaceSkillToolLanguageProficiencies, out, dataProp);
+        this._pullProficienciesFromComponentForm(compRace._compRaceLanguageProficiencies, out, dataProp);
+
+        //We need to do some additional parsing (we will get stuff like "light|phb", "medium|phb");
+        /* for(let prop of Object.keys(out)){
+            if(!prop.includes("|")){continue;}
+            out[prop.split("|")[0]] = out[prop];
+            delete out[prop];
+        } */
+
+        return out;
+    }
 
     /**
      * Get the proficiency bonus of our character (depends on character level)
