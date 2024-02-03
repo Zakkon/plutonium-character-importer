@@ -88,7 +88,7 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
         const $form = $$`<form class="charsheet"></form>`;
 
         const $lblRace = $$`<label class="lblResult"/></label>`;
-        $lblRace.html("No Race Selected");
+        const $lblClass = $$`<label class="lblResult"></label>`;
 
         const headerSection = $$`<header><section class="charname">
         <label for="charname">Character Name</label><input name="charname" placeholder="Thoradin Fireforge" />
@@ -96,7 +96,7 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
       <section class="misc">
         <ul>
           <li>
-            <label for="classlevel">Class & Level</label><input name="classlevel" placeholder="Paladin 2" />
+            <label for="classlevel">Class & Level</label>${$lblClass}
           </li>
           <li>
             <label for="background">Background</label><input name="background" placeholder="Acolyte" />
@@ -120,6 +120,11 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
     const $sectionAttributeScores = $$`<div class="scores"></div>`;
     const $lblProfBonus = $$`<label class ="lblProfScore">+2</label>`;
     const $sectionSkills = $$`<ul></ul>`;
+    const $lblArmorClass = $$`<label class="score"></label>`;
+    const $lblInitiative = $$`<label class="score"></label>`;
+    const $sectionSaves = $$`<ul></ul>`;
+    const $lblSpeed = $$`<label class="score"></label>`;
+    const $armorWornText = $$`<label></label>`;
 
     const mainSection = $$`<main>
     <section>
@@ -139,26 +144,7 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
             ${$lblProfBonus}
           </div>
           <div class="saves list-section box">
-            <ul>
-              <li>
-                <label for="Strength-save">Strength</label><input name="Strength-save" placeholder="+0" type="text" /><input name="Strength-save-prof" type="checkbox" />
-              </li>
-              <li>
-                <label for="Dexterity-save">Dexterity</label><input name="Dexterity-save" placeholder="+0" type="text" /><input name="Dexterity-save-prof" type="checkbox" />
-              </li>
-              <li>
-                <label for="Constitution-save">Constitution</label><input name="Constitution-save" placeholder="+0" type="text" /><input name="Constitution-save-prof" type="checkbox" />
-              </li>
-              <li>
-                <label for="Wisdom-save">Wisdom</label><input name="Wisdom-save" placeholder="+0" type="text" /><input name="Wisdom-save-prof" type="checkbox" />
-              </li>
-              <li>
-                <label for="Intelligence-save">Intelligence</label><input name="Intelligence-save" placeholder="+0" type="text" /><input name="Intelligence-save-prof" type="checkbox" />
-              </li>
-              <li>
-                <label for="Charisma-save">Charisma</label><input name="Charisma-save" placeholder="+0" type="text" /><input name="Charisma-save-prof" type="checkbox" />
-              </li>
-            </ul>
+            ${$sectionSaves}
             <div class="label">
               Saving Throws
             </div>
@@ -185,19 +171,20 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
       <section class="combat">
         <div class="armorclass">
           <div>
-            <label for="ac">Armor Class</label><input name="ac" placeholder="10" type="text" />
+            <label for="ac" class="title">Armor Class</label>${$lblArmorClass}
           </div>
         </div>
         <div class="initiative">
           <div>
-            <label for="initiative">Initiative</label><input name="initiative" placeholder="+0" type="text" />
+            <label for="initiative" class="title">Initiative</label>${$lblInitiative}
           </div>
         </div>
         <div class="speed">
           <div>
-            <label for="speed">Speed</label><input name="speed" placeholder="30" type="text" />
+            <label for="speed" class="title">Speed</label>${$lblSpeed}
           </div>
         </div>
+        ${$armorWornText}
         <div class="hp">
           <div class="regular">
             <div class="max">
@@ -366,12 +353,16 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
             $colClass.append("<hr class=\"hr-2\"><div class=\"bold mb-2\">Class</div>");
             let classData = this.getClassData(this._parent.compClass);
             //If there are no classes selected, just print none and return
-            if(!classData?.length){ $colClass.append(`<div>None</div>`); return; }
+            let textOut = "";
+            if(!classData?.length){ $colClass.append(`<div>None</div>`); $lblClass.html(textOut); return; }
             for(let i = 0; i < classData.length; ++i){
                 const d = classData[i];
                 const n =  `Level ${d.targetLevel} ` + d.cls.name + (d.sc? ` (${d.sc.name})` : "") + (d.isPrimary && classData.length > 1? " (Primary)" : "");
                 $colClass.append(`<div>${n}</div>`);
+                textOut += `${textOut.length > 0? " / " : ""}${d.cls.name} ${d.targetLevel}${d.sc? ` (${d.sc.name})` : ""}`;
             }
+            
+            $lblClass.html(textOut);
         };
         //We need some hooks to redraw class info
         this._parent.compClass.addHookBase("class_ixPrimaryClass", hkClass);
@@ -390,6 +381,7 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
             let curRace = this.getRace_();
             const n = curRace? curRace.name : "None";
             $colRace.append(`<div>${n}</div>`);
+            $lblRace.text(n);
         };
         this._parent.compRace.addHookBase("race_ixRace_version", hkRace);
         hkRace();
@@ -423,25 +415,55 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
 
 
             //NEW UI STUFF
-            const createElement = (label, score, modifier) => {
+            const createAbilityScoreElement = (label, score) => {
+                const modifier = Math.floor((score-10) / 2);
                 return $$`<li>
                 <div class="score">
                   <label class="ablName">${label}</label><label class="stat"/>${score}</label>
                 </div>
                 <div class="modifier">
-                  <label class="statmod"/>${modifier}</label>
+                  <label class="statmod"/>${modifier>=0?"+"+modifier : modifier}</label>
                 </div>
               </li>`;
             }
             $sectionAttributeScores.empty();
             const ul = $$`<ul></ul>`;
-            ul.append(createElement("Strength", totals.values.str, "+0"));
-            ul.append(createElement("Dexterity", totals.values.dex, "+0"));
-            ul.append(createElement("Constitution", totals.values.con, "+0"));
-            ul.append(createElement("Wisdom", totals.values.wis, "+0"));
-            ul.append(createElement("Intelligence", totals.values.int, "+0"));
-            ul.append(createElement("Charisma", totals.values.cha, "+0"));
+            ul.append(createAbilityScoreElement("Strength", totals.values.str));
+            ul.append(createAbilityScoreElement("Dexterity", totals.values.dex));
+            ul.append(createAbilityScoreElement("Constitution", totals.values.con));
+            ul.append(createAbilityScoreElement("Wisdom", totals.values.wis,));
+            ul.append(createAbilityScoreElement("Intelligence", totals.values.int));
+            ul.append(createAbilityScoreElement("Charisma", totals.values.cha));
             ul.appendTo($sectionAttributeScores);
+
+            //Calculate saving throws
+            let saves = this._grabSavingThrowProficiencies();
+            const createSavingThrowElement = (label, attr, totals, proficiencies, profBonus) => {
+
+                const isProficient = !!proficiencies[attr];
+                const modifier = this._getAbilityModifier(attr, totals.values[attr]) + (isProficient? profBonus : 0);
+                const checkbox = $$`<input type="checkbox"></input>`;
+                //TODO: Add another class to it if expertise? this could change the color of the checkbox
+                //Alternatively, just create two smaller checkboxes instead?
+                //Alternatively, just replace the checkbox with an icon
+                //Check it if proficient or expertise
+                checkbox.prop("checked", isProficient);
+
+                return $$`<li>
+                    <label>${label}</label>
+                    <label class="modifier">${modifier>=0?"+"+modifier : modifier}</label>
+                    ${checkbox}
+                </li>`;
+            }
+
+            const profBonus = this._getProfBonus(this._parent.compClass);
+            $sectionSaves.empty();
+            $sectionSaves.append(createSavingThrowElement("Strength", "str", totals, saves, profBonus));
+            $sectionSaves.append(createSavingThrowElement("Dexterity", "dex", totals, saves, profBonus));
+            $sectionSaves.append(createSavingThrowElement("Constitution", "con", totals, saves, profBonus));
+            $sectionSaves.append(createSavingThrowElement("Wisdom",  "wis", totals, saves, profBonus));
+            $sectionSaves.append(createSavingThrowElement("Intelligence",  "int", totals, saves, profBonus));
+            $sectionSaves.append(createSavingThrowElement("Charisma",  "cha", totals, saves, profBonus));
         };
         this._parent.compAbility.compStatgen.addHookBase("common_export_str", hkAbilities);
         this._parent.compAbility.compStatgen.addHookBase("common_export_dex", hkAbilities);
@@ -452,7 +474,7 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
         hkAbilities();
         //#endregion
 
-        //#region HP, Speed, AC
+        //#region HP, Speed, Initiative
         const $colHpSpeed = $$`<div></div>`.appendTo($wrpDisplay);
         const $lblAC = $$`<div></div>`.appendTo($wrpDisplay); 
         const hkHpSpeed = () => {
@@ -461,8 +483,8 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
             let totals = this.test_grabAbilityScoreTotals(this._parent.compAbility);
             //Let's try to estimate HP
             //Grab constitution score
-            const conScore = this.test_grabAbilityScoreTotals(this._parent.compAbility).values.con;
-            const conMod = (conScore-10)/2;
+            const conMod = this._getAbilityModifier("con");
+            const dexMod = this._getAbilityModifier("dex");
             //Grab HP increase mode from class component (from each of the classes!)
             const classList = this.getClassData(this._parent.compClass);
             let hpTotal = 0; //Calculate max
@@ -498,10 +520,17 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
             hpTotal += (conMod * levelTotal);
 
             $colHpSpeed.append(`<div>HP: ${hpTotal}</div>`);
+
+            const scoreInitiative = dexMod;
+            $lblInitiative.html(`${scoreInitiative>=0?"+"+scoreInitiative : scoreInitiative}`);
+
+            const speedFt = 30;
+            $lblSpeed.html(`${speedFt}`);
         };
         this._parent.compClass.addHookBase("class_ixMax", hkHpSpeed); 
         this._parent.compClass.addHookBase("class_totalLevels", hkHpSpeed);
         this._parent.compAbility.compStatgen.addHookBase("common_export_con", hkHpSpeed);
+        this._parent.compAbility.compStatgen.addHookBase("common_export_dex", hkHpSpeed);
         this._parent.compClass.addHookBase("class_pulseChange", hkHpSpeed);
         //needs a hook here in case any of the classes change their HP mode
         hkHpSpeed();
@@ -611,6 +640,8 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
         this._parent.compClass.addHookBase("class_totalLevels", hkLanguages);
         hkLanguages();
         //#endregion
+        //#region Saving Throws
+        //#endregion
         //#endregion
 
         //#region Spells
@@ -660,9 +691,12 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
                 $lblAC.empty();
                 const str = `AC: ${result.ac} (${result.name})`;
                 $lblAC.append(`<div>${str}</div>`);
+                $lblArmorClass.text(result.ac)
             });
         }
         this._parent.compEquipment._compEquipmentShopGold._addHookBase("itemPurchases", hkEquipment);
+        this._parent.compAbility.compStatgen.addHookBase("common_export_dex", hkEquipment);
+        this._parent.compAbility.compStatgen.addHookBase("common_export_cha", hkEquipment);
         hkEquipment();
 
         wrapper.appendTo(tabSheet);
@@ -969,6 +1003,31 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
             out[prop.split("|")[0]] = out[prop];
             delete out[prop];
         } */
+
+        return out;
+    }
+     /**
+     * @returns {{"str":number, "dex":number}} Returned object has a bunch of parameters named after skills, their values are either 1 (proficient) or 2 (expertise)
+     */
+     _grabSavingThrowProficiencies(){
+        //What can give us proficiencies?
+        //Races
+        //Backgrounds
+        //Classes
+        const compClass = this._parent.compClass;
+        const compRace = this._parent.compRace;
+        const dataProp = "savingThrows";
+
+        let out = {};
+        //Get number of classes
+        const highestClassIndex = compClass._state.class_ixMax;
+        //Then paste languages gained from each class
+        for(let ix = 0; ix <= highestClassIndex; ++ix){
+            this._pullProficienciesFromComponentForm(compClass.compsClassStartingProficiencies[ix], out, dataProp, true);
+        }
+
+        this._pullProficienciesFromComponentForm(compRace._compRaceSkillToolLanguageProficiencies, out, dataProp);
+        this._pullProficienciesFromComponentForm(compRace._compRaceLanguageProficiencies, out, dataProp);
 
         return out;
     }
