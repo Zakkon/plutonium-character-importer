@@ -124,7 +124,14 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
     const $lblInitiative = $$`<label class="score"></label>`;
     const $sectionSaves = $$`<ul></ul>`;
     const $lblSpeed = $$`<label class="score"></label>`;
-    const $armorWornText = $$`<label></label>`;
+    const $armorWornText = $$`<span></span>`;
+    const $spanWeaponProf = $$`<span></span>`;
+    const $spanArmorProf = $$`<span></span>`;
+    const $spanToolsProf = $$`<span></span>`;
+    const $spanLanguages = $$`<span></span>`;
+    const $divFeatures = $$`<div class ="featureTextArea textbox"></div>`;
+    const $divEquipment = $$`<div class ="equipmentTextArea textbox"></div>`;
+    const $attacksTextArea = $$`<div class ="attacksTextArea textbox"></div>`;
 
     const mainSection = $$`<main>
     <section>
@@ -139,7 +146,7 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
           </div>
           <div class="proficiencybonus box">
             <div class="label-container">
-              <label for="proficiencybonus">Proficiency Bonus</label>
+              <label class="upperCase">Proficiency Bonus</label>
             </div>
             ${$lblProfBonus}
           </div>
@@ -151,40 +158,44 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
           </div>
           <div class="skills list-section box">
             ${$sectionSkills}
-            <div class="label">
-              Skills
-            </div>
+            <div class="label">Skills</div>
           </div>
         </div>
       </section>
       <div class="passive-perception box">
         <div class="label-container">
-          <label for="passiveperception">Passive Wisdom (Perception)</label>
+          <label class="upperCase">Passive Wisdom (Perception)</label>
         </div>
         <input name="passiveperception" placeholder="10" />
       </div>
       <div class="otherprofs box textblock">
-        <label for="otherprofs">Other Proficiencies and Languages</label><textarea name="otherprofs"></textarea>
+        <label class="footerLabel upperCase">Other Proficiencies and Languages</label>
+        <div class="profTextArea textbox">
+          <div><b>Armor: </b>${$spanArmorProf}</div>
+          <div><b>Weapons: </b>${$spanWeaponProf}</div>
+          <div><b>Tools: </b>${$spanToolsProf}</div>
+          <div><b>Languages: </b>${$spanLanguages}</div>
+        </div>
       </div>
     </section>
     <section>
       <section class="combat">
         <div class="armorclass">
           <div>
-            <label for="ac" class="title">Armor Class</label>${$lblArmorClass}
+            <label class="title upperCase">Armor Class</label>${$lblArmorClass}
           </div>
         </div>
         <div class="initiative">
           <div>
-            <label for="initiative" class="title">Initiative</label>${$lblInitiative}
+            <label class="title upperCase">Initiative</label>${$lblInitiative}
           </div>
         </div>
         <div class="speed">
           <div>
-            <label for="speed" class="title">Speed</label>${$lblSpeed}
+            <label class="title upperCase">Speed</label>${$lblSpeed}
           </div>
         </div>
-        ${$armorWornText}
+        <label class="armorWornText"><b>Armor worn: </b>${$armorWornText}</label>
         <div class="hp">
           <div class="regular">
             <div class="max">
@@ -236,7 +247,7 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
       </section>
       <section class="attacksandspellcasting">
         <div>
-          <label>Attacks & Spellcasting</label>
+          <label class="upperCase">Attacks & Spellcasting</label>
           <table>
             <thead>
               <tr>
@@ -287,12 +298,12 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
               </tr>
             </tbody>
           </table>
-          <textarea></textarea>
+          ${$attacksTextArea}
         </div>
       </section>
       <section class="equipment">
         <div>
-          <label>Equipment</label>
+          <label class="upperCase">Equipment</label>
           <div class="money">
             <ul>
               <li>
@@ -312,7 +323,7 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
               </li>
             </ul>
           </div>
-          <textarea placeholder="Equipment list here"></textarea>
+          ${$divEquipment}
         </div>
       </section>
     </section>
@@ -333,7 +344,7 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
       </section>
       <section class="features">
         <div>
-          <label for="features">Features & Traits</label><textarea name="features"></textarea>
+          <label class="upperCase">Features & Traits</label>${$divFeatures}
         </div>
       </section>
     </section>
@@ -350,6 +361,7 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
         //When class changes, redraw the elements
         const hkClass = () => {
             $colClass.empty();
+            $divFeatures.empty();
             $colClass.append("<hr class=\"hr-2\"><div class=\"bold mb-2\">Class</div>");
             let classData = this.getClassData(this._parent.compClass);
             //If there are no classes selected, just print none and return
@@ -360,8 +372,36 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
                 const n =  `Level ${d.targetLevel} ` + d.cls.name + (d.sc? ` (${d.sc.name})` : "") + (d.isPrimary && classData.length > 1? " (Primary)" : "");
                 $colClass.append(`<div>${n}</div>`);
                 textOut += `${textOut.length > 0? " / " : ""}${d.cls.name} ${d.targetLevel}${d.sc? ` (${d.sc.name})` : ""}`;
+
+                //Try to get features from class
+                console.log("SUBCLASS", d.sc);
+                let classFeaturesText = "";
+                for(let f of d.cls.classFeatures){
+                  for(let l of f.loadeds){
+                    if(l.entity.level > d.targetLevel){continue;}
+                    classFeaturesText += `${classFeaturesText.length > 0? ", " : ""}${l.entity.name}`;
+                  }
+                }
+                if(classFeaturesText.length > 0){
+                  $$`<div><b>${d.cls.name} Class Features:</b></div>`.appendTo($divFeatures);
+                  $$`<div>${classFeaturesText}</div>`.appendTo($divFeatures);
+                }
+
+                if(d.sc){
+                  let subclassFeaturesText = "";
+                  for(let f of d.sc.subclassFeatures){
+                    for(let l of f.loadeds){
+                      if(l.entity.level > d.targetLevel){continue;}
+                      subclassFeaturesText += `${subclassFeaturesText.length > 0? ", " : ""}${l.entity.name}`;
+                    }
+                  }
+                  if(subclassFeaturesText.length > 0){
+                    $$`<div><b>${d.sc.name} Subclass Features:</b></div>`.appendTo($divFeatures);
+                    $$`<div>${subclassFeaturesText}</div>`.appendTo($divFeatures);
+                  }
+                  
+                }
             }
-            
             $lblClass.html(textOut);
         };
         //We need some hooks to redraw class info
@@ -419,7 +459,7 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
                 const modifier = Math.floor((score-10) / 2);
                 return $$`<li>
                 <div class="score">
-                  <label class="ablName">${label}</label><label class="stat"/>${score}</label>
+                  <label class="ablName upperCase">${label}</label><label class="stat"/>${score}</label>
                 </div>
                 <div class="modifier">
                   <label class="statmod"/>${modifier>=0?"+"+modifier : modifier}</label>
@@ -589,14 +629,19 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
         const $colTools = $$`<div></div>`.appendTo($wrpDisplay);
         const hkTools = () => {
             $colTools.empty();
+            $spanToolsProf.text("");
             $colTools.append("<hr class=\"hr-2\"><div class=\"bold mb-2\">Tools</div>");
             //We now need to get the names of all tool proficiencies
             const proficientTools = this._grabToolProficiencies();
             console.log("PROFTOOLS", proficientTools);
+            let outStr = "";
             for(let toolName of Object.keys(proficientTools)){
                 console.log("TOOL NAME", toolName);
                 $colTools.append(`<div>${toolName}</div>`);
+                outStr += outStr.length>0? ", " : "";
+                outStr += toolName;
             }
+            $spanToolsProf.text(outStr);
         }
         //We need a hook here to understand when proficiencies are lost/gained, and when we level up
         //We can listen to feature source tracker for a pulse regarding skill proficiencies
@@ -608,17 +653,27 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
         const $colWeaponsArmor = $$`<div></div>`.appendTo($wrpDisplay);
         const hkWeaponsArmor = () => {
             $colWeaponsArmor.empty();
+            $spanWeaponProf.text("");
+            $spanArmorProf.text("");
+            let outStrWep = "";
+            let outStrArm = "";
             $colWeaponsArmor.append("<hr class=\"hr-2\"><div class=\"bold mb-2\">Weapon Proficiencies</div>");
             //We now need to get the names of all tool proficiencies
             const weapons = this._grabWeaponProficiencies();
             for(let name of Object.keys(weapons)){
                 $colWeaponsArmor.append(`<div>${name}</div>`);
+                outStrWep += outStrWep.length>0? ", " : "";
+                outStrWep += name;
             }
             $colWeaponsArmor.append("<hr class=\"hr-2\"><div class=\"bold mb-2\">Armor Proficiencies</div>");
             const armors = this._grabArmorProficiencies();
             for(let name of Object.keys(armors)){
                 $colWeaponsArmor.append(`<div>${name}</div>`);
+                outStrArm += outStrArm.length>0? ", " : "";
+                outStrArm += name;
             }
+            $spanWeaponProf.text(outStrWep);
+            $spanArmorProf.text(outStrArm);
         }
         //We need a hook here to understand when proficiencies are lost/gained, and when we level up
         //We can listen to feature source tracker for a pulse regarding skill proficiencies
@@ -630,11 +685,16 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
         const $colLanguages = $$`<div></div>`.appendTo($wrpDisplay);
         const hkLanguages = () => {
             $colLanguages.empty();
+            $spanLanguages.text("");
+            let outStr = "";
             $colLanguages.append("<hr class=\"hr-2\"><div class=\"bold mb-2\">Languages</div>");
             const languages = this._grabLanguageProficiencies();
             for(let name of Object.keys(languages)){
                 $colLanguages.append(`<div>${name}</div>`);
+                outStr += outStr.length>0? ", " : "";
+                outStr += name;
             }
+            $spanLanguages.text(outStr);
         }
         this._parent.featureSourceTracker_._addHookBase("pulseLanguageProficiencies", hkLanguages);
         this._parent.compClass.addHookBase("class_totalLevels", hkLanguages);
@@ -691,8 +751,92 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
                 $lblAC.empty();
                 const str = `AC: ${result.ac} (${result.name})`;
                 $lblAC.append(`<div>${str}</div>`);
-                $lblArmorClass.text(result.ac)
+                $lblArmorClass.text(result.ac);
+                $armorWornText.text(result.name);
             });
+
+            //Fill UI list of items
+            $divEquipment.empty();
+            const getOurItems = async() => {
+              let boughtItems = [];
+              let startingItems = [];
+              //Try to get items from bought items (we will do starting items later)
+              const compEquipShop = this._parent.compEquipment._compEquipmentShopGold;
+              //Go through bought items
+              const itemKeys = compEquipShop.__state.itemPurchases;
+              const itemDatas = compEquipShop.__state.itemDatas.item;
+              for(let item of itemKeys){
+                  //cant be trusted to not be null
+                  const foundItem = ActorCharactermancerEquipment.findItemByUID(item.data.uid, itemDatas);
+                  console.log("FOUNDITEM", item.data);
+                  if(!foundItem){continue;}
+                  boughtItems.push({item:foundItem, quantity:item.data.quantity});
+              }
+      
+              //We also need to go through starting items
+              const rolledForGold = !!this._parent.compEquipment._compEquipmentCurrency._state.cpRolled;
+              if(!rolledForGold)
+              {
+                  //If we rolled for gold, it means we dont get any default starting equipment
+                  const compEquipDefault = this._parent.compEquipment._compEquipmentStartingDefault;
+                  const form = await compEquipDefault.pGetFormData();
+                  const items = form.data.equipmentItemEntries;
+                  for(let it of items){
+                    startingItems.push(it);
+                  }
+              }
+
+              return {boughtItems: boughtItems, startingItems:startingItems};
+            }
+
+            getOurItems().then(result => {
+              $divEquipment.empty();
+              $attacksTextArea.empty();
+              let outStr = "";
+              for(let it of result.startingItems){
+                console.log("IT", it.item.name, it);
+                outStr += (outStr.length>0? ", " : "") + (it.quantity>1? it.quantity+"x " : "") + it.item.name;
+              }
+              for(let it of result.boughtItems){
+                outStr += (outStr.length>0? ", " : "") + (it.quantity>1? it.quantity+"x " : "") + it.item.name;
+              }
+              const span = $$`<span>${outStr}</span>`;
+              $$`<label><b>Carried Gear: </b>${span}</label>`.appendTo($divEquipment);
+
+              //Try to fill in weapon attacks
+              const weaponProfs = this._grabWeaponProficiencies();
+              const strMod = this._getAbilityModifier("str");
+              const dexMod = this._getAbilityModifier("dex");
+              const profBonus = this._getProfBonus();
+              const calcMeleeAttack = (it, strMod, dexMod, weaponProfs) => {
+                const isProficient = !!weaponProfs[it.item.weaponCategory.toLowerCase()];
+                const attr = (!!it.item.property["F"] && dexMod > strMod)? dexMod : strMod; //If weapon is finesse and our dex is better, use dex
+                const toHit = attr + (isProficient? profBonus : 0);
+                const dmg = it.item.dmg1 + (attr>=0? "+" : "") + attr.toString();
+                return {toHit:(toHit>=0? "+" : "")+toHit.toString(), dmg:dmg, dmgType:it.item.dmgType};
+              }
+              const printWeaponAttack = (it) => {
+                const isMeleeWeapon = it.item._typeListText.includes("melee weapon");
+                const isRangedWeapon = it.item._typeListText.includes("ranged weapon");
+
+                if(isMeleeWeapon){
+                  const result = calcMeleeAttack(it, strMod, dexMod, weaponProfs);
+                  let str = `<i>Melee Weapon Attack</i>, ${result.toHit} to hit, ${result.dmg} ${Parser.dmgTypeToFull(result.dmgType)}.`;
+                  $$`<label><b>${it.item.name}.</b> ${str}</label>`.appendTo($attacksTextArea);
+                }
+              }
+
+              for(let it of result.startingItems){
+                if(!it.item.weapon){continue;}
+                printWeaponAttack(it);
+              }
+              for(let it of result.boughtItems){
+                if(!it.item.weapon){continue;}
+                printWeaponAttack(it);
+                
+              }
+            });
+            
         }
         this._parent.compEquipment._compEquipmentShopGold._addHookBase("itemPurchases", hkEquipment);
         this._parent.compAbility.compStatgen.addHookBase("common_export_dex", hkEquipment);
@@ -1101,6 +1245,7 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
 
         await tryGetArmors();
         //TODO: unarmored defense?
+        //TODO: shield?
 
         const naturalAC = 10 + dexModifier; //unarmored defense here?
         if(bestArmorAC > naturalAC){
