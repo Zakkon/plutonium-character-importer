@@ -86,9 +86,10 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
         </li>`.appendTo($scoresUl); */
 
         const $form = $$`<form class="charsheet"></form>`;
-
-        const $lblRace = $$`<label class="lblResult"/></label>`;
         const $lblClass = $$`<label class="lblResult"></label>`;
+        const $lblRace = $$`<label class="lblResult"/></label>`;
+        const $lblBackground = $$`<label class="lblResult"/></label>`;
+        
 
         const headerSection = $$`<header><section class="charname">
         <label for="charname">Character Name</label><input name="charname" placeholder="Thoradin Fireforge" />
@@ -96,22 +97,22 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
       <section class="misc">
         <ul>
           <li>
-            <label for="classlevel">Class & Level</label>${$lblClass}
+            <label class="lblTitle">Class & Level</label>${$lblClass}
           </li>
           <li>
-            <label for="background">Background</label><input name="background" placeholder="Acolyte" />
+            <label  class="lblTitle">Background</label>${$lblBackground}
           </li>
           <li>
-            <label for="playername">Player Name</label><input name="playername" placeholder="Player McPlayerface">
+            <label  class="lblTitle">Player Name</label><input class="lblResult" name="playername" placeholder="Player McPlayerface">
           </li>
           <li>
-            <label for="race">Race</label>${$lblRace}
+            <label  class="lblTitle">Race</label>${$lblRace}
           </li>
           <li>
-            <label for="alignment">Alignment</label><input name="alignment" placeholder="Lawful Good" />
+            <label  class="lblTitle">Alignment</label><input class="lblResult" name="alignment" placeholder="Lawful Good" />
           </li>
           <li>
-            <label for="experiencepoints">Experience Points</label><input name="experiencepoints" placeholder="3240" />
+            <label  class="lblTitle">Experience Points</label><input class="lblResult" name="experiencepoints" placeholder="3240" />
           </li>
         </ul>
       </section>
@@ -435,6 +436,7 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
             let curBackground = this.getBackground();
             const n = curBackground? curBackground.name : "None";
             $colBackground.append(`<div>${n}</div>`);
+            $lblBackground.text(n);
         };
         this._parent.compBackground.addHookBase("background_pulseBackground", hkBackground);
         hkBackground();
@@ -704,6 +706,52 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
         //#endregion
         //#endregion
 
+        //#region Attacks
+        const hkCalcAttacks = () => {
+          this._getOurItems().then(result => {
+            $attacksTextArea.empty();
+            //Try to fill in weapon attacks
+            const weaponProfs = this._grabWeaponProficiencies();
+            const strMod = this._getAbilityModifier("str");
+            const dexMod = this._getAbilityModifier("dex");
+            const profBonus = this._getProfBonus();
+            const calcMeleeAttack = (it, strMod, dexMod, weaponProfs) => {
+              const isProficient = !!weaponProfs[it.item.weaponCategory.toLowerCase()];
+              const attr = (!!it.item.property["F"] && dexMod > strMod)? dexMod : strMod; //If weapon is finesse and our dex is better, use dex
+              const toHit = attr + (isProficient? profBonus : 0);
+              const dmg = it.item.dmg1 + (attr>=0? "+" : "") + attr.toString();
+              return {toHit:(toHit>=0? "+" : "")+toHit.toString(), dmg:dmg, dmgType:it.item.dmgType};
+            }
+            const printWeaponAttack = (it) => {
+              const isMeleeWeapon = it.item._typeListText.includes("melee weapon");
+              const isRangedWeapon = it.item._typeListText.includes("ranged weapon");
+
+              if(isMeleeWeapon){
+                const result = calcMeleeAttack(it, strMod, dexMod, weaponProfs);
+                let str = `<i>Melee Weapon Attack</i>, ${result.toHit} to hit, ${result.dmg} ${Parser.dmgTypeToFull(result.dmgType)}.`;
+                $$`<div><b>${it.item.name}.</b> ${str}</div>`.appendTo($attacksTextArea);
+              }
+              //TODO: ranged weapons
+            }
+
+            for(let it of result.startingItems){
+              if(!it.item.weapon){continue;}
+              printWeaponAttack(it);
+            }
+            for(let it of result.boughtItems){
+              if(!it.item.weapon){continue;}
+              printWeaponAttack(it);
+              
+            }
+            //TODO: cantrip attacks
+          });
+          
+        }
+        this._parent.compEquipment._compEquipmentShopGold._addHookBase("itemPurchases", hkCalcAttacks);
+        this._parent.compAbility.compStatgen.addHookBase("common_export_dex", hkCalcAttacks);
+        hkCalcAttacks();
+        //#endregion
+
         //#region Spells
         const $colSpells = $$`<div></div>`.appendTo($wrpDisplay);
         const hkSpells = () => {
@@ -738,6 +786,8 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
                 }
                 $colSpells.append(`<div>${spellsStr}</div>`);
             }
+
+            hkCalcAttacks(); //Calculate attacks as well, since it displays cantrip attacks
         };
         this._parent.compSpell.addHookBase("pulsePreparedLearned", hkSpells);
         this._parent.compSpell.addHookBase("pulseAlwaysPrepared", hkSpells);
@@ -757,84 +807,22 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
 
             //Fill UI list of items
             $divEquipment.empty();
-            const getOurItems = async() => {
-              let boughtItems = [];
-              let startingItems = [];
-              //Try to get items from bought items (we will do starting items later)
-              const compEquipShop = this._parent.compEquipment._compEquipmentShopGold;
-              //Go through bought items
-              const itemKeys = compEquipShop.__state.itemPurchases;
-              const itemDatas = compEquipShop.__state.itemDatas.item;
-              for(let item of itemKeys){
-                  //cant be trusted to not be null
-                  const foundItem = ActorCharactermancerEquipment.findItemByUID(item.data.uid, itemDatas);
-                  console.log("FOUNDITEM", item.data);
-                  if(!foundItem){continue;}
-                  boughtItems.push({item:foundItem, quantity:item.data.quantity});
-              }
-      
-              //We also need to go through starting items
-              const rolledForGold = !!this._parent.compEquipment._compEquipmentCurrency._state.cpRolled;
-              if(!rolledForGold)
-              {
-                  //If we rolled for gold, it means we dont get any default starting equipment
-                  const compEquipDefault = this._parent.compEquipment._compEquipmentStartingDefault;
-                  const form = await compEquipDefault.pGetFormData();
-                  const items = form.data.equipmentItemEntries;
-                  for(let it of items){
-                    startingItems.push(it);
-                  }
-              }
+            
 
-              return {boughtItems: boughtItems, startingItems:startingItems};
-            }
-
-            getOurItems().then(result => {
+            this._getOurItems().then(result => {
               $divEquipment.empty();
-              $attacksTextArea.empty();
+             
               let outStr = "";
               for(let it of result.startingItems){
                 console.log("IT", it.item.name, it);
                 outStr += (outStr.length>0? ", " : "") + (it.quantity>1? it.quantity+"x " : "") + it.item.name;
               }
               for(let it of result.boughtItems){
+                console.log("IT", it.item.name, it);
                 outStr += (outStr.length>0? ", " : "") + (it.quantity>1? it.quantity+"x " : "") + it.item.name;
               }
               const span = $$`<span>${outStr}</span>`;
               $$`<label><b>Carried Gear: </b>${span}</label>`.appendTo($divEquipment);
-
-              //Try to fill in weapon attacks
-              const weaponProfs = this._grabWeaponProficiencies();
-              const strMod = this._getAbilityModifier("str");
-              const dexMod = this._getAbilityModifier("dex");
-              const profBonus = this._getProfBonus();
-              const calcMeleeAttack = (it, strMod, dexMod, weaponProfs) => {
-                const isProficient = !!weaponProfs[it.item.weaponCategory.toLowerCase()];
-                const attr = (!!it.item.property["F"] && dexMod > strMod)? dexMod : strMod; //If weapon is finesse and our dex is better, use dex
-                const toHit = attr + (isProficient? profBonus : 0);
-                const dmg = it.item.dmg1 + (attr>=0? "+" : "") + attr.toString();
-                return {toHit:(toHit>=0? "+" : "")+toHit.toString(), dmg:dmg, dmgType:it.item.dmgType};
-              }
-              const printWeaponAttack = (it) => {
-                const isMeleeWeapon = it.item._typeListText.includes("melee weapon");
-                const isRangedWeapon = it.item._typeListText.includes("ranged weapon");
-
-                if(isMeleeWeapon){
-                  const result = calcMeleeAttack(it, strMod, dexMod, weaponProfs);
-                  let str = `<i>Melee Weapon Attack</i>, ${result.toHit} to hit, ${result.dmg} ${Parser.dmgTypeToFull(result.dmgType)}.`;
-                  $$`<label><b>${it.item.name}.</b> ${str}</label>`.appendTo($attacksTextArea);
-                }
-              }
-
-              for(let it of result.startingItems){
-                if(!it.item.weapon){continue;}
-                printWeaponAttack(it);
-              }
-              for(let it of result.boughtItems){
-                if(!it.item.weapon){continue;}
-                printWeaponAttack(it);
-                
-              }
             });
             
         }
@@ -842,6 +830,8 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
         this._parent.compAbility.compStatgen.addHookBase("common_export_dex", hkEquipment);
         this._parent.compAbility.compStatgen.addHookBase("common_export_cha", hkEquipment);
         hkEquipment();
+
+        
 
         wrapper.appendTo(tabSheet);
 
@@ -987,6 +977,37 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
         const form = component.pGetFormData();
         console.log("FORM", prop, form);
         pasteVals(form.data[prop], isStringArray);
+    }
+    async _getOurItems() {
+      let boughtItems = [];
+      let startingItems = [];
+      //Try to get items from bought items (we will do starting items later)
+      const compEquipShop = this._parent.compEquipment._compEquipmentShopGold;
+      //Go through bought items
+      const itemKeys = compEquipShop.__state.itemPurchases;
+      const itemDatas = compEquipShop.__state.itemDatas.item;
+      for(let item of itemKeys){
+          //cant be trusted to not be null
+          const foundItem = ActorCharactermancerEquipment.findItemByUID(item.data.uid, itemDatas);
+          console.log("FOUNDITEM", item.data);
+          if(!foundItem){continue;}
+          boughtItems.push({item:foundItem, quantity:item.data.quantity});
+      }
+
+      //We also need to go through starting items
+      const rolledForGold = !!this._parent.compEquipment._compEquipmentCurrency._state.cpRolled;
+      if(!rolledForGold)
+      {
+          //If we rolled for gold, it means we dont get any default starting equipment
+          const compEquipDefault = this._parent.compEquipment._compEquipmentStartingDefault;
+          const form = await compEquipDefault.pGetFormData();
+          const items = form.data.equipmentItemEntries;
+          for(let it of items){
+            startingItems.push(it);
+          }
+      }
+
+      return {boughtItems: boughtItems, startingItems:startingItems};
     }
 
     /**

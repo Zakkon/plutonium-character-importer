@@ -116,6 +116,9 @@
   form.charsheet header section.charname label {
     padding-left: 1em;
   }
+  form.charsheet header .lblResult {
+    font-size: 12px;
+  }
   form.charsheet header section.misc {
     width: 70%;
     border: 1px solid black;
@@ -133,7 +136,7 @@
     display: flex;
     flex-direction: column-reverse;
   }
-  form.charsheet header section.misc ul li label {
+  form.charsheet header section.misc ul li label.lblTitle {
     margin-bottom: 5px;
   }
   form.charsheet header section.misc ul li input {
