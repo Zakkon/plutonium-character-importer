@@ -133,6 +133,8 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
     const $divFeatures = $$`<div class ="featureTextArea textbox"></div>`;
     const $divEquipment = $$`<div class ="equipmentTextArea textbox"></div>`;
     const $attacksTextArea = $$`<div class ="attacksTextArea textbox"></div>`;
+    const $lblMaxHP = $$`<label class="score"></label>`;
+    const $lblHitDice = $$`<label class="scoreHitDice"></label>`;
 
     const mainSection = $$`<main>
     <section>
@@ -181,22 +183,33 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
     </section>
     <section>
       <section class="combat">
-        <div class="armorclass">
+        <div class="scoreBubble">
           <div>
             <label class="title upperCase">Armor Class</label>${$lblArmorClass}
           </div>
         </div>
-        <div class="initiative">
+        <div class="scoreBubble">
           <div>
             <label class="title upperCase">Initiative</label>${$lblInitiative}
           </div>
         </div>
-        <div class="speed">
+        <div class="scoreBubble">
           <div>
             <label class="title upperCase">Speed</label>${$lblSpeed}
           </div>
         </div>
-        <label class="armorWornText"><b>Armor worn: </b>${$armorWornText}</label>
+        <div class="armorWornText"><b>Armor worn: </b>${$armorWornText}</div>
+        <div class="scoreBubbleWide">
+          <div>
+            <label class="title upperCase">Max HP</label>${$lblMaxHP}
+          </div>
+        </div>
+        <div class="scoreBubbleWide">
+          <div>
+            <label class="title upperCase">Hit Dice</label>${$lblHitDice}
+          </div>
+        </div>
+
         <div class="hp">
           <div class="regular">
             <div class="max">
@@ -531,6 +544,7 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
             const classList = this.getClassData(this._parent.compClass);
             let hpTotal = 0; //Calculate max
             let levelTotal = 0;
+            let hitDiceInfo = {};
             for(let ix = 0; ix < classList.length; ++ix){
                 const data = classList[ix];
                 if(!data.cls){continue;}
@@ -557,11 +571,25 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
                 const hp = ActorCharactermancerSheet.calcHitPointsAtLevel(data.cls.hd.number, data.cls.hd.faces, targetLevel, hpMode, customFormula);
                 hpTotal += hp;
                 levelTotal += targetLevel;
+
+                if(!hitDiceInfo[data.cls.hd.faces]){
+                  hitDiceInfo[data.cls.hd.faces] = data.cls.hd.number;
+                }
+                else{
+                  hitDiceInfo[data.cls.hd.faces] += data.cls.hd.number;
+                }
             }
 
             hpTotal += (conMod * levelTotal);
 
             $colHpSpeed.append(`<div>HP: ${hpTotal}</div>`);
+            $lblMaxHP.text(hpTotal);
+            $lblHitDice.empty();
+            for(let diceSize of Object.keys(hitDiceInfo)){
+              let str = hitDiceInfo[diceSize]+"d"+diceSize;
+              $$`<div>${str}</div>`.appendTo($lblHitDice);
+            }
+
 
             const scoreInitiative = dexMod;
             $lblInitiative.html(`${scoreInitiative>=0?"+"+scoreInitiative : scoreInitiative}`);

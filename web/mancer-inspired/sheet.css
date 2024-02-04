@@ -345,16 +345,16 @@
   form.charsheet main section.combat > div {
     overflow: hidden;
   }
-  form.charsheet main section.combat > div.armorclass, form.charsheet main section.combat > div.initiative, form.charsheet main section.combat > div.speed {
+  form.charsheet main section.combat > div.scoreBubble {
     flex-basis: 33.333%;
   }
-  form.charsheet main section.combat > div.armorclass > div, form.charsheet main section.combat > div.initiative > div, form.charsheet main section.combat > div.speed > div {
+  form.charsheet main section.combat > div.scoreBubble > div {
     display: flex;
     flex-direction: column-reverse;
     align-items: center;
     margin-top: 10px;
   }
-  form.charsheet main section.combat > div.armorclass > div label.title, form.charsheet main section.combat > div.initiative > div label.title, form.charsheet main section.combat > div.speed > div label.title {
+  form.charsheet main section.combat > div.scoreBubble > div label.title {
     font-size: 8px;
     width: 50px;
     border: 1px solid black;
@@ -365,7 +365,7 @@
     padding-bottom: 5px;
     border-radius: 0 0 10px 10px;
   }
-  form.charsheet main section.combat > div.armorclass > div input, form.charsheet main section.combat > div.initiative > div input, form.charsheet main section.combat > div.speed > div input {
+  form.charsheet main section.combat > div.scoreBubble > div input {
     height: 70px;
     width: 70px;
     border-radius: 10px;
@@ -373,7 +373,7 @@
     text-align: center;
     font-size: 30px;
   }
-  form.charsheet main section.combat > div.armorclass > div label.score, form.charsheet main section.combat > div.initiative > div label.score, form.charsheet main section.combat > div.speed > div label.score {
+  form.charsheet main section.combat > div.scoreBubble > div label.score {
     height: 70px;
     width: 70px;
     border-radius: 10px;
@@ -382,6 +382,53 @@
     font-size: 30px;
     line-height: 70px;
     background-color: #fff;
+  }
+  form.charsheet main section.combat > div.scoreBubbleWide {
+    flex-basis: 50%;
+  }
+  form.charsheet main section.combat > div.scoreBubbleWide > div {
+    display: flex;
+    flex-direction: column-reverse;
+    align-items: center;
+    margin-top: 10px;
+  }
+  form.charsheet main section.combat > div.scoreBubbleWide > div label.title {
+    font-size: 8px;
+    width: 50px;
+    border: 1px solid black;
+    border-top: 0;
+    background-color: white;
+    text-align: center;
+    padding-top: 5px;
+    padding-bottom: 5px;
+    border-radius: 0 0 10px 10px;
+  }
+  form.charsheet main section.combat > div.scoreBubbleWide > div label.score {
+    height: 70px;
+    width: 105px;
+    border-radius: 10px;
+    border: 1px solid black;
+    text-align: center;
+    font-size: 30px;
+    line-height: 70px;
+    background-color: #fff;
+  }
+  form.charsheet main section.combat > div.scoreBubbleWide > div label.scoreHitDice {
+    height: 70px;
+    width: 105px;
+    border-radius: 10px;
+    border: 1px solid black;
+    text-align: center;
+    font-size: 18px;
+    line-height: 18px;
+    background-color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+  }
+  label.scoreHitDice div{
+    display:block;
   }
   form.charsheet .armorWornText {
     font-size: 12px;
