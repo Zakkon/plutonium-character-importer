@@ -209,55 +209,6 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
             <label class="title upperCase">Hit Dice</label>${$lblHitDice}
           </div>
         </div>
-
-        <div class="hp">
-          <div class="regular">
-            <div class="max">
-              <label for="maxhp">Hit Point Maximum</label><input name="maxhp" placeholder="10" type="text" />
-            </div>
-            <div class="current">
-              <label for="currenthp">Current Hit Points</label><input name="currenthp" type="text" />
-            </div>
-          </div>
-          <div class="temporary">
-            <label for="temphp">Temporary Hit Points</label><input name="temphp" type="text" />
-          </div>
-        </div>
-        <div class="hitdice">
-          <div>
-            <div class="total">
-              <label onclick="totalhd_clicked()" for="totalhd">Total</label><input name="totalhd" placeholder="2d10" type="text" />
-            </div>
-            <div class="remaining">
-              <label for="remaininghd">Hit Dice</label><input name="remaininghd" type="text" />
-            </div>
-          </div>
-        </div>
-        <div class="deathsaves">
-          <div>
-            <div class="label">
-              <label>Death Saves</label>
-            </div>
-            <div class="marks">
-              <div class="deathsuccesses">
-                <label>Successes</label>
-                <div class="bubbles">
-                  <input name="deathsuccess1" type="checkbox" />
-                  <input name="deathsuccess2" type="checkbox" />
-                  <input name="deathsuccess3" type="checkbox" />
-                </div>
-              </div>
-              <div class="deathfails">
-                <label>Failures</label>
-                <div class="bubbles">
-                  <input name="deathfail1" type="checkbox" />
-                  <input name="deathfail2" type="checkbox" />
-                  <input name="deathfail3" type="checkbox" />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
       </section>
       <section class="attacksandspellcasting">
         <div>
