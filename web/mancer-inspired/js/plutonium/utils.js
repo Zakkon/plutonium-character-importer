@@ -11869,6 +11869,7 @@ class UtilWorldDataSourceSelector {
     }
 
     static isSourceSelectionActive() {
+        if(!SETTINGS.USE_FVTT){return true;}
         return (!game.user.isGM && Config.get("dataSources", "isPlayerEnableSourceSelection")) || (game.user.isGM && Config.get("dataSources", "isGmEnableSourceSelection"));
     }
 

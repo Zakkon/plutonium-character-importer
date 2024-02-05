@@ -300,6 +300,22 @@ class CharacterBuilder {
           //this.compSheet.test_gatherExportInfo();
           CharacterExportFvtt.exportCharacter(this);
       });
+      const sourcesBtn = $("#btn_sources");
+      sourcesBtn.click(async() => {
+        //Get all available sources
+        const allSources = await CharacterBuilder._pGetSources({actor: this.actor});
+        console.log("SOURCES", allSources);
+        const sourceSelector = new ActorCharactermancerSourceSelector({
+          'title': "Select Sources",
+          'filterNamespace': 'ActorCharactermancerSourceSelector_filter',
+          'savedSelectionKey': "ActorCharactermancerSourceSelector_savedSelection",
+          'sourcesToDisplay': allSources
+        });
+        const result = await sourceSelector.pWaitForUserInput();
+        console.log("SOURCE RESULT: ", result);
+        if (result == null) { return; }
+        //const processedResult = this._postProcessAllSelectedData(result);
+      });
       
       //This is a test to only have certain sources selected as active in the filter
       //Note that this does not delete the sources, and they can still be toggled on again via the filter
@@ -438,8 +454,83 @@ class CharacterBuilder {
         if(!$tab){return;}
         if(active && $tab.hasClass(hi)){$tab.removeClass(hi);}
         else if(!active && !$tab.hasClass(hi)){$tab.addClass(hi);}
-   }
+    }
 
+    static async _pGetSources({actor}) {
+      const isStreamerMode = false;
+      return [new UtilDataSource.DataSourceSpecial(isStreamerMode ? "SRD" : "5etools", CharacterBuilder._pLoadVetoolsSource.bind(this), {
+        'cacheKey': '5etools-charactermancer',
+        'filterTypes': [UtilDataSource.SOURCE_TYP_OFFICIAL_ALL],
+        'isDefault': true,
+        'pPostLoad': CharacterBuilder._pPostLoad.bind(this, {
+          'actor': actor
+        })
+      }), ...UtilDataSource.getSourcesCustomUrl({
+        'pPostLoad': CharacterBuilder._pPostLoad.bind(this, {
+          'isBrewOrPrerelease': true,
+          'actor': actor
+        })
+      }), ...UtilDataSource.getSourcesUploadFile({
+        'pPostLoad': CharacterBuilder._pPostLoad.bind(this, {
+          'isBrewOrPrerelease': true,
+          'actor': actor
+        })
+      }), ...(await UtilDataSource.pGetSourcesPrerelease(ActorCharactermancerSourceSelector._BREW_DIRS, {
+        pPostLoad: CharacterBuilder._pPostLoad.bind(this, { isPrerelease: true, actor: actor })
+      })), ...(await UtilDataSource.pGetSourcesBrew(ActorCharactermancerSourceSelector._BREW_DIRS, {
+        pPostLoad: CharacterBuilder._pPostLoad.bind(this, { isBrew: true, actor: actor })
+      }))].filter(_0x54f70d => !UtilWorldDataSourceSelector.isFiltered(_0x54f70d));
+    }
+    static async _pLoadVetoolsSource() {
+      const output = {};
+      const [classData, raceData, backgroundData, itemData, spellData, featData, optionalFeatureData] = await Promise.all([
+        Vetools.pGetClasses(),
+        Vetools.pGetRaces(),
+        DataUtil.loadJSON(Vetools.DATA_URL_BACKGROUNDS),
+        Vetools.pGetItems(), Vetools.pGetAllSpells(),
+        DataUtil.loadJSON(Vetools.DATA_URL_FEATS),
+        DataUtil.loadJSON(Vetools.DATA_URL_OPTIONALFEATURES)]);
+      //Object.assign(output, classData); //original
+      output.class = classData.class; //new
+      output.race = raceData.race;
+      output.background = backgroundData.background;
+      output.item = itemData.item;
+      output.spell = spellData.spell;
+      output.feat = featData.feat;
+      output.optionalfeature = optionalFeatureData.optionalfeature;
+      return output;
+    }
+    static async _pPostLoad(_0x4e0586) {
+      let isPrerelease = false;
+      let isBrew = false;
+      if (isBrewOrPrerelease) {
+        const { _isPrerelease, _isBrew } = UtilDataSource.getSourceType(_0x4e0586, { isErrorOnMultiple: true });
+        isPrerelease = _isPrerelease; isBrew = _isBrew;
+      }
+      _0x4e0586 = await UtilDataSource.pPostLoadGeneric({ isBrew: isBrew, isPrerelease: isPrerelease }, _0x4e0586);
+      if (_0x4e0586.class || _0x4e0586.subclass) {
+        const { DataConverterClassSubclassFeature } = await Promise.resolve().then(function () { return DataConverterClassSubclassFeature; });
+        const _0x2f74ed = await _0x1311c6.pGetClassSubclassFeatureIgnoredLookup({
+          'data': _0x4e0586
+        });
+        const _0x15dc0a = await PageFilterClassesFoundry.pPostLoad({
+          'class': _0x4e0586.class,
+          'subclass': _0x4e0586.subclass,
+          'classFeature': _0x4e0586.classFeature,
+          'subclassFeature': _0x4e0586.subclassFeature
+        }, {
+          'actor': _0x5d48db,
+          'isIgnoredLookup': _0x2f74ed
+        });
+        Object.assign(_0x4e0586, _0x15dc0a);
+        if (_0x4e0586.class) {
+          _0x4e0586.class.forEach(_0x4b57f1 => PageFilterClasses.mutateForFilters(_0x4b57f1));
+        }
+      }
+      if (_0x4e0586.feat) { _0x4e0586.feat = MiscUtil.copy(_0x4e0586.feat); }
+      if (_0x4e0586.optionalfeature) { _0x4e0586.optionalfeature = MiscUtil.copy(_0x4e0586.optionalfeature); }
+      return _0x4e0586;
+    }
 }
 /**A wrapper for a div that contains components. Only used by CharacterBuilder */
 class CharacterBuilderPanel {
