@@ -7028,9 +7028,8 @@ class ActorCharactermancerRace extends ActorCharactermancerBaseComponent {
      * @param {{race:{race:any, stateInfo:any}}} actor
      */
     setStateFromSaveFile(actor){
+        if(!actor || !actor.race){return;}
         const data = actor.race;
-
-        if(!data || !data.race){return;}
         const raceInfo = data.race;
         const { ixRace: ixRace, ixRaceVersion: ixRaceVersion } = this._test_getExistingRaceIndex(raceInfo);
         const isRacePresent = !!ixRace;

@@ -367,11 +367,12 @@ class CharacterBuilder {
     }
     renderComponents(){
         //this.compClass.render(); //Goes on for quite long, and will trigger hooks for many ms after
+        const doLoad = SETTINGS.USE_EXISTING_WEB && !!this.actor;
 
         this.compClass.render().then(() => {
 
         this.compRace.render();
-        if(SETTINGS.USE_EXISTING_WEB){this.compRace.setStateFromSaveFile(this.actor);}
+        if(doLoad){this.compRace.setStateFromSaveFile(this.actor);}
         this.compAbility.render();
         
 
@@ -379,14 +380,14 @@ class CharacterBuilder {
         
 
         this.compEquipment.pRenderStarting().then(() => this.compEquipment.pRenderShop())
-          .then(() => {if(SETTINGS.USE_EXISTING_WEB){this.compEquipment.setStateFromSaveFile(this.actor)}});
+          .then(() => {if(doLoad){this.compEquipment.setStateFromSaveFile(this.actor)}});
         
-        this.compSpell.pRender().then(() => this.compSpell.setStateFromSaveFile(this.actor));
+        this.compSpell.pRender().then(() => {if(doLoad){this.compSpell.setStateFromSaveFile(this.actor);}});
         this.compFeat.render();
         
 
-        if(SETTINGS.USE_EXISTING_WEB){this.compAbility.setStateFromSaveFile(this.actor);}
-        if(SETTINGS.USE_EXISTING_WEB){this.compBackground.setStateFromSaveFile(this.actor);}
+        if(doLoad){this.compAbility.setStateFromSaveFile(this.actor);}
+        if(doLoad){this.compBackground.setStateFromSaveFile(this.actor);}
       }).then(()=> {this.compSheet.render();});
     }
     async loadFromSave(){
