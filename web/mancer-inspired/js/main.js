@@ -359,9 +359,15 @@ class CharacterBuilder {
         const result = await sourceSelector.pWaitForUserInput();
         console.log("SOURCE RESULT: ", result);
         if (result == null) { return; }
+        const isSure = await InputUiUtil.pGetUserBoolean({
+          title: `Are you sure you wish to change sources?`,
+          htmlDescription: `This will reset your character!`,
+        });
+        //Perhaps show some info here that characters using content from non-enabled sources will break badly
+        if (!isSure){return;}
         //Write the new sourceIds to localstorage, so next time website refreshes, they will be auto-enabled
         //Then tell SourceManager that we have these new sourceIds, and let them take it from here
-
+        SourceManager.onUserChangedSources(result);
       });
       
       //This is a test to only have certain sources selected as active in the filter
