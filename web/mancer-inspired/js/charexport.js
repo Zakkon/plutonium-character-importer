@@ -10,7 +10,9 @@ class CharacterExportFvtt{
     static async exportCharacter(builder){
         //lets not be verbose here
 
-        const brewSourcesLoaded = this.getBrewSources();
+        //Ids of brew sources that are fully loaded into memory
+        const brewSourceIds = CharacterExportFvtt.getBrewSourceIds();
+        console.log("BREW SOURCE IDS", brewSourceIds);
 
         const _meta = {};
         const _char = {race:null, classes:null};
@@ -18,20 +20,7 @@ class CharacterExportFvtt{
         //probably needs to be cleaned of duplicates later
         let metaDataStack = [];
 
-        //Lets start by getting the character race
-        const raceData = this.getRaceData(builder.compRace);
-        if(!!raceData){
-            console.log("RACEDATA", raceData);
-            let race = raceData.meta.race;
-            const hash = UrlUtil.URL_TO_HASH_BUILDER.race(race);
-            _char.race = {stateInfo: raceData.stateInfo, race: {name:race.name, source:race.source, hash: hash, srd:race.srd,
-                isSubRace: race._isSubRace, raceName:race.raceName, raceSource:race.raceSource, isBaseSrd:race._baseSrd,
-                versionBaseName:race._versionBase_name, versionBaseSource:race._versionBase_source }};
-            metaDataStack.push({uid: race.name+"|"+race.source, _data:CharacterExportFvtt.getSourceMetaData(race)});
-        }
-        console.log("RACECOMP", builder.compRace);
-
-        //Now lets get the class information
+        //#region CLASS
         const classData = await CharacterExportFvtt.getClassData(builder.compClass);
         let classArray = null;
         for(let i = 0; i < classData.length; ++i){
@@ -39,6 +28,8 @@ class CharacterExportFvtt{
             if(!data.cls){continue;}
             const hash = UrlUtil.URL_TO_HASH_BUILDER.class(data.cls);
             if(!classArray){classArray = [];}
+
+            //Create a block with some more easily accessible properties (thank me later when you are loading this)
             const block = {
                 name: data.cls.name,
                 source: data.cls.source,
@@ -47,53 +38,89 @@ class CharacterExportFvtt{
                 level: data.targetLevel,
                 isPrimary: data.isPrimary
             };
-            //Add skill proficiencies (a choice we get at lvl 1)
+            //Add some data to block that may or may not always be in our given data (depends on class)
+            //TODO: Language, etc here?
             if(data.skillProficiencies){block.skillProficiencies = data.skillProficiencies;}
-            //Add tool proficiencies (a choice we get at lvl 1 for some classes)
             if(data.toolProficiencies){block.toolProficiencies = data.toolProficiencies;}
             if(data.featureOptSel){block.featureOptSel = data.featureOptSel;}
-            metaDataStack.push({uid: data.cls.name+"|"+data.cls.source, _data:CharacterExportFvtt.getSourceMetaData(data.cls)});
+
+            //Create some meta information (so we can track where this class came from)
+            metaDataStack.push({uid: data.cls.name+"|"+data.cls.source,
+                _data:CharacterExportFvtt.getSourceMetaData(data.cls, brewSourceIds)});
 
             //Check if high enough level for subclass here?
             if(data.sc){
                 const schash = UrlUtil.URL_TO_HASH_BUILDER.subclass(data.sc);
+                //Add the subclass to block, if present
                 block.subclass = {
                     name: data.sc.name,
                     source: data.sc.source, //maybe we should include some info here (and in class, race, etc) if this is brewed content
-                    hash: data.schash
+                    hash: schash
                 }
-                //subclasses generally dont have the 'srd' property
-                metaDataStack.push({uid: data.sc.name+"|"+data.sc.source, _data:CharacterExportFvtt.getSourceMetaData(data.sc)});
+                //Create some meta information (so we can track where this subclass came from)
+                //Subclasses generally dont have the 'srd' property, by the way
+                metaDataStack.push({uid: data.sc.name+"|"+data.sc.source,
+                    _data:CharacterExportFvtt.getSourceMetaData(data.sc, brewSourceIds)});
             }
             classArray.push(block);
         }
         _char.classes = classArray;
+        //#endregion
 
-        //Background information time
+        //#region RACE
+        const raceData = this.getRaceData(builder.compRace);
+        if(!!raceData){
+            let race = raceData.meta.race;
+            const hash = UrlUtil.URL_TO_HASH_BUILDER.race(race);
+            //Set the .race entry in the _char output
+            _char.race = {stateInfo: raceData.stateInfo, race: {name:race.name, source:race.source, hash: hash, srd:race.srd,
+                isSubRace: race._isSubRace, raceName:race.raceName, raceSource:race.raceSource, isBaseSrd:race._baseSrd,
+                versionBaseName:race._versionBase_name, versionBaseSource:race._versionBase_source }};
+            //Remember some metadata about what source this race is from
+            metaDataStack.push({uid: race.name+"|"+race.source, _data: CharacterExportFvtt.getSourceMetaData(race, brewSourceIds)});
+        }
+        //#endregion
+
+        //#region BACKGROUND
         const background = await CharacterExportFvtt.getBackground(builder.compBackground);
-        //console.log("Background: ", background);
-        if(!!background){metaDataStack.push({uid: background.name+"|"+background.source, _data:CharacterExportFvtt.getSourceMetaData(background)});}
-        _char.background = background;
+        if(!!background){
+            //Add background to character output
+            _char.background = background;
+            //Create some meta information (so we know where the background came from)
+            metaDataStack.push({uid: background.name+"|"+background.source,
+            _data:CharacterExportFvtt.getSourceMetaData(background, brewSourceIds)});
+        }
+        //#endregion
 
-        //ability scores (our choices, maybe not the total)
+        //#region ABILITY SCORES (our choices, maybe not the total)
         const abilities = await CharacterExportFvtt.getAbilityScoreData(builder.compAbility);
+        //Add abilities to character output
         _char.abilities = abilities;
+        //Don't think any meta information is needed here
+        //#endregion
 
-        //equipment (including gold, and bought items)
+        //#region EQUIPMENT (including gold, and bought items)
         const equipment = await CharacterExportFvtt.getEquipmentData(builder.compEquipment);
-        console.log("Equipment: ", equipment, builder.compEquipment);
+        //Add equipment to character output
         _char.equipment = equipment;
+        for(let it of equipment.boughtItems){
+            console.log("BOUGHT ITEM", it);
+            let uid = it.uid; //plate_armor|phb
+            //TODO: get the full source of the item (assuming its not a PHB item or something)
+        }
+        //#endregion
 
-        //known spells & cantrips
+        //#region SPELLS
         const spells = await CharacterExportFvtt.getAllSpells(builder.compSpell);
-        console.log("Spells: ", spells, builder.compSpell);
         for(let srcIx = 0; srcIx < spells.length; ++srcIx){
             let spellSource = spells[srcIx];
             for(let lvlix = 0; lvlix < spellSource.spellsByLvl.length; ++lvlix){
                 let lvl = spellSource.spellsByLvl[lvlix];
                 for(let spix = 0; spix < lvl.length; ++spix){
                     let sp = lvl[spix];
-                    metaDataStack.push({uid: sp.name+"|"+sp.source, _data:CharacterExportFvtt.getSourceMetaData(sp.spell)});
+                    //Create some meta information (so we know where the spell came from)
+                    metaDataStack.push({uid: sp.name+"|"+sp.source,
+                        _data:CharacterExportFvtt.getSourceMetaData(sp.spell, brewSourceIds)});
                     //delete .spell info
                     delete sp.spell;
                     lvl[spix] = sp;
@@ -103,9 +130,9 @@ class CharacterExportFvtt{
             spells[srcIx] = spellSource;
         }
         _char.spellsBySource = spells;
+        //#endregion
 
         //Feats
-        console.log("ABILITY COMP", builder.compAbility);
 
         //optional feature stuff?
 
@@ -121,12 +148,17 @@ class CharacterExportFvtt{
         _meta.isOfficialContentUsed = isOfficialContentUsed;
         _meta.brewSourcesUsed = brewSourcesUsed;
 
+        //Optionally, instead of tracking each and every item, race, subclass, etc that we incorporated on our character,
+        //we can just check which sources were enabled at the time of the exporting of the character
+        //This does of course include bloat, but it's more accurate than what we have going right now
+        _meta.enabledBrew = brewSourceIds.map(srcId => SourceManager.minifySourceId(srcId));
+
         const output = {character: _char, _meta:_meta};
 
         console.log("Export Character", output);
+        console.log("MetaData", metaDataStack);
         let importStr = this.test_printExportJsonAsString(output);
 
-        //test
         localStorage.setItem("lastCharacter", importStr);
     }
 
@@ -278,7 +310,6 @@ class CharacterExportFvtt{
      * @returns {any}
      */
     static async getAbilityScoreData(compAbility){
-        console.log("COMPABIL", compAbility);
         const statgen = compAbility._compStatgen;
         const s = statgen.__state;
         const chosenModeIx = statgen._meta.ixActiveTab___default;
@@ -428,17 +459,20 @@ class CharacterExportFvtt{
     //#region Get Source Metadata
     /**
      * Gets source metadata for an object (race/class/subclass/spell/etc)
-     * @param {{srd:boolean}} item
-     * @returns {{isOfficialContent:boolean, brewSource:any}}
+     * @param {{name:string, source:string}} item
+     * @param {{name:string, url:string, abbreviations:string[]}[]} brewSourceIds
+     * @returns {{isOfficialContent:boolean, brewSource:{name:string, url:string, abbreviations:string[]}}}
      */
-    static getSourceMetaData(item){
+    static getSourceMetaData(item, brewSourceIds){
         //This is not a trustable way to confirm if something is from official sources or not. Yet.
         if(item.srd || this.isFromOfficialSource(item)){
             return {isOfficialContent:true};
         }
-        else{ 
-            const match = this.matchToBrewSource(item, brewSourcesLoaded);
-            if(!match){throw new Error("Failed to get brew source for ", item);}
+        else {
+            console.log("ITEM META", item, brewSourceIds);
+            const match = this.matchToBrewSourceID(item, brewSourceIds);
+            console.log("MATCH", match);
+            if(!match){throw new Error(`Failed to get brew source for ${item.name}|${item.source}`);}
             return {isOfficialContent:false, brewSource:match};
         }
     }
@@ -450,42 +484,67 @@ class CharacterExportFvtt{
     static getLoadedSources(){
         return CharacterBuilder._testLoadedSources;
     }
-    static getBrewSources(){
+    static getBrewSourceIds(){
         //Only return non-default sources for now
         return this.getLoadedSources().filter(src => !src.isDefault);
     }
     /**
      * @param {{source:string, name:string}} item
-     * @param {{name:string, url:string, abbreviations:string[]}} source
+     * @param {{name:string, url:string, abbreviations:string[]}} sourceId
+     * * @param {boolean} pendanticMode (default is true) in pedantic mode, we don't just check that abbreviations match, we do a deeper match
      * @returns {boolean}
      */
-    static doesMatchToBrewSource(item, source){
+    static doesMatchToBrewSource(item, sourceId, pendanticMode=false){
 
-        //The item of course has it's 'source' property, which is likely an abbreviation
-        //For for some reasons, we can't assume that it will actually match any of the abbreviations included in the actual brew source
-        //So we need to ask Parser to get the correct abbreviation
-        const itemSourceAbbreviation = Parser.sourceJsonToAbv(item.source);
+        //NEW STUFF
+        const itemAbbreviation = item.source.toLowerCase();
+        const srcUsedAbbreviations = sourceId.abbreviations.map(a => a.toLowerCase());
+        //Match abbreviations. If brewer made a typo on the abbreviation somewhere, this will fail
+        if(!srcUsedAbbreviations.includes(itemAbbreviation)){return false;}
+        //Now that we know the abbreivations matched, we can return true, or if we want to be pedantic,
+        //we can check to see that source names also match
+        //(WARNING:) keep in mind, the user may have enabled more than 1 source that uses the same abbrevation!
+        if(!pendanticMode){return true;}
 
-        //Match abbreviations
-        if(!source.abbreviations.includes(itemSourceAbbreviation)){return false;}
-
+        //Since we can't rely on the itemAbbreviation alone to find us the correct source, we need to be more rough
+        //We probably need to use the sourceId to load a source, then check if it mentions this item
+        //const src = BrewUtil2.sourceJsonToSource(item.source);
+        //console.log("SRC", src);
+        
         //Lets get the full name of the source. We expect the name to be split like this: "AUTHOR; BREW_NAME"
         let sourceFullName = "";
-        if(!source.name.includes(";")){sourceFullName = source.name;} //Let's have a fallback in case for some reason the name doesnt have a section for the author
-        else { sourceFullName = source.name.substring(source.name.indexOf(";") + 1).trim(); } //This is the expected outcome
+        if(!sourceId.name.includes(";")){sourceFullName = sourceId.name;} //Let's have a fallback in case for some reason the name doesnt have a section for the author
+        else { sourceFullName = sourceId.name.substring(sourceId.name.indexOf(";") + 1).trim(); } //This is the expected outcome
 
         //Now we need the source full name on the end of the item in question (like a subclass, feat, or spell)
         //Parser should have this information
-        const itemSourceFull = Parser.sourceJsonToFull(item.source); //Expect a full name of the brew here
+        let itemSourceFull = Parser.sourceJsonToFull(item.source); //Expect a full name of the brew here
+        //Remove all non-latin and non-numeral characters (sometimes people misplace ' and ´, among other things)
+        const removeNonAlphanumericCharacters = (inputString) => {
+            return inputString.replace(/[^a-zA-Z0-9]/gi, '');
+        }
 
-        if(itemSourceFull == sourceFullName){return true;}
-        return false;
+        console.log("SOURCEID", sourceId);
+
+        //If the brewer made a typo between any two (of the numerous places) where you define the source's full name, this will fail and return null
+
+        sourceFullName = removeNonAlphanumericCharacters(sourceFullName).toLowerCase();
+        itemSourceFull = removeNonAlphanumericCharacters(itemSourceFull).toLowerCase();
+        console.log(sourceFullName, itemSourceFull);
+
+        return sourceFullName == itemSourceFull;
     }
-    static matchToBrewSource(item, brewSources){
-        const matchedBrewSources = brewSources.filter(src => this.doesMatchToBrewSource(item, src));
-        if(matchedBrewSources.length < 1){return null;}
-        if(matchedBrewSources.length > 1){ console.error("Matched item to multiple brew sources", item, matchedBrewSources); } //something went wrong
-        return matchedBrewSources[0];
+    /**
+     * Matches an item to a brew source ID
+     * @param {{name:string, source:string}} item a class, subclass, race, item, feat, background, etc
+     * @param {{name:string, abbreviations:string[]}[]} brewSourceIds
+     * @returns {{name:string, abbreviations:string[]}}
+     */
+    static matchToBrewSourceID(item, brewSourceIds){
+        const matchedIds = brewSourceIds.filter(srcId => this.doesMatchToBrewSource(item, srcId));
+        if(matchedIds.length < 1){return null;}
+        if(matchedIds.length > 1){ console.error("Matched item to multiple brew sources", item, matchedIds); } //something went wrong
+        return matchedIds[0];
     }
     /**
      * Checks if an object(race/class/subclass/etc) is from an official source 
@@ -493,9 +552,20 @@ class CharacterExportFvtt{
      * @returns {boolean}
      */
     static isFromOfficialSource(item){
-        //We can either check for a diagnostic property
-        if(!item.__diagnostic){return true;}
-        //or check is parser knows of the name
+        return [Parser.SOURCES_VANILLA,
+            ...Parser.SOURCES_CORE_SUPPLEMENTS,
+            ...Parser.SOURCES_PARTNERED_WOTC,
+            ...Parser.SOURCES_NON_STANDARD_WOTC,
+            ...Parser.SOURCES_NON_FR,
+            ...Parser.SOURCES_CORE_SUPPLEMENTS,
+            ...Parser.SOURCES_COMEDY,
+            ...Parser.SOURCES_ADVENTURES,
+            //...Parser.SOURCES_AVAILABLE_DOCS_BOOK,
+            //...Parser.SOURCES_AVAILABLE_DOCS_ADVENTURE,
+        ].includes(item.source);
+
+
+        //we can check check if parser knows of the name
         //actually, SOURCE_JSON_TO_FULL probably gets filled by properties from homebrew.
         //So we cant rely on it to validate official sources
         //return !!Parser.SOURCE_JSON_TO_FULL[item.source];
@@ -532,7 +602,7 @@ class CharacterExportFvtt{
         }
 
 
-        const brewSources = CharacterExportFvtt.getBrewSources();
+        const brewSources = CharacterExportFvtt.getBrewSourceIds();
         console.log("BREW SOURCES", brewSources);
 
         const matchedBrewSources = brewSources.filter(src => this.doesMatchToBrewSource(item, src));

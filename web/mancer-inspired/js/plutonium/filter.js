@@ -3470,11 +3470,26 @@ class SourceFilter extends Filter {
         }
         )();
 
-        const menu = ContextUtil.getMenu([new ContextUtil.Action("Select All Standard Sources",()=>this._doSetPinsStandard(),), new ContextUtil.Action("Select All Partnered Sources",()=>this._doSetPinsPartnered(),), new ContextUtil.Action("Select All Non-Standard Sources",()=>this._doSetPinsNonStandard(),), new ContextUtil.Action("Select All Homebrew Sources",()=>this._doSetPinsHomebrew(),), null, new ContextUtil.Action(`Select "Vanilla" Sources`,()=>this._doSetPinsVanilla(),{
-            title: `Select a baseline set of sources suitable for any campaign.`
-        },), new ContextUtil.Action("Select All Non-UA Sources",()=>this._doSetPinsNonUa(),), null, new ContextUtil.Action("Select SRD Sources",()=>this._doSetPinsSrd(),{
-            title: `Select System Reference Document Sources.`
-        },), new ContextUtil.Action("Select Basic Rules Sources",()=>this._doSetPinsBasicRules(),), null, new ContextUtil.Action("Invert Selection",()=>this._doInvertPins(),), null, actionSelectDisplayMode, ]);
+        const menu = ContextUtil.getMenu([
+            new ContextUtil.Action("Select All Standard Sources",()=>this._doSetPinsStandard(),),
+            new ContextUtil.Action("Select All Partnered Sources",()=>this._doSetPinsPartnered(),),
+            new ContextUtil.Action("Select All Non-Standard Sources",()=>this._doSetPinsNonStandard(),),
+            new ContextUtil.Action("Select All Homebrew Sources",()=>this._doSetPinsHomebrew(),),
+            null,
+            new ContextUtil.Action(`Select "Vanilla" Sources`,()=>this._doSetPinsVanilla(),{
+                title: `Select a baseline set of sources suitable for any campaign.`
+            },),
+            new ContextUtil.Action("Select All Non-UA Sources",()=>this._doSetPinsNonUa(),),
+            null,
+            new ContextUtil.Action("Select SRD Sources",()=>this._doSetPinsSrd(),{
+                title: `Select System Reference Document Sources.`
+            },),
+            new ContextUtil.Action("Select Basic Rules Sources",()=>this._doSetPinsBasicRules(),),
+            null,
+            new ContextUtil.Action("Invert Selection",()=>this._doInvertPins(),),
+            null,
+            actionSelectDisplayMode,
+        ]);
         const btnBurger = e_({
             tag: "button",
             clazz: `btn btn-default ${opts.isMulti ? "btn-xxs" : "btn-xs"}`,

@@ -16,6 +16,7 @@ class AppSourceSelectorMulti extends ModalFilter {
 
         this._sourcesToDisplay = opts.sourcesToDisplay;
         this._savedSelectionKey = opts.savedSelectionKey;
+        this._preEnabledSources = opts.preEnabledSources;
         this._filterNamespace = opts.filterNamespace;
         this._props = opts.props;
         this._isRadio = !!opts.isRadio;
@@ -303,6 +304,7 @@ class AppSourceSelectorMulti extends ModalFilter {
     }
 
     async _pGetInitialSources() {
+        
         const initialSourceIds = await this._pGetInitialSourceIds();
         const initialSources = this._sourcesToDisplay.filter(it=>initialSourceIds.has(it.identifier));
         if (!initialSources.length)
@@ -314,7 +316,16 @@ class AppSourceSelectorMulti extends ModalFilter {
         if (this.isForceSelectAllSources()) {
             return new Set(this._sourcesToDisplay.map(it=>it.identifier));
         }
-        return new Set((await StorageUtil.pGet(this._savedSelectionKey)) || []);
+
+        console.log("ASBSDFSADF", this._sourcesToDisplay);
+        
+        //return new Set((await StorageUtil.pGet(this._savedSelectionKey)) || []);
+
+        let s = new Set();
+        for(let srcId of this._preEnabledSources){
+            s.add(srcId.identifier);
+        }
+        return s;
     }
 
     isForceSelectAllSources() {
@@ -630,6 +641,7 @@ class AppSourceSelectorMulti extends ModalFilter {
     }
 
     async _pAcceptAndResolveSelection({$ovrLoading, fnClose, fnResolve, isSilent=false, isBackground=false, isAutoSelectAll=false}={}) {
+        
         try {
             if ($ovrLoading){$ovrLoading.showVe();}
 
@@ -637,7 +649,8 @@ class AppSourceSelectorMulti extends ModalFilter {
             console.log("Selected sources", sources);
             if (!isSilent && !sources.length) {
                 if ($ovrLoading){$ovrLoading.hideVe();}
-                return ui.notifications.error(`No sources selected!`);
+                //return ui.notifications.error(`No sources selected!`);
+                console.error(`No sources selected!`); return;
             }
 
             if (!isSilent && sources.length > 10) {
@@ -655,14 +668,26 @@ class AppSourceSelectorMulti extends ModalFilter {
                 }
             }
 
+            const isSure = await InputUiUtil.pGetUserBoolean({
+                title: `Are you sure you wish to change sources?`,
+                htmlDescription: `This will reset your character!`,
+              });
+            //Perhaps show some info here that characters using content from non-enabled sources will break badly
+            if (!isSure){
+                if ($ovrLoading){$ovrLoading.hideVe();}
+                return;
+            }
+
             /* const out = await this._pGetOutputEntities(sources, { isBackground, isAutoSelectAll });
             if (!out){return;}
             if (!isSilent && !Object.values(out).some(it=>it?.length)) {
                 if ($ovrLoading){$ovrLoading.hideVe();}
                 return ui.notifications.warn(`No sources to be loaded! Please finish entering source details first.`);
             } */
+
+
             //We don't want to return entities, we just want to return metadata about sources
-            const out = sources;
+            const out = {sourceIds:sources};
 
             fnResolve(out); //Calls for this window to return a solution to whoever has been waiting
             this.close(fnClose);
@@ -752,9 +777,7 @@ class AppSourceSelectorMulti extends ModalFilter {
             const {$iptSearch} = await this.pGetElements($wrpList);
 
             $iptSearch.keydown(evt=>{
-                if (evt.key === "Enter")
-                    $btnAccept.click();
-            }
+                if (evt.key === "Enter")$btnAccept.click();}
             );
 
             const $btnAccept = $(`<button class="mt-auto btn btn-5et">Confirm</button>`).click(()=>this._pAcceptAndResolveSelection({

@@ -28,6 +28,7 @@ class SourceManager {
     "item", 'baseitem', "magicvariant", "spell", "feat", "optionalfeature"];
   static _DATA_PROPS_EXPECTED = ['class', "subclass", 'classFeature', "subclassFeature",
     "race", "background", "item", "spell", "feat", 'optionalfeature'];
+  static cacheKey = "sourceIds";
   static _curWindow;
 
   /**
@@ -37,11 +38,13 @@ class SourceManager {
    */
   static async _pOpen({ actor: actor }) {
 
-    //Auto-choose sources for now
-    const sourceIds = await this._pGetSources({actor: actor});
+    //Try to load source ids from localstorage
+    let sourceIds = await this._loadSourceIdsFromStorage({actor});
+    //If that failed, load default source ids
+    if(!sourceIds){sourceIds = await this._getDefaultSourceIds({actor});}
 
     //Cache which sources we chose, and let them process the source ids into ready data entries (classes, races, etc)
-    const data = await SourceManager.setUsedSourceIds(sourceIds);
+    const data = await SourceManager._loadSourcesFromIds(sourceIds);
 
     //Create the character builder UI for the first time
     const window = new CharacterBuilder(data);
@@ -52,7 +55,7 @@ class SourceManager {
    * @param {{class:{}[], background:{}[], classFeature:{}[], race:{}[], monster:{}[], item:{}[]
    * , spell:{}[], subclass:{}[], subclassFeature:{}[], feat:{}[], optionalFeature:{}[], foundryClass:{}[]}} data
    * @returns {{class:{}[], background:{}[], classFeature:{}[], race:{}[], monster:{}[], item:{}[]
-   * , spell:{}[], subclass:{}[], subclassFeature:{}[], feat:{}[], optionalFeature:{}[], foundryClass:{}[]}}
+   * , spell:{}[], subclassFeature:{}[], feat:{}[], optionalFeature:{}[], foundryClass:{}[]}}
    */
   static _postProcessAllSelectedData(data) {
 
@@ -75,12 +78,6 @@ class SourceManager {
   static async _pGetSources({ actor: actor }) {
 
     const isStreamerMode = true;//Config.get('ui', 'isStreamerMode');
-    const debugMode = true;
-
-    if(debugMode)
-    {
-      return SourceManager._getDefaultSources({actor});
-    }
 
     return [new UtilDataSource.DataSourceSpecial(isStreamerMode ? "SRD" : "5etools", SourceManager._pLoadVetoolsSource.bind(this), {
       cacheKey: '5etools-charactermancer',
@@ -106,10 +103,8 @@ class SourceManager {
     }))].filter(dataSource => !UtilWorldDataSourceSelector.isFiltered(dataSource));
   }
 
-  static async _loadSourceIdsFromStorage(){
-    return null;
-  }
-  static async _getDefaultSources({actor}){
+  
+  static async _getDefaultSourceIds({actor}){
     const isStreamerMode = true;
       //Create a source obj that contains all the official sources (PHB, XGE, TCE, etc)
       //This object will have the 'isDefault' property set to true
@@ -234,7 +229,18 @@ Renderer.spell.populateBrewLookup(await BrewUtil2.pGetBrewProcessed(), {isForce:
     return data;
   }
 
-  static async setUsedSourceIds(sourceIds){
+  /**
+   * @param {any} sourceIds
+   */
+  static async _setUsedSourceIds(sourceIds){
+    CharacterBuilder._testLoadedSources = sourceIds;
+  }
+  /**
+   * @param {any[]} sourceIds
+   * @returns {{class:{}[], background:{}[], classFeature:{}[], race:{}[], monster:{}[], item:{}[]
+   * , spell:{}[], subclassFeature:{}[], feat:{}[], optionalFeature:{}[], foundryClass:{}[]}}
+   */
+  static async _loadSourcesFromIds(sourceIds){
 
     //Process and post-process the data
     //Get entities such as classes, races, backgrounds using the source ids
@@ -244,7 +250,7 @@ Renderer.spell.populateBrewLookup(await BrewUtil2.pGetBrewProcessed(), {isForce:
     const mergedData = postProcessedData;
     //Make sure that the data always has an array for classes, races, feats, etc, even if none were provided by the sources
     SourceManager._DATA_PROPS_EXPECTED.forEach(propExpected => mergedData[propExpected] = mergedData[propExpected] || []);
-    CharacterBuilder._testLoadedSources = sourceIds;
+    SourceManager._setUsedSourceIds(sourceIds);
 
     return mergedData;
   }
@@ -254,12 +260,60 @@ Renderer.spell.populateBrewLookup(await BrewUtil2.pGetBrewProcessed(), {isForce:
    */
   static async onUserChangedSources(sourceIds){
     //Cache which sources we chose, and let them process the source ids into ready data entries (classes, races, etc)
-    const data = await SourceManager.setUsedSourceIds(sourceIds);
+    const data = await SourceManager._loadSourcesFromIds(sourceIds);
     //Tear down the existing window
     this._curWindow.teardown();
     //Create a new window
     const window = new CharacterBuilder(data);
     this._curWindow = window;
+  }
+  static saveSourceIdsToStorage(sourceIds){
+    //First, we need to compress the sourceIds into the minimal used information
+    const min = sourceIds.map(s => {
+      
+    })
+    localStorage.setItem(SourceManager.cacheKey, JSON.stringify(min));
+  }
+  /**
+   * @param {any} {actor}
+   * @returns {{name:string, isDefault:boolean, cacheKey:string}[]}
+   */
+  static async _loadSourceIdsFromStorage({actor}){
+    //Try to load from localstorage safely
+    let sourceIdsMin = [];
+    try {
+      const str = localStorage.getItem(SourceManager.cacheKey);
+      const out = JSON.parse(str);
+      sourceIdsMin = out;
+    }
+    catch(e){
+      console.error("Failed to parse saved source ids!");
+      throw e;
+    }
+
+    //Assume something is wrong if no source id is in the array
+    //TODO: there is a strange but rare usecase where user wants it this way?
+    if(sourceIdsMin.length < 1){return null;}
+    //Get all sources. These contain more info than is in the minified version
+    const allSources = await this._pGetSources({actor});
+
+    //Match the full sources to the minified sources we pulled from localstorage
+    //Then return the full sources that were matched
+    return allSources.filter(src => {
+      let match = false; //loop will stop when match is made
+      for(let i = 0; !match && i < sourceIdsMin.length; ++i){
+        match = sourceIdsMin[i].name == src.name; //Simple name match for now
+      }
+      return match;
+    });
+  }
+  static minifySourceId(sourceId){
+    let out = {name:sourceId.name};
+    if(!!sourceId.isDefault){out.isDefault = sourceId.isDefault;}
+    //if(!!s._isAutoDetectPrereleaseBrew){out._isAutoDetectPrereleaseBrew = s._isAutoDetectPrereleaseBrew;}
+    //if(!!s._isExistingPrereleaseBrew){out._isExistingPrereleaseBrew = s._isExistingPrereleaseBrew;}
+    //if(!!sourceId.cacheKey){out.cacheKey = sourceId.cacheKey;}
+    return out;
   }
 }
 class SETTINGS{
@@ -304,7 +358,7 @@ class CharacterBuilder {
     
     /**
      * @param {{class:{}[], background:{}[], classFeature:{}[], race:{}[], monster:{}[], item:{}[]
-   * , spell:{}[], subclass:{}[], subclassFeature:{}[], feat:{}[], optionalFeature:{}[], foundryClass:{}[]}} data
+   * , spell:{}[], subclassFeature:{}[], feat:{}[], optionalFeature:{}[], foundryClass:{}[]}} data
      * @returns {CharacterBuilder}
      */
     constructor(data){
@@ -340,35 +394,10 @@ class CharacterBuilder {
       //Configure the export button
       const exportBtn = $("#btn_export");
       exportBtn.click(() => {
-          //this.compSheet.test_gatherExportInfo();
           CharacterExportFvtt.exportCharacter(this);
       });
       const sourcesBtn = $("#btn_sources");
-      sourcesBtn.click(async() => {
-        //Get all available sources
-        const allSources = await SourceManager._pGetSources({actor: this.actor});
-        //Get the names of the sources we already have set as enabled
-        const preEnabledSources = CharacterBuilder._testLoadedSources;
-        const sourceSelector = new ActorCharactermancerSourceSelector({
-          title: "Select Sources",
-          filterNamespace: 'ActorCharactermancerSourceSelector_filter',
-          savedSelectionKey: "ActorCharactermancerSourceSelector_savedSelection",
-          sourcesToDisplay: allSources,
-          preEnabledSources: preEnabledSources
-        });
-        const result = await sourceSelector.pWaitForUserInput();
-        console.log("SOURCE RESULT: ", result);
-        if (result == null) { return; }
-        const isSure = await InputUiUtil.pGetUserBoolean({
-          title: `Are you sure you wish to change sources?`,
-          htmlDescription: `This will reset your character!`,
-        });
-        //Perhaps show some info here that characters using content from non-enabled sources will break badly
-        if (!isSure){return;}
-        //Write the new sourceIds to localstorage, so next time website refreshes, they will be auto-enabled
-        //Then tell SourceManager that we have these new sourceIds, and let them take it from here
-        SourceManager.onUserChangedSources(result);
-      });
+      sourcesBtn.click(async() => { await this.e_changeSourcesDialog(); });
       
       //This is a test to only have certain sources selected as active in the filter
       //Note that this does not delete the sources, and they can still be toggled on again via the filter
@@ -376,6 +405,11 @@ class CharacterBuilder {
       const testApplyDefaultSources = () => {
           HelperFunctions.setModalFilterSourcesStrings(this.compBackground.modalFilterBackgrounds, DEFAULT_SOURCES);
           HelperFunctions.setModalFilterSourcesStrings(this.compRace.modalFilterRaces, DEFAULT_SOURCES);
+
+          //This is a simple way to toggle on homebrew sources
+          this.compClass.modalFilterClasses.pageFilter.sourceFilter._doSetPinsHomebrew({isAdditive:true});
+          this.compClass.modalFilterClasses.pageFilter.filterBox.fireChangeEvent();
+
       }
       
       //Call this to let the components load some content before we start using them
@@ -496,11 +530,31 @@ class CharacterBuilder {
         pressedBtn.addClass("active");
         this.setActive(newActivePanel.$wrpTab, true);
     }
+    async e_changeSourcesDialog(){
+      //Get all available sources
+      const allSources = await SourceManager._pGetSources({actor: this.actor});
+      //Get the names of the sources we already have set as enabled
+      const preEnabledSources = CharacterBuilder._testLoadedSources;
+      const sourceSelector = new ActorCharactermancerSourceSelector({
+        title: "Select Sources",
+        filterNamespace: 'ActorCharactermancerSourceSelector_filter',
+        savedSelectionKey: "ActorCharactermancerSourceSelector_savedSelection",
+        sourcesToDisplay: allSources,
+        preEnabledSources: preEnabledSources
+      });
+      const result = await sourceSelector.pWaitForUserInput();
+      if (result == null || result.sourceIds == null) { return; }
+      console.log("SOURCE RESULT: ", result);
+      //Write the new sourceIds to localstorage, so next time website refreshes, they will be auto-enabled
+      SourceManager.saveSourceIdsToStorage(result.sourceIds);
+      //Then tell SourceManager that we have these new sourceIds, and let them take it from here
+      SourceManager.onUserChangedSources(result.sourceIds);
+    }
     //#endregion
     //#region Getters
     /**
      * @returns {{class:{}[], background:{}[], classFeature:{}[], race:{}[], monster:{}[], item:{}[]
-   * , spell:{}[], subclass:{}[], subclassFeature:{}[], feat:{}[], optionalFeature:{}[], foundryClass:{}[]}}
+   * , spell:{}[], subclassFeature:{}[], feat:{}[], optionalFeature:{}[], foundryClass:{}[]}}
      */
     get data(){
       return this._data;
