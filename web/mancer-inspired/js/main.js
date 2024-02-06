@@ -24,14 +24,15 @@ async function handleReady(){
 }
 
 class SourceManager {
-
   static _BREW_DIRS = ["class", 'subclass', "race", "subrace", "background",
     "item", 'baseitem', "magicvariant", "spell", "feat", "optionalfeature"];
-
+  static _DATA_PROPS_EXPECTED = ['class', "subclass", 'classFeature', "subclassFeature",
+    "race", "background", "item", "spell", "feat", 'optionalfeature'];
+  static _curWindow;
 
   /**
-   * Starting function for the source selector. Opens up a UI that lets us choose sources before character creation begins.
-   * Currently the UI is deactivated and sources are auto-chosen before the character builder UI is initialized
+   * Starting function for the whole program. Loads source ids from local storage (or default ones as fallback),
+   * and creates a character builder window that can play around with those sources
    * @param {any} actor Can just be left as null, not used at the moment
    */
   static async _pOpen({ actor: actor }) {
@@ -44,6 +45,7 @@ class SourceManager {
 
     //Create the character builder UI for the first time
     const window = new CharacterBuilder(data);
+    this._curWindow = window;
   }
   /**
    * Perform some post-processing on entities extracted from sources
@@ -77,30 +79,7 @@ class SourceManager {
 
     if(debugMode)
     {
-      //Create a source obj that contains all the official sources (PHB, XGE, TCE, etc)
-      //This object will have the 'isDefault' property set to true
-      const officialSources = new UtilDataSource.DataSourceSpecial(
-        isStreamerMode? "SRD" : "5etools", this._pLoadVetoolsSource.bind(this),
-        {
-          cacheKey: '5etools-charactermancer',
-          filterTypes: [UtilDataSource.SOURCE_TYP_OFFICIAL_ALL],
-          isDefault: true,
-          pPostLoad: this._pPostLoad.bind(this, { actor: actor })
-      });
-
-      const allBrews = await Vetools.pGetBrewSources(...SourceManager._BREW_DIRS);
-      console.log("Allbrews", allBrews);
-      const chosenBrew = allBrews[202];
-      console.log("Adding brew ", chosenBrew);
-
-      const chosenBrewSourceUrl = new UtilDataSource.DataSourceUrl(chosenBrew.name, chosenBrew.url,{
-        pPostLoad: this._pPostLoad.bind(this, { isBrew: true, actor: actor }),
-        filterTypes: [UtilDataSource.SOURCE_TYP_BREW],
-        abbreviations: chosenBrew.abbreviations,
-        brewUtil: BrewUtil2,
-      });
-
-      return [officialSources, chosenBrewSourceUrl];
+      return SourceManager._getDefaultSources({actor});
     }
 
     return [new UtilDataSource.DataSourceSpecial(isStreamerMode ? "SRD" : "5etools", SourceManager._pLoadVetoolsSource.bind(this), {
@@ -125,6 +104,37 @@ class SourceManager {
     })), ...(await UtilDataSource.pGetSourcesBrew(ActorCharactermancerSourceSelector._BREW_DIRS, {
       pPostLoad: SourceManager._pPostLoad.bind(this, { isBrew: true, actor: actor })
     }))].filter(dataSource => !UtilWorldDataSourceSelector.isFiltered(dataSource));
+  }
+
+  static async _loadSourceIdsFromStorage(){
+    return null;
+  }
+  static async _getDefaultSources({actor}){
+    const isStreamerMode = true;
+      //Create a source obj that contains all the official sources (PHB, XGE, TCE, etc)
+      //This object will have the 'isDefault' property set to true
+      const officialSources = new UtilDataSource.DataSourceSpecial(
+        isStreamerMode? "SRD" : "5etools", this._pLoadVetoolsSource.bind(this),
+        {
+          cacheKey: '5etools-charactermancer',
+          filterTypes: [UtilDataSource.SOURCE_TYP_OFFICIAL_ALL],
+          isDefault: true,
+          pPostLoad: this._pPostLoad.bind(this, { actor: actor })
+      });
+
+      const allBrews = await Vetools.pGetBrewSources(...SourceManager._BREW_DIRS);
+      console.log("Allbrews", allBrews);
+      const chosenBrew = allBrews[202];
+      console.log("Adding brew ", chosenBrew);
+
+      const chosenBrewSourceUrl = new UtilDataSource.DataSourceUrl(chosenBrew.name, chosenBrew.url,{
+        pPostLoad: this._pPostLoad.bind(this, { isBrew: true, actor: actor }),
+        filterTypes: [UtilDataSource.SOURCE_TYP_BREW],
+        abbreviations: chosenBrew.abbreviations,
+        brewUtil: BrewUtil2,
+      });
+
+      return [officialSources, chosenBrewSourceUrl];
   }
 
   /**
@@ -233,16 +243,23 @@ Renderer.spell.populateBrewLookup(await BrewUtil2.pGetBrewProcessed(), {isForce:
     const postProcessedData = SourceManager._postProcessAllSelectedData(content);
     const mergedData = postProcessedData;
     //Make sure that the data always has an array for classes, races, feats, etc, even if none were provided by the sources
-    CharacterBuilder._DATA_PROPS_EXPECTED.forEach(propExpected => mergedData[propExpected] = mergedData[propExpected] || []);
+    SourceManager._DATA_PROPS_EXPECTED.forEach(propExpected => mergedData[propExpected] = mergedData[propExpected] || []);
     CharacterBuilder._testLoadedSources = sourceIds;
 
-    if(CharacterBuilder.isActive){
-      //Do stuff for character builder here
-
-    }
-
     return mergedData;
-
+  }
+  /**
+   * Apply new source IDs, and fetch entities from them. Completely reloads the entire character builder.
+   * @param {any[]} sourceIds
+   */
+  static async onUserChangedSources(sourceIds){
+    //Cache which sources we chose, and let them process the source ids into ready data entries (classes, races, etc)
+    const data = await SourceManager.setUsedSourceIds(sourceIds);
+    //Tear down the existing window
+    this._curWindow.teardown();
+    //Create a new window
+    const window = new CharacterBuilder(data);
+    this._curWindow = window;
   }
 }
 class SETTINGS{
@@ -264,8 +281,6 @@ class SETTINGS{
     static SPECIFIED_ABILITY_SAVE = false;
 }
 class CharacterBuilder {
-  static _DATA_PROPS_EXPECTED = ['class', "subclass", 'classFeature', "subclassFeature",
-  "race", "background", "item", "spell", "feat", 'optionalfeature'];
     tabButtonParent;
     tabClass;
     tabRace;
@@ -287,13 +302,18 @@ class CharacterBuilder {
     tabs;
     _featureSourceTracker;
     
+    /**
+     * @param {{class:{}[], background:{}[], classFeature:{}[], race:{}[], monster:{}[], item:{}[]
+   * , spell:{}[], subclass:{}[], subclassFeature:{}[], feat:{}[], optionalFeature:{}[], foundryClass:{}[]}} data
+     * @returns {CharacterBuilder}
+     */
     constructor(data){
 
       this.parent = this;
       this.createTabs(); //Create the small tab buttons
       this.createPanels(); //Create the panels that hold components
 
-      this.data = data;
+      this._data = data;
 
       let cachedStr = localStorage.getItem("lastCharacter");
       if(!!cachedStr){
@@ -339,7 +359,9 @@ class CharacterBuilder {
         const result = await sourceSelector.pWaitForUserInput();
         console.log("SOURCE RESULT: ", result);
         if (result == null) { return; }
-        //const processedResult = this._postProcessAllSelectedData(result);
+        //Write the new sourceIds to localstorage, so next time website refreshes, they will be auto-enabled
+        //Then tell SourceManager that we have these new sourceIds, and let them take it from here
+
       });
       
       //This is a test to only have certain sources selected as active in the filter
@@ -359,7 +381,8 @@ class CharacterBuilder {
     }
 
     createTabs(){
-        const tabHolder = $(`.tab_button_holder`);
+        const _root = $("#window-root");
+        const tabHolder = $$`<div class="w-100 no-shrink ui-tab__wrp-tab-heads--border tab_button_holder"></div>`.appendTo(_root);
         const createTabBtn = (label) => {
             return $$`<button class="btn btn-default ui-tab__btn-tab-head btn-sm">${label}</button>`.appendTo(tabHolder);
         }
@@ -469,6 +492,13 @@ class CharacterBuilder {
     }
     //#endregion
     //#region Getters
+    /**
+     * @returns {{class:{}[], background:{}[], classFeature:{}[], race:{}[], monster:{}[], item:{}[]
+   * , spell:{}[], subclass:{}[], subclassFeature:{}[], feat:{}[], optionalFeature:{}[], foundryClass:{}[]}}
+     */
+    get data(){
+      return this._data;
+    }
     get featureSourceTracker_() {
         return this._featureSourceTracker;
     }
@@ -479,6 +509,9 @@ class CharacterBuilder {
         if(!$tab){return;}
         if(active && $tab.hasClass(hi)){$tab.removeClass(hi);}
         else if(!active && !$tab.hasClass(hi)){$tab.addClass(hi);}
+    }
+    teardown(){
+      $(`#window-root`).empty();
     }
 }
 /**A wrapper for a div that contains components. Only used by CharacterBuilder */
