@@ -9265,12 +9265,11 @@ Charactermancer_StartingEquipment.ComponentDefault = class extends Charactermanc
 
         const $btnResetStartingGold = $(`<button class="btn btn-default btn-xs btn-5et">Reset Starting Gold</button>`).click(async()=>{
             //Create a popup that asks the user if they are sure
-            /* const isSure = await InputUiUtil.pGetUserBoolean({
+            const isSure = await InputUiUtil.pGetUserBoolean({
                 title: `Are you sure?`,
                 htmlDescription: `This will discard your current starting gold roll or value.`,
             });
-            if (!isSure){return;} */
-            console.error("Reset rolled gold warning not implemented");
+            if (!isSure){return;}
             this._compCurrency.cpRolled = null;
         }
         );
