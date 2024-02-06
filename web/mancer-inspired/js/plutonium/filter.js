@@ -1,5 +1,3 @@
-//#region FILTERS
-
 //#region FilterBox
 //TEMP ProxyBase seems to just be a MixedProxyBase
 class FilterBox extends ProxyBase
@@ -9397,5 +9395,83 @@ class ModalFilterItemsFvtt extends MixinModalFilterFvtt(ModalFilterItems) {
 //#endregion
 //#endregion
 
+class AppFilter {
+    constructor() {
+        this._filterBox = null;
+    }
 
-//#endregion
+    get filterBox() {
+        return this._filterBox;
+    }
+
+    mutateAndAddToFilters(entity, isExcluded, opts) {
+        this.constructor.mutateForFilters(entity, opts);
+        this.addToFilters(entity, isExcluded, opts);
+    }
+
+    static mutateForFilters(entity, opts) {
+        throw new Error("Unimplemented!");
+    }
+    addToFilters(entity, isExcluded, opts) {
+        throw new Error("Unimplemented!");
+    }
+    toDisplay(values, entity) {
+        throw new Error("Unimplemented!");
+    }
+    async _pPopulateBoxOptions() {
+        throw new Error("Unimplemented!");
+    }
+
+    async pInitFilterBox(opts) {
+        opts = opts || {};
+        await this._pPopulateBoxOptions(opts);
+        this._filterBox = new FilterBox(opts);
+        await this._filterBox.pDoLoadState();
+        return this._filterBox;
+    }
+
+    trimState() {
+        return this._filterBox.trimState_();
+    }
+
+    teardown() {
+        this._filterBox.teardown();
+    }
+}
+class AppSourceSelectorAppFilter extends AppFilter {
+    static _sortTypeFilterItems(a, b) {
+        a = a.item;
+        b = b.item;
+
+        const ixA = UtilDataSource.SOURCE_TYPE_ORDER__FILTER.indexOf(a);
+        const ixB = UtilDataSource.SOURCE_TYPE_ORDER__FILTER.indexOf(b);
+
+        return SortUtil.ascSort(ixA, ixB);
+    }
+
+    constructor() {
+        super();
+
+        this._typeFilter = new Filter({
+            header: "Type",
+            itemSortFn: AppSourceSelectorAppFilter._sortTypeFilterItems,
+        });
+    }
+
+    static mutateForFilters() {}
+
+    addToFilters(entity, isExcluded) {
+        if (isExcluded)
+            return;
+
+        this._typeFilter.addItem(entity.filterTypes);
+    }
+
+    async _pPopulateBoxOptions(opts) {
+        opts.filters = [this._typeFilter, ];
+    }
+
+    toDisplay(values, ent) {
+        return this._filterBox.toDisplay(values, ent.filterTypes, );
+    }
+}

@@ -37,12 +37,13 @@ class SourceSelectorTest {
   static async _pOpen({ actor: actor }) {
 
     //Auto-choose sources for now
-    const sources = await this._pGetSources({'actor': actor});
+    const sources = await this._pGetSources({actor: actor});
 
     //Cache which sources we chose
     CharacterBuilder._testLoadedSources = sources;
+    //Get entities such as classes, races, backgrounds
     const content = await SourceSelectorTest.getOutputEntities(sources, true);
-    
+
     const postProcessedData = SourceSelectorTest._postProcessAllSelectedData(content);
     const mergedData = postProcessedData;
     CharacterBuilder._DATA_PROPS_EXPECTED.forEach(propExpected => mergedData[propExpected] = mergedData[propExpected] || []);
@@ -71,6 +72,8 @@ class SourceSelectorTest {
   static async _pGetSources({ actor: actor }) {
 
     const isStreamerMode = true;//Config.get('ui', 'isStreamerMode');
+    //Create a source obj that contains all the official sources (PHB, XGE, TCE, etc)
+    //This object will have the 'isDefault' property set to true
     const officialSources = new UtilDataSource.DataSourceSpecial(
       isStreamerMode? "SRD" : "5etools", this._pLoadVetoolsSource.bind(this),
       {
@@ -128,8 +131,10 @@ class SourceSelectorTest {
   }
 
   /**
+   * Extracts entities such as classes, subclasses, races and backgrounds out of an array of sources
    * @param {{name:string, isDefault:boolean, cacheKey:string}[]} sources
-   * @returns {any}
+   * @returns {{class:{}[], background:{}[], classFeature:{}[], race:{}[], monster:{}[], item:{}[]
+   * , spell:{}[], subclass:{}[], subclassFeature:{}[], feat:{}[], optionalFeature:{}[], foundryClass:{}[]}}
    */
   static async getOutputEntities(sources, getDeduped=false) {
 
@@ -304,12 +309,14 @@ class CharacterBuilder {
       sourcesBtn.click(async() => {
         //Get all available sources
         const allSources = await CharacterBuilder._pGetSources({actor: this.actor});
-        console.log("SOURCES", allSources);
+        //Get the names of the sources we already have set as enabled
+        const preEnabledSources = CharacterBuilder._testLoadedSources;
         const sourceSelector = new ActorCharactermancerSourceSelector({
-          'title': "Select Sources",
-          'filterNamespace': 'ActorCharactermancerSourceSelector_filter',
-          'savedSelectionKey': "ActorCharactermancerSourceSelector_savedSelection",
-          'sourcesToDisplay': allSources
+          title: "Select Sources",
+          filterNamespace: 'ActorCharactermancerSourceSelector_filter',
+          savedSelectionKey: "ActorCharactermancerSourceSelector_savedSelection",
+          sourcesToDisplay: allSources,
+          preEnabledSources: preEnabledSources
         });
         const result = await sourceSelector.pWaitForUserInput();
         console.log("SOURCE RESULT: ", result);

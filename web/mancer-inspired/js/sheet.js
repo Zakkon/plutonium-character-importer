@@ -793,11 +793,9 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
              
               let outStr = "";
               for(let it of result.startingItems){
-                console.log("IT", it.item.name, it);
                 outStr += (outStr.length>0? ", " : "") + (it.quantity>1? it.quantity+"x " : "") + it.item.name;
               }
               for(let it of result.boughtItems){
-                console.log("IT", it.item.name, it);
                 outStr += (outStr.length>0? ", " : "") + (it.quantity>1? it.quantity+"x " : "") + it.item.name;
               }
               const span = $$`<span>${outStr}</span>`;
@@ -954,7 +952,6 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
 
         if(!component){return;}
         const form = component.pGetFormData();
-        console.log("FORM", prop, form);
         pasteVals(form.data[prop], isStringArray);
     }
     async _getOurItems() {
@@ -968,7 +965,6 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
       for(let item of itemKeys){
           //cant be trusted to not be null
           const foundItem = ActorCharactermancerEquipment.findItemByUID(item.data.uid, itemDatas);
-          console.log("FOUNDITEM", item.data);
           if(!foundItem){continue;}
           boughtItems.push({item:foundItem, quantity:item.data.quantity});
       }
