@@ -511,6 +511,12 @@ class BaseComponent /*extends Cls*/ extends MixedProxyBase
             return array.map(it=>it.entity);
     }
 
+    /**
+     * Create a new BaseComponent and paste every entry in 'obj' to the new component's __state
+     * @param {any} obj
+     * @param {string[]} noModCollections
+     * @returns {BaseComponent}
+     */
     static fromObject(obj, ...noModCollections) {
         const comp = new this();
         Object.entries(MiscUtil.copyFast(obj)).forEach(([k,v])=>{

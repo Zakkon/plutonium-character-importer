@@ -8007,6 +8007,11 @@ class ModalFilter {
         return btnMeta.map((it,i)=>$(`<button class="col-${it.width} ${i === 0 ? "pl-0" : i === btnMeta.length ? "pr-0" : ""} ${it.disabled ? "" : "sort"} btn btn-default btn-xs" ${it.disabled ? "" : `data-sort="${it.sort}"`} ${it.title ? `title="${it.title}"` : ""} ${it.disabled ? "disabled" : ""}>${it.text}</button>`));
     }
 
+    /**
+     * Description
+     * @param {{modalTitle:string, fnSort:Function, pageFilter:PageFilter, namespace:string, isRadio:boolean, allData:any}} opts
+     * @returns {any}
+     */
     constructor(opts) {
         this._modalTitle = opts.modalTitle;
         this._fnSort = opts.fnSort;
@@ -8261,7 +8266,7 @@ class ModalFilter {
             isWidth100: true,
             title: `Filter/Search for ${this._modalTitle}`,
             cbClose: (isDataEntered)=>{
-                this._filterCache.$wrpModalInner.detach();
+                if(this._filterCache){this._filterCache.$wrpModalInner.detach();}
                 if (!isDataEntered)
                     resolve([]);
             },
@@ -9461,8 +9466,7 @@ class AppSourceSelectorAppFilter extends AppFilter {
     static mutateForFilters() {}
 
     addToFilters(entity, isExcluded) {
-        if (isExcluded)
-            return;
+        if (isExcluded){return;}
 
         this._typeFilter.addItem(entity.filterTypes);
     }

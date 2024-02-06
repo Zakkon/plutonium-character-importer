@@ -1,11 +1,17 @@
+class PageFilterSourcesRaw extends AppSourceSelectorAppFilter {
+    _getToDisplayParams(values, cls) {
+        return cls.name;//this.isAnySubclassDisplayed(values, cls) ? cls._fSourceSubclass : (cls._fSources ?? cls.source), cls._fMisc, null, ];
+    }
+}
 class AppSourceSelectorMulti extends ModalFilter {
+    /**
+     * Description
+     * @param {{title:string, sourcesToDisplay:any[], savedSelectionKey:string, filterNamespace:string, isRadio:boolean}} opts
+     * @returns {any}
+     */
     constructor(opts) {
         super({
-            title: opts.title || "Select Sources",
-            width: 800,
-            template: `${SharedConsts.MODULE_LOCATION}/template/AppSourceSelectorMulti.hbs`,
-            height: Util.getMaxWindowHeight(),
-            resizable: true,
+            modalTitle: opts.title || "Select Sources",
         });
 
         this._sourcesToDisplay = opts.sourcesToDisplay;
@@ -22,12 +28,11 @@ class AppSourceSelectorMulti extends ModalFilter {
         this._$stgUrl = null;
         this._$stgSpecial = null;
 
+        //Create a new component, and set the __state with these entries
         this._comp = BaseComponent.fromObject({
             uploadedFileMetas: [],
-
             isShowCustomUrlForm: false,
             urlMetas: [],
-
             specialMetas: [],
         });
 
@@ -313,10 +318,9 @@ class AppSourceSelectorMulti extends ModalFilter {
     }
 
     isForceSelectAllSources() {
-        if (this._isRadio)
-            return false;
-        if (game.user.isGM)
-            return Config.get("dataSources", "isGmForceSelectAllowedSources");
+        if (this._isRadio){return false;}
+        if(!SETTINGS.USE_FVTT){return false;}
+        if (game.user.isGM){return Config.get("dataSources", "isGmForceSelectAllowedSources");}
         return Config.get("dataSources", "isPlayerForceSelectAllowedSources");
     }
 
@@ -469,9 +473,8 @@ class AppSourceSelectorMulti extends ModalFilter {
         }
         ;
 
-        if (this._pageFilter)
-            this._pageFilter.teardown();
-        this._pageFilter = new AppSourceSelectorMulti.AppSourceSelectorAppFilter();
+        if (this._pageFilter){this._pageFilter.teardown();}
+        this._pageFilter = new AppSourceSelectorAppFilter();
 
         const isForceSelectAll = this.isForceSelectAllSources();
 
@@ -626,15 +629,14 @@ class AppSourceSelectorMulti extends ModalFilter {
         )();
     }
 
-    async _pAcceptAndResolveSelection({$ovrLoading, isSilent=false, isBackground=false, isAutoSelectAll=false}={}) {
+    async _pAcceptAndResolveSelection({$ovrLoading, fnClose, fnResolve, isSilent=false, isBackground=false, isAutoSelectAll=false}={}) {
         try {
-            if ($ovrLoading)
-                $ovrLoading.showVe();
+            if ($ovrLoading){$ovrLoading.showVe();}
 
             const sources = await this.pGetSelectedSources();
+            console.log("Selected sources", sources);
             if (!isSilent && !sources.length) {
-                if ($ovrLoading)
-                    $ovrLoading.hideVe();
+                if ($ovrLoading){$ovrLoading.hideVe();}
                 return ui.notifications.error(`No sources selected!`);
             }
 
@@ -648,30 +650,26 @@ class AppSourceSelectorMulti extends ModalFilter {
                 });
 
                 if (!isContinue) {
-                    if ($ovrLoading)
-                        $ovrLoading.hideVe();
+                    if ($ovrLoading){$ovrLoading.hideVe();}
                     return;
                 }
             }
 
-            const out = await this._pGetOutputEntities(sources, {
-                isBackground,
-                isAutoSelectAll
-            });
-            if (!out)
-                return;
+            /* const out = await this._pGetOutputEntities(sources, { isBackground, isAutoSelectAll });
+            if (!out){return;}
             if (!isSilent && !Object.values(out).some(it=>it?.length)) {
-                if ($ovrLoading)
-                    $ovrLoading.hideVe();
+                if ($ovrLoading){$ovrLoading.hideVe();}
                 return ui.notifications.warn(`No sources to be loaded! Please finish entering source details first.`);
-            }
+            } */
+            //We don't want to return entities, we just want to return metadata about sources
+            const out = sources;
 
-            this._resolve(out);
-            this.close();
+            fnResolve(out); //Calls for this window to return a solution to whoever has been waiting
+            this.close(fnClose);
         } catch (e) {
-            if ($ovrLoading)
-                $ovrLoading.hideVe();
-            ui.notifications.error(`Failed to load sources! ${VeCt.STR_SEE_CONSOLE}`);
+            if ($ovrLoading){$ovrLoading.hideVe();}
+            //ui.notifications.error(`Failed to load sources! ${VeCt.STR_SEE_CONSOLE}`);
+            console.error("Failed to load sources!");
             throw e;
         }
     }
@@ -728,30 +726,80 @@ class AppSourceSelectorMulti extends ModalFilter {
             this._pageFilter.teardown();
     }
 
-    async close(...args) {
+    /* async close(...args) {
         this.handlePreClose();
-        await super.close(...args);
+        //await super.close(...args);
         this.handlePostClose();
+    } */
+    async close(fnClose) {
+        this.handlePreClose();
+        fnClose();
+        this.handlePostClose();
+    }
+
+    async renderStuff(){
+        /* (async()=>{
+            
+        }
+        )(); */
+
+        return new Promise(async resolve => {
+            const {$modalInner, doClose} = await this._pGetShowModal(resolve);
+            const $ovrLoading = $(`<div class="veapp-loading__wrp-outer"><i>Loading...</i></div>`).appendTo($modalInner.empty());
+
+            const $wrpList = $(`<div class="ve-flex-col w-100 h-100 min-h-0"></div>`);
+
+            const {$iptSearch} = await this.pGetElements($wrpList);
+
+            $iptSearch.keydown(evt=>{
+                if (evt.key === "Enter")
+                    $btnAccept.click();
+            }
+            );
+
+            const $btnAccept = $(`<button class="mt-auto btn btn-5et">Confirm</button>`).click(()=>this._pAcceptAndResolveSelection({
+                $ovrLoading, fnClose:doClose, fnResolve:resolve
+            }));
+
+            $$($modalInner)`
+			${$wrpList}
+			<hr class="hr-1">
+			<div class="ve-flex-col w-100 overflow-y-auto pr-1 max-h-40 imp__disp-import-from no-shrink">
+				<h3 class="mb-1 b-0">Source</h3>
+				${this._$stgNone}
+				${this._$stgUpload}
+				${this._$stgUrl}
+				${this._$stgSpecial}
+			</div>
+			${$btnAccept}
+			${$ovrLoading.hideVe()}`;
+
+            $iptSearch.focus();
+        });
     }
 
     pWaitForUserInput({isRenderApp=true}={}) {
         const isSelectAll = this.isForceSelectAllSources();
 
-        if (!isSelectAll && isRenderApp)
-            this.render(true);
+        if (!isSelectAll && isRenderApp){
+            return this.renderStuff();
+            //this.render(true); //old
+        }
 
         this._pUserInput = new Promise((resolve,reject)=>{
-            this._resolve = resolve;
-            this._reject = reject;
-        }
-        );
+            this._resolve = resolve; //Call this later when this modal has resolved the choices
+            this._reject = reject; //Call this later if this modal has rejected the choices
+        });
 
-        if (isSelectAll)
+        //TODO: make this call resolve in a better way
+        if (isSelectAll) {
             this._pAcceptAndResolveSelection({
                 isSilent: true,
                 isBackground: true,
                 isAutoSelectAll: isSelectAll
             }).then(null);
+        }
+           
 
         return this._pUserInput;
     }
@@ -761,11 +809,7 @@ class AppSourceSelectorMulti extends ModalFilter {
         return this._pGetOutputEntities(initialSources);
     }
 }
-class PageFilterSourcesRaw extends AppSourceSelectorAppFilter {
-    _getToDisplayParams(values, cls) {
-        return cls.name;//this.isAnySubclassDisplayed(values, cls) ? cls._fSourceSubclass : (cls._fSources ?? cls.source), cls._fMisc, null, ];
-    }
-}
+
 class ModalFilterSources extends ModalFilter {
     
     constructor(opts) {
@@ -1191,7 +1235,7 @@ class ModalFilterSources extends ModalFilter {
         return listItem;
     }
 }
-class ActorCharactermancerSourceSelector extends ModalFilterSources {
+class ActorCharactermancerSourceSelector extends AppSourceSelectorMulti {
     static _BREW_DIRS = ["class", 'subclass', "race", "subrace",
         "background", "item", 'baseitem', "magicvariant", "spell", "feat", "optionalfeature"];
     static async ["api_pOpen"]({ actor: _0xeeb75e }) {
@@ -1360,29 +1404,4 @@ class ActorCharactermancerSourceSelector extends ModalFilterSources {
       }
       return _0x4e0586;
     }
-    //#region stuff we were supposed to extend on
-    pWaitForUserInput({isRenderApp=true}={}) {
-        const isSelectAll = this.isForceSelectAllSources();
-
-        return this.pGetUserSelection(); //return a promise
-        return;
-        if (!isSelectAll && isRenderApp){this.render(true);}
-
-        this._pUserInput = new Promise((resolve,reject)=>{ this._resolve = resolve; this._reject = reject; } );
-
-        if (isSelectAll)
-            this._pAcceptAndResolveSelection({
-                isSilent: true,
-                isBackground: true,
-                isAutoSelectAll: isSelectAll
-            }).then(null);
-
-        return this._pUserInput;
-    }
-    isForceSelectAllSources() {
-        if (this._isRadio){return false;}
-        if (SETTINGS.USE_FVTT && game.user.isGM){return Config.get("dataSources", "isGmForceSelectAllowedSources");}
-        return Config.get("dataSources", "isPlayerForceSelectAllowedSources");
-    }
-    //#endregion
 }
