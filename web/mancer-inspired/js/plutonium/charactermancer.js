@@ -1387,10 +1387,8 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
         let asiCount = 0;
         for (const grp of groupedByOptionsSet) {
             const { topLevelFeature: topLevelFeature, optionsSets: optionsSets} = grp;
-            //Only render features of the right level
-            if ((topLevelFeature.level < lvlMin && !SETTINGS.GET_FEATOPTSEL_UP_TO_CURLEVEL) || topLevelFeature.level > lvlMax) { 
-                console.log("CHOOSING NOT TO RENDER GRP", grp, lvlMin, lvlMax, topLevelFeature.level);
-                continue; }
+            //Only render features of the right level (using a setting to always render features of lower level than we are)
+            if ((topLevelFeature.level < lvlMin && !SETTINGS.GET_FEATOPTSEL_UP_TO_CURLEVEL) || topLevelFeature.level > lvlMax) {continue; }
             const featureName = topLevelFeature.name.toLowerCase();
             if (featureName === "ability score improvement") { asiCount++; continue; }
             for (const set of optionsSets) {
