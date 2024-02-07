@@ -120,6 +120,7 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
 
     const $sectionAttributeScores = $$`<div class="scores"></div>`;
     const $lblProfBonus = $$`<label class ="lblProfScore">+2</label>`;
+    const $lblPassivePerception = $$`<label class="score"></label>`;
     const $sectionSkills = $$`<ul></ul>`;
     const $lblArmorClass = $$`<label class="score"></label>`;
     const $lblInitiative = $$`<label class="score"></label>`;
@@ -169,7 +170,7 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
         <div class="label-container">
           <label class="upperCase">Passive Wisdom (Perception)</label>
         </div>
-        <input name="passiveperception" placeholder="10" />
+        ${$lblPassivePerception}
       </div>
       <div class="otherprofs box textblock">
         <label class="footerLabel upperCase">Other Proficiencies and Languages</label>
@@ -555,9 +556,11 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
                 <label for="Acrobatics">${skillName} <span class="skill">(${Parser.SKILL_TO_ATB_ABV[skillName]})</span></label>
                 <label class="modifier">${score>=0?"+"+score : score}</label>${checkbox}
                 </li>`.appendTo($sectionSkills);
-            }
 
-            
+                if(skillName.toLowerCase() == "perception"){
+                  $lblPassivePerception.text(`${(10 + score)}`);
+                }
+            }
         }
         this._parent.compAbility.compStatgen.addHookBase("common_export_str", hkSkills);
         this._parent.compAbility.compStatgen.addHookBase("common_export_dex", hkSkills);
