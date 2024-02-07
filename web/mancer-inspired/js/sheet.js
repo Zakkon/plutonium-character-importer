@@ -727,9 +727,7 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
 
         const hkEquipment = () => {
             this._calcArmorClass().then(result=>{
-                $lblAC.empty();
                 const str = `AC: ${result.ac} (${result.name})`;
-                $lblAC.append(`<div>${str}</div>`);
                 $lblArmorClass.text(result.ac);
                 $armorWornText.text(result.name);
             });
