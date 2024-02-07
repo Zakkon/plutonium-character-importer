@@ -1388,7 +1388,9 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
         for (const grp of groupedByOptionsSet) {
             const { topLevelFeature: topLevelFeature, optionsSets: optionsSets} = grp;
             //Only render features of the right level
-            if (topLevelFeature.level < lvlMin || topLevelFeature.level > lvlMax) { continue; }
+            if ((topLevelFeature.level < lvlMin && !SETTINGS.GET_FEATOPTSEL_UP_TO_CURLEVEL) || topLevelFeature.level > lvlMax) { 
+                console.log("CHOOSING NOT TO RENDER GRP", grp, lvlMin, lvlMax, topLevelFeature.level);
+                continue; }
             const featureName = topLevelFeature.name.toLowerCase();
             if (featureName === "ability score improvement") { asiCount++; continue; }
             for (const set of optionsSets) {
@@ -1458,6 +1460,9 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
             for(let subData of fosData.subCompDatas){
                 //Grab the subcomponent that we want to paste the state onto
                 const subComp = this._test_getFOSSubComponent(classIndex, subData.parentCompIx, subData.subCompProp, subData.subCompIx);
+                if(subComp==null){
+                    console.log("WOOPS", myComp, subData);
+                }
                 //Paste the state onto the subcomponent
                 const subState = subData.state;
                 for(let propName of Object.keys(subState)){

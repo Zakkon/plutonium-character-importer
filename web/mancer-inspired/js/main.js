@@ -337,6 +337,7 @@ class SETTINGS{
     //By default, this is off. This means that loading in a high level character, they dont get to pick any spells that they would have gained at earlier levels
     //Turning this to true fixes that, and lets us pick spells from lower levels
     static GET_CASTERPROG_UP_TO_CURLEVEL = true;
+    static GET_FEATOPTSEL_UP_TO_CURLEVEL = true;
     static SPECIFIED_ABILITY_SAVE = false;
 }
 class CharacterBuilder {
