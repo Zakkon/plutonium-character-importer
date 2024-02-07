@@ -322,24 +322,18 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
         const $wrpDisplay = $(`<div class="ve-flex-col min-h-0 ve-small"></div>`).appendTo(wrapper);
 
         //#region Class
-        const $colClass = $$`<div></div>`.appendTo($wrpDisplay);
         //When class changes, redraw the elements
         const hkClass = () => {
-            $colClass.empty();
             $divFeatures.empty();
-            $colClass.append("<hr class=\"hr-2\"><div class=\"bold mb-2\">Class</div>");
             let classData = this.getClassData(this._parent.compClass);
             //If there are no classes selected, just print none and return
             let textOut = "";
-            if(!classData?.length){ $colClass.append(`<div>None</div>`); $lblClass.html(textOut); return; }
+            if(!classData?.length){ $lblClass.html(textOut); return; }
             for(let i = 0; i < classData.length; ++i){
                 const d = classData[i];
-                const n =  `Level ${d.targetLevel} ` + d.cls.name + (d.sc? ` (${d.sc.name})` : "") + (d.isPrimary && classData.length > 1? " (Primary)" : "");
-                $colClass.append(`<div>${n}</div>`);
                 textOut += `${textOut.length > 0? " / " : ""}${d.cls.name} ${d.targetLevel}${d.sc? ` (${d.sc.name})` : ""}`;
 
                 //Try to get features from class
-                console.log("SUBCLASS", d.sc);
                 let classFeaturesText = "";
                 for(let f of d.cls.classFeatures){
                   for(let l of f.loadeds){
@@ -378,14 +372,10 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
         //#endregion
 
         //#region Race
-        const $colRace = $$`<div></div>`.appendTo($wrpDisplay);
         //When race version changes, redraw the elements
         const hkRace = () => {
-            $colRace.empty();
-            $colRace.append("<hr class=\"hr-2\"><div class=\"bold mb-2\">Race</div>");
             let curRace = this.getRace_();
             const n = curRace? curRace.name : "None";
-            $colRace.append(`<div>${n}</div>`);
             $lblRace.text(n);
         };
         this._parent.compRace.addHookBase("race_ixRace_version", hkRace);
@@ -393,13 +383,9 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
         //#endregion
         
         //#region Background
-        const $colBackground = $$`<div></div>`.appendTo($wrpDisplay);
         const hkBackground = () => {
-            $colBackground.empty();
-            $colBackground.append("<hr class=\"hr-2\"><div class=\"bold mb-2\">Background</div>");
             let curBackground = this.getBackground();
             const n = curBackground? curBackground.name : "None";
-            $colBackground.append(`<div>${n}</div>`);
             $lblBackground.text(n);
         };
         this._parent.compBackground.addHookBase("background_pulseBackground", hkBackground);
@@ -407,17 +393,8 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
         //#endregion
 
         //#region Ability Scores
-        const $colAbilityScores = $$`<div></div>`.appendTo($wrpDisplay);
         const hkAbilities = () => {
-            $colAbilityScores.empty();
-            $colAbilityScores.append("<hr class=\"hr-2\"><div class=\"bold mb-2\">Ability Scores</div>");
             let totals = this.test_grabAbilityScoreTotals(this._parent.compAbility);
-            $colAbilityScores.append(`<div>STR: ${totals.values.str}</div>`);
-            $colAbilityScores.append(`<div>DEX: ${totals.values.dex}</div>`);
-            $colAbilityScores.append(`<div>CON: ${totals.values.con}</div>`);
-            $colAbilityScores.append(`<div>WIS: ${totals.values.wis}</div>`);
-            $colAbilityScores.append(`<div>INT: ${totals.values.int}</div>`);
-            $colAbilityScores.append(`<div>CHA: ${totals.values.cha}</div>`);
 
 
             //NEW UI STUFF
@@ -481,12 +458,7 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
         //#endregion
 
         //#region HP, Speed, Initiative
-        const $colHpSpeed = $$`<div></div>`.appendTo($wrpDisplay);
-        const $lblAC = $$`<div></div>`.appendTo($wrpDisplay); 
         const hkHpSpeed = () => {
-            $colHpSpeed.empty();
-            $colHpSpeed.append("<hr class=\"hr-2\"><div class=\"bold mb-2\">Hit Points</div>");
-            let totals = this.test_grabAbilityScoreTotals(this._parent.compAbility);
             //Let's try to estimate HP
             //Grab constitution score
             const conMod = this._getAbilityModifier("con");
@@ -533,7 +505,6 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
 
             hpTotal += (conMod * levelTotal);
 
-            $colHpSpeed.append(`<div>HP: ${hpTotal}</div>`);
             $lblMaxHP.text(hpTotal);
             $lblHitDice.empty();
             for(let diceSize of Object.keys(hitDiceInfo)){
@@ -559,12 +530,8 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
 
         //#region Proficiencies
         //#region Skills
-        const $colSkills = $$`<div></div>`.appendTo($wrpDisplay);
         const hkSkills = () => {
-            console.log("Hkskills");
-            $colSkills.empty();
             $sectionSkills.empty();
-            $colSkills.append("<hr class=\"hr-2\"><div class=\"bold mb-2\">Skills</div>");
             //We need to get the proficiency bonus, which is based upon combined class levels
             const profBonus = this._getProfBonus(this._parent.compClass);
             //We now need to get the names of all skill proficiencies
@@ -576,7 +543,6 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
                 //Get proficiency / expertise if we are proficient in the skill
                 if(proficientSkills[skillName] == 1){score += profBonus;}
                 else if(proficientSkills[skillName] == 2){score += (profBonus * 2);}
-                $colSkills.append(`<div>${skillName}: ${score>=0?"+"+score : score}</div>`);
 
                 const checkbox = $$`<input type="checkbox"></input>`;
                 //TODO: Add another class to it if expertise? this could change the color of the checkbox
@@ -607,18 +573,12 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
         //#endregion
 
         //#region Tools
-        const $colTools = $$`<div></div>`.appendTo($wrpDisplay);
         const hkTools = () => {
-            $colTools.empty();
             $spanToolsProf.text("");
-            $colTools.append("<hr class=\"hr-2\"><div class=\"bold mb-2\">Tools</div>");
             //We now need to get the names of all tool proficiencies
             const proficientTools = this._grabToolProficiencies();
-            console.log("PROFTOOLS", proficientTools);
             let outStr = "";
             for(let toolName of Object.keys(proficientTools)){
-                console.log("TOOL NAME", toolName);
-                $colTools.append(`<div>${toolName}</div>`);
                 outStr += outStr.length>0? ", " : "";
                 outStr += toolName;
             }
@@ -631,25 +591,19 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
         hkTools();
         //#endregion
         //#region Weapons
-        const $colWeaponsArmor = $$`<div></div>`.appendTo($wrpDisplay);
         const hkWeaponsArmor = () => {
-            $colWeaponsArmor.empty();
             $spanWeaponProf.text("");
             $spanArmorProf.text("");
             let outStrWep = "";
             let outStrArm = "";
-            $colWeaponsArmor.append("<hr class=\"hr-2\"><div class=\"bold mb-2\">Weapon Proficiencies</div>");
             //We now need to get the names of all tool proficiencies
             const weapons = this._grabWeaponProficiencies();
             for(let name of Object.keys(weapons)){
-                $colWeaponsArmor.append(`<div>${name}</div>`);
                 outStrWep += outStrWep.length>0? ", " : "";
                 outStrWep += name;
             }
-            $colWeaponsArmor.append("<hr class=\"hr-2\"><div class=\"bold mb-2\">Armor Proficiencies</div>");
             const armors = this._grabArmorProficiencies();
             for(let name of Object.keys(armors)){
-                $colWeaponsArmor.append(`<div>${name}</div>`);
                 outStrArm += outStrArm.length>0? ", " : "";
                 outStrArm += name;
             }
@@ -663,15 +617,11 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
         hkWeaponsArmor();
         //#endregion
         //#region Language
-        const $colLanguages = $$`<div></div>`.appendTo($wrpDisplay);
         const hkLanguages = () => {
-            $colLanguages.empty();
             $spanLanguages.text("");
             let outStr = "";
-            $colLanguages.append("<hr class=\"hr-2\"><div class=\"bold mb-2\">Languages</div>");
             const languages = this._grabLanguageProficiencies();
             for(let name of Object.keys(languages)){
-                $colLanguages.append(`<div>${name}</div>`);
                 outStr += outStr.length>0? ", " : "";
                 outStr += name;
             }
