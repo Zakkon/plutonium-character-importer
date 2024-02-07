@@ -43,8 +43,11 @@ class SourceManager {
     //If that failed, load default source ids
     if(!sourceIds){sourceIds = await this._getDefaultSourceIds({actor});}
 
+    const fileMetas = JSON.parse(localStorage.getItem("uploadedFileMetas"));
+    const customUrls = JSON.parse(localStorage.getItem("customUrls"));
+
     //Cache which sources we chose, and let them process the source ids into ready data entries (classes, races, etc)
-    const data = await SourceManager._loadSourcesFromIds(sourceIds);
+    const data = await SourceManager._loadSources({sourceIds: sourceIds, uploadedFileMetas: fileMetas, customUrls: customUrls});
 
     //Create the character builder UI for the first time
     const window = new CharacterBuilder(data);
@@ -135,16 +138,18 @@ class SourceManager {
   /**
    * Extracts entities such as classes, subclasses, races and backgrounds out of an array of sources
    * @param {{name:string, isDefault:boolean, cacheKey:string}[]} sourceIds
+   * @param {any} uploadedFileMetas
+   * @param {any} customUrls
    * @returns {{class:{}[], background:{}[], classFeature:{}[], race:{}[], monster:{}[], item:{}[]
    * , spell:{}[], subclass:{}[], subclassFeature:{}[], feat:{}[], optionalFeature:{}[], foundryClass:{}[]}}
    */
-  static async getOutputEntities(sourceIds, getDeduped=false) {
+  static async _getOutputEntities(sourceIds, uploadedFileMetas, customUrls, getDeduped=false) {
 
     //Should contain all spells, classes, etc from every source we provide
     const allContentMeta = await UtilDataSource.pGetAllContent({
     sources: sourceIds,
-    /* uploadedFileMetas: this.uploadedFileMetas,
-    customUrls: this.getCustomUrls(),
+    uploadedFileMetas: uploadedFileMetas,
+    customUrls: customUrls,/*
     isBackground,
 
     page: this._page,
@@ -236,31 +241,32 @@ Renderer.spell.populateBrewLookup(await BrewUtil2.pGetBrewProcessed(), {isForce:
     CharacterBuilder._testLoadedSources = sourceIds;
   }
   /**
-   * @param {any[]} sourceIds
+   * @param {{sourceIds:any[], uploadedFileMetas:any, customUrls:any}} sourceInfo
    * @returns {{class:{}[], background:{}[], classFeature:{}[], race:{}[], monster:{}[], item:{}[]
    * , spell:{}[], subclassFeature:{}[], feat:{}[], optionalFeature:{}[], foundryClass:{}[]}}
    */
-  static async _loadSourcesFromIds(sourceIds){
-
+  static async _loadSources(sourceInfo){
     //Process and post-process the data
     //Get entities such as classes, races, backgrounds using the source ids
-    const content = await SourceManager.getOutputEntities(sourceIds, true);
+    const content = await SourceManager._getOutputEntities(sourceInfo.sourceIds, sourceInfo.uploadedFileMetas, sourceInfo.customUrls, true);
     //Then perform some post processing
     const postProcessedData = SourceManager._postProcessAllSelectedData(content);
     const mergedData = postProcessedData;
     //Make sure that the data always has an array for classes, races, feats, etc, even if none were provided by the sources
     SourceManager._DATA_PROPS_EXPECTED.forEach(propExpected => mergedData[propExpected] = mergedData[propExpected] || []);
-    SourceManager._setUsedSourceIds(sourceIds);
+    SourceManager._setUsedSourceIds(sourceInfo.sourceIds);
+    CharacterBuilder._testUploadedFileMetas = sourceInfo.uploadedFileMetas;
 
     return mergedData;
   }
   /**
    * Apply new source IDs, and fetch entities from them. Completely reloads the entire character builder.
-   * @param {any[]} sourceIds
+   * @param {{sourceIds:any[], uploadedFileMetas:any, customUrls:any}} sourceInfo
    */
-  static async onUserChangedSources(sourceIds){
+  static async onUserChangedSources(sourceInfo){
+    console.log("We are asked to change to these sources:", sourceInfo);
     //Cache which sources we chose, and let them process the source ids into ready data entries (classes, races, etc)
-    const data = await SourceManager._loadSourcesFromIds(sourceIds);
+    const data = await SourceManager._loadSources(sourceInfo);
     //Tear down the existing window
     this._curWindow.teardown();
     //Create a new window
@@ -269,9 +275,7 @@ Renderer.spell.populateBrewLookup(await BrewUtil2.pGetBrewProcessed(), {isForce:
   }
   static saveSourceIdsToStorage(sourceIds){
     //First, we need to compress the sourceIds into the minimal used information
-    const min = sourceIds.map(s => {
-      
-    })
+    const min = sourceIds;//.map(s => {})
     localStorage.setItem(SourceManager.cacheKey, JSON.stringify(min));
   }
   /**
@@ -283,6 +287,7 @@ Renderer.spell.populateBrewLookup(await BrewUtil2.pGetBrewProcessed(), {isForce:
     let sourceIdsMin = [];
     try {
       const str = localStorage.getItem(SourceManager.cacheKey);
+      if(!str){return null;}
       const out = JSON.parse(str);
       sourceIdsMin = out;
     }
@@ -290,12 +295,12 @@ Renderer.spell.populateBrewLookup(await BrewUtil2.pGetBrewProcessed(), {isForce:
       console.error("Failed to parse saved source ids!");
       throw e;
     }
-
     //Assume something is wrong if no source id is in the array
     //TODO: there is a strange but rare usecase where user wants it this way?
     if(sourceIdsMin.length < 1){return null;}
     //Get all sources. These contain more info than is in the minified version
     const allSources = await this._pGetSources({actor});
+    console.log("LOADED SOURCE IDS", sourceIdsMin);
 
     //Match the full sources to the minified sources we pulled from localstorage
     //Then return the full sources that were matched
@@ -543,12 +548,16 @@ class CharacterBuilder {
         preEnabledSources: preEnabledSources
       });
       const result = await sourceSelector.pWaitForUserInput();
-      if (result == null || result.sourceIds == null) { return; }
+      //if (result == null || result.sourceIds == null) { return; }
       console.log("SOURCE RESULT: ", result);
       //Write the new sourceIds to localstorage, so next time website refreshes, they will be auto-enabled
       SourceManager.saveSourceIdsToStorage(result.sourceIds);
+      //temp
+      localStorage.setItem("uploadedFileMetas", JSON.stringify(result.uploadedFileMetas));
+      localStorage.setItem("customUrls", JSON.stringify(result.customUrls));
+
       //Then tell SourceManager that we have these new sourceIds, and let them take it from here
-      SourceManager.onUserChangedSources(result.sourceIds);
+      SourceManager.onUserChangedSources(result);
     }
     //#endregion
     //#region Getters

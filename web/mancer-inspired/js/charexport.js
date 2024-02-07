@@ -46,6 +46,9 @@ class CharacterExportFvtt{
 
             //Create some meta information (so we can track where this class came from)
             metaDataStack.push({uid: data.cls.name+"|"+data.cls.source,
+                name:data.cls.name,
+                source:data.cls.source,
+                type:"class",
                 _data:CharacterExportFvtt.getSourceMetaData(data.cls, brewSourceIds)});
 
             //Check if high enough level for subclass here?
@@ -60,6 +63,9 @@ class CharacterExportFvtt{
                 //Create some meta information (so we can track where this subclass came from)
                 //Subclasses generally dont have the 'srd' property, by the way
                 metaDataStack.push({uid: data.sc.name+"|"+data.sc.source,
+                    name:data.sc.name,
+                    source:data.sc.source,
+                    type:"subclass",
                     _data:CharacterExportFvtt.getSourceMetaData(data.sc, brewSourceIds)});
             }
             classArray.push(block);
@@ -77,7 +83,11 @@ class CharacterExportFvtt{
                 isSubRace: race._isSubRace, raceName:race.raceName, raceSource:race.raceSource, isBaseSrd:race._baseSrd,
                 versionBaseName:race._versionBase_name, versionBaseSource:race._versionBase_source }};
             //Remember some metadata about what source this race is from
-            metaDataStack.push({uid: race.name+"|"+race.source, _data: CharacterExportFvtt.getSourceMetaData(race, brewSourceIds)});
+            metaDataStack.push({uid: race.name+"|"+race.source,
+            name:race.name,
+            source:race.source,
+            type:"race",
+            _data: CharacterExportFvtt.getSourceMetaData(race, brewSourceIds)});
         }
         //#endregion
 
@@ -88,6 +98,9 @@ class CharacterExportFvtt{
             _char.background = background;
             //Create some meta information (so we know where the background came from)
             metaDataStack.push({uid: background.name+"|"+background.source,
+            name:background.name,
+            source:background.source,
+            type:"background",
             _data:CharacterExportFvtt.getSourceMetaData(background, brewSourceIds)});
         }
         //#endregion
@@ -137,15 +150,54 @@ class CharacterExportFvtt{
         //optional feature stuff?
 
         //Build meta
-        let isOfficialContentUsed = false;
         let brewSourcesUsed = [];
+        let fileSourcesUsed = [];
         for(let meta of metaDataStack){
-            if(meta._data.isOfficialContent){isOfficialContentUsed = true;}
-            else{
-                brewSourcesUsed.push(meta._data.brewSource);
+            
+            //Check that source is not official
+            if(CharacterExportFvtt.isFromOfficialSource({source:meta.source})){continue;}
+
+            const matchedSources = await CharacterExportFvtt._test_MatchEntityToSource({name:meta.name, source:meta.source}, meta.type);
+            if(matchedSources.length < 0){
+                //Could not make a match
+                console.log(`Could not match ${meta.name} of type '${meta.type}' to any source`);
+                continue;
             }
+            else if(matchedSources.length > 1){
+                //Resolve the conflict
+                matchedSources = [matchedSources[0]];//TEMPORARY FIX
+            }
+            const match = matchedSources[0];
+            if(!match){
+                console.log(`For some reason matched ${meta.name} of type '${meta.type}' as ${match}`);
+                continue;
+            }
+            console.log(`I think ${meta.name} is a ${meta.type} from ${match.filename}`);
+            //We need to determine if match is an uploaded file or not
+            const isUploaded = CharacterExportFvtt.isUploadedFileSource(match);
+            if(isUploaded){fileSourcesUsed.push(match);}
+            else{brewSourcesUsed.push(match);}
         }
-        _meta.isOfficialContentUsed = isOfficialContentUsed;
+
+        if(fileSourcesUsed.length > 0){
+            let names = "";
+            for(let n of fileSourcesUsed){
+                names += `${names.length>0? ", ":""}${n.filename}`; 
+            }
+
+            const doProceed = await InputUiUtil.pGetUserBoolean({
+                title: `Uploaded files are used`,
+                htmlDescription: `Content from the uploaded files (${names}) seem to be used by your character.
+                Be aware that should you wish to import this save anywhere else, you will need to include these files seperately.
+                Do you still wish to proceed?`,
+              });
+            //Perhaps show some info here that characters using content from non-enabled sources will break badly
+            if (!doProceed){return;}
+        }
+
+        
+
+        _meta.fileSourcesUsed = fileSourcesUsed;
         _meta.brewSourcesUsed = brewSourcesUsed;
 
         //Optionally, instead of tracking each and every item, race, subclass, etc that we incorporated on our character,
@@ -456,11 +508,60 @@ class CharacterExportFvtt{
     }
     //#endregion
 
+
+    /**
+     * @param {{name:string, source:string}} entity a subclass, race, class etc
+     * @param {string} type "subclass", "class", "race", etc
+     * @returns {{filename:string, url:string, isLocal:string, checksum:string}[]}
+     */
+    static async _test_MatchEntityToSource(entity, type){
+        const returnOnFirstMatch = false;
+        //Let's get all enabled sources first (one of them might Be 'Upload File')
+        const enabledSources = CharacterExportFvtt.getBrewSourceIds();
+        const brew = await BrewUtil2.pGetBrew();
+        console.log("ENABLED SOURCES", enabledSources, "BREW", brew, entity);
+        let matchedSources = [];
+        for(let source of brew){
+            //Even an uploaded file can appear here
+            //source.head.filename
+            //source.head.url (might be that uploaded files have this as null)
+
+            const content = source.body[type]; //type array. subclass, class, race, etc
+            if(!content){continue;}
+            let matchedEntity = false; //This loop will close once a match is made
+            for(let ci = 0; !matchedEntity && ci < content.length; ++ci){
+                //Let's do a simple match: just 'name' and 'source'
+                matchedEntity = (content[ci].name == entity.name && content[ci].source == entity.source);
+            }
+            if(matchedEntity){
+                if(returnOnFirstMatch){return [source.head];}
+                matchedSources.push(source.head);
+            }
+        }
+        return matchedSources;
+    }
+    /**
+     * @param {{filename:string}} source
+     * @returns {boolean}
+     */
+    static isUploadedFileSource(source){
+        //First, get all the brew sourceIds from somewhere
+        let srcIds = this.getLoadedSources();
+        //Next, filter the sources until we get one called 'Upload File'.
+        //Alternatively, just check if source.isFile
+        srcIds = srcIds.filter(srcId => srcId.isFile);
+        if(!srcIds || srcIds.length < 1){return false;}
+        //Now that we have confirmed the user did include an 'Upload File' source, we need to check if any uploaded files match
+        //We need the uploadedFileMetas for this
+        const fileMetas = CharacterBuilder._testUploadedFileMetas;
+        return fileMetas.filter(meta => meta.name == source.filename).length > 0;
+    }
+
     //#region Get Source Metadata
     /**
      * Gets source metadata for an object (race/class/subclass/spell/etc)
      * @param {{name:string, source:string}} item
-     * @param {{name:string, url:string, abbreviations:string[]}[]} brewSourceIds
+     * @param {{name:string, url:string, abbreviations:string[], isDefault:boolean, isFile:boolean}[]} brewSourceIds
      * @returns {{isOfficialContent:boolean, brewSource:{name:string, url:string, abbreviations:string[]}}}
      */
     static getSourceMetaData(item, brewSourceIds){
@@ -477,7 +578,7 @@ class CharacterExportFvtt{
         }
     }
      /**
-     * @returns {{name:string, url:string, isDefault:boolean, isWorldSelectable:boolean, cacheKey:string, _brewUtil: any
+     * @returns {{name:string, url:string, isDefault:boolean, isFile:boolean, isWorldSelectable:boolean, cacheKey:string, _brewUtil: any
      * filterTypes:string[], _pPostLoad:Function, _isExistingPrereleaseBrew:boolean, _isAutoDetectPrereleaseBrew:boolean,
      * abbreviations:string[] _isAutoDetectPrereleaseBrew:boolean, _isExistingPrereleaseBrew:boolean}[]}
      */
@@ -497,6 +598,11 @@ class CharacterExportFvtt{
     static doesMatchToBrewSource(item, sourceId, pendanticMode=false){
 
         //NEW STUFF
+        //check if custom upload or default source, we do not handle those
+        if(sourceId.isFile){return false;}
+        if(sourceId.isDefault){return false;}
+
+        console.log("ITEM.SOURCE", item.source, "SOURCE ID", sourceId);
         const itemAbbreviation = item.source.toLowerCase();
         const srcUsedAbbreviations = sourceId.abbreviations.map(a => a.toLowerCase());
         //Match abbreviations. If brewer made a typo on the abbreviation somewhere, this will fail
@@ -504,6 +610,15 @@ class CharacterExportFvtt{
         //Now that we know the abbreivations matched, we can return true, or if we want to be pedantic,
         //we can check to see that source names also match
         //(WARNING:) keep in mind, the user may have enabled more than 1 source that uses the same abbrevation!
+
+        const src = BrewUtil2.sourceJsonToSource(item.source);
+        const srcs = BrewUtil2.getSources();
+        console.log("FOUND BREW SRC", src, srcs);
+        console.log("BREW METAS", sourceId._brewUtil._cache_brews);
+
+        //let brewMetas = BrewUtil2._getBrewMetas();
+        //first, 
+
         if(!pendanticMode){return true;}
 
         //Since we can't rely on the itemAbbreviation alone to find us the correct source, we need to be more rough
@@ -535,17 +650,52 @@ class CharacterExportFvtt{
         return sourceFullName == itemSourceFull;
     }
     /**
+     * @param {{name:string, source:string}} item
+     * @param {{full:string, url:string, abbreviation:string}} fileSourceId
+     * @returns {boolean}
+     */
+    static doesMatchToUploadedFileSource(item, fileSourceId){
+
+        //test
+        let itemSourceFull = Parser.sourceJsonToFull(item.source); //Ok so we cant rely on this to get the correct source name from an abbreviation
+        console.log("BREWUTIL2 THOGUHT IT WAS", itemSourceFull);
+
+        if(item.source == fileSourceId.abbreviation){return true;}
+        //Fallback - not sure if this will ever work, but perhaps the sourceId has 'abbreviations' (a string array)
+        if(!!fileSourceId.abbreviations && fileSourceId.abbreviations.includes(item.source)){return true;}
+        //There might be a way to ask BrewUtil2 for the source by just using this abbreviation
+        return false;
+    }
+    /**
      * Matches an item to a brew source ID
      * @param {{name:string, source:string}} item a class, subclass, race, item, feat, background, etc
      * @param {{name:string, abbreviations:string[]}[]} brewSourceIds
      * @returns {{name:string, abbreviations:string[]}}
      */
     static matchToBrewSourceID(item, brewSourceIds){
-        const matchedIds = brewSourceIds.filter(srcId => this.doesMatchToBrewSource(item, srcId));
+
+        let matchedIds = brewSourceIds.filter(srcId => this.doesMatchToBrewSource(item, srcId));
+
+        //DEBUG - try to only match to uploaded files
+        const uploadedFileSources = brewSourceIds.filter(srcId => srcId.isFile);
+        if(uploadedFileSources.length > 0){
+            const fileMetas = CharacterBuilder._testUploadedFileMetas;
+            console.log("FILE METAS", fileMetas);
+            for(let file of fileMetas){
+                if(!file.contents?._meta){continue;}
+                for(let src of file.contents._meta.sources){
+                    let isMatch = this.doesMatchToUploadedFileSource(item, src);
+                    if(isMatch){matchedIds.push(src);}
+                }
+            }
+        }
+
+        
         if(matchedIds.length < 1){return null;}
         if(matchedIds.length > 1){ console.error("Matched item to multiple brew sources", item, matchedIds); } //something went wrong
         return matchedIds[0];
     }
+
     /**
      * Checks if an object(race/class/subclass/etc) is from an official source 
      * @param {{__diagnostic:any}} item

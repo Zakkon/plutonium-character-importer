@@ -687,7 +687,7 @@ class AppSourceSelectorMulti extends ModalFilter {
 
 
             //We don't want to return entities, we just want to return metadata about sources
-            const out = {sourceIds:sources};
+            const out = {sourceIds:sources, uploadedFileMetas:this.uploadedFileMetas, customUrls:this.getCustomUrls()};
 
             fnResolve(out); //Calls for this window to return a solution to whoever has been waiting
             this.close(fnClose);

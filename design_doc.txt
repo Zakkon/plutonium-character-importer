@@ -1,0 +1,47 @@
+CHARACTER BUILDER DESIGN DOCUMENT
+
+USING UPLOADED FILES
+---------------------------------
+Concept:
+Where user enables sources, user can upload a .json file as well
+Program will load entities from said .json file (like classes, subclasses, etc)
+User can then build a character using those entities
+
+User process:
+1. User opens menu for selecting sources
+2. User uploads a .json file from their machine
+3. Program reads .json file content and parses it into entities
+4. User can now create a character with the content
+
+---COOKIE CACHING---
+Concept:
+The program cannot remember a path to the .json file stored on the user's machine
+However, we can include the full content of the .json file into localStorage
+This is not the best approach, as if the .json file is very big, it could theoretically hit a max file size limit for localStorage
+
+User process:
+1. User uploads a .json file
+2. Program parses the .json file
+3. User builds a character and wishes to save it to localStorage
+4. Program dumps the entire content of the uploaded .json file into localStorage
+5. User reloads program
+6. Program loads content from localStorage
+7. When user opens up source selection menu, the name of the original .json file will appear under "Upload Files", and can be toggled off
+8. If user toggles off the source, it gets wiped from memory and localStorage, and will have to be uploaded again
+9. If user keeps the source, and again saves their character, the content will again be saved to localStorage
+
+---EXPORTING TO FOUNDRY---
+Concept:
+The program isn't supposed to dump the whole character content into a save file, just the relevant character creation choices
+The program includes references to homebrew content used, and hopes that Foundry (Plutonium) can download those sources on their own
+The program does not include uploaded .json files in the exported save file, as that would bloat the save file by an insane amount
+
+User process:
+1. User uploads a .json file
+2. Program parses the .json file
+3. User builds a character and wishes to export it as a .json file (for later importing to Foundry)
+4. Program warns user that it's relying on an uploaded .json file, and that the user will need to include that when importing in Foundry
+5. Program creates a save file with IDs of all homebrew sources (pulled from 5eTools) that were used
+6. Program includes a reference to the .json file that was uploaded (name of .json file) in the save file
+7. User opens up Foundry and imports the save file
+8. Program tells user that the save file relies on an external .json file, and that the user must upload that .json file for the import to work successfully
