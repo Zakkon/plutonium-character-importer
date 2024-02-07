@@ -1447,14 +1447,32 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
     }
     _test_loadFeatureOptSelectFromSaveFile(classIndex, saveData){
         for(let fosData of saveData){ //Go through the feature opt sel data
-            const state = fosData.state;
-            //Grab the subcomponent that we want to paste the state onto
-            const subComp = this._test_getFOSSubComponent(classIndex, fosData.parentCompIx, fosData.subCompProp, fosData.subCompIx);
-            //Paste the state onto the subcomponent
-            for(let propName of Object.keys(state)){
-                let propValue = state[propName];
-                subComp._state[propName] = propValue;
+
+            const myComp = this.compsClassFeatureOptionsSelect[classIndex][fosData.compIx];
+            if(myComp==null){
+                console.error(`Failed to grab the ix ${fosData.compIx} FOS component from class ${classIndex}`, fosData);
+                continue;
             }
+
+            //Give state to subcomponents first
+            for(let subData of fosData.subCompDatas){
+                //Grab the subcomponent that we want to paste the state onto
+                const subComp = this._test_getFOSSubComponent(classIndex, subData.parentCompIx, subData.subCompProp, subData.subCompIx);
+                //Paste the state onto the subcomponent
+                const subState = subData.state;
+                for(let propName of Object.keys(subState)){
+                    let propValue = subState[propName];
+                    subComp._state[propName] = propValue;
+                }
+            }
+
+            //Then give state to ourselves
+            const parentState = fosData.state;
+            for(let propName of Object.keys(parentState)){
+                let propValue = parentState[propName];
+                myComp._state[propName] = propValue;
+            }
+            
         }
     }
     _test_getFOSSubComponent(classIx, parentCompIx, subCompName, subCompIx){

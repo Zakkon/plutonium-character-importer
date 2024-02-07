@@ -249,10 +249,9 @@ class CharacterExportFvtt{
             if(toolProficienciesForm != null){
                 block.toolProficiencies = toolProficienciesForm;
             }
+            //Get choices from the featureOptionsSelect components
             let featureOptSel = await this.getClassFeatureChoices(compClass, i);
-            if(featureOptSel != null){
-                block.featureOptSel = featureOptSel;
-            }
+            if(featureOptSel != null){ block.featureOptSel = featureOptSel; }
             //Now we want to ask compClass if there is a subclass selected for this index
             const sc = compClass.getSubclass_({cls:cls, propIxSubclass:propIxSubclass});
             if(sc != null) { block.sc = sc; }
@@ -326,35 +325,44 @@ class CharacterExportFvtt{
     }
     /**
      * @param {ActorCharactermancerClass} compClass
-     * @param {number} ix
-     * @returns {any} returns a form
+     * @param {number} classIx
+     * @returns {{compIx:number, state:any, subCompDatas:{parentCompIx:number, subCompProp:string, state:any}[]}}
      */
-    static async getClassFeatureChoices(compClass, ix){
-        if(compClass.compsClassFeatureOptionsSelect.length<=ix){return null;}
-        const compArray = compClass.compsClassFeatureOptionsSelect[ix];
+    static async getClassFeatureChoices(compClass, classIx){
+        if(compClass.compsClassFeatureOptionsSelect.length<=classIx){return null;}
+        const compArray = compClass.compsClassFeatureOptionsSelect[classIx];
         let compDatas = [];
         for(let k = 0; k < compArray.length; ++k){
             let comp = compArray[k];
             if(comp==null){return null;}
+            //let hashes = comp._optionsSet.map(set => {return set.hash});
 
-            let hashes = comp._optionsSet.map(set => {return set.hash});
+            //Most of the time, comp will just have subcomponents that deal with specialized questions (pick language, skill, etc)
             let subCompDatas = [];
-            const subCompsNames = comp.allSubComponentNames;
+            const subCompsNames = comp.allSubComponentNames; //Get all the names of the possible kinds of subcomponents
             for(let j = 0; j < subCompsNames.length; ++j){
                 let prop = subCompsNames[j];
                 let subCompArray = comp[prop];
                 if(!subCompArray){continue;}
                 for(let i = 0; i < subCompArray.length; ++i){
                     let subComp = subCompArray[i];
-                    //apparently the array can have null entries
+                    //apparently the array can have null entries. huh.
                     if(!subComp){continue;}
-                    console.log("SUBCOMP", subComp, comp);
-                    compDatas.push({classIx: ix, parentCompIx: k, subCompProp:prop, subCompIx: i, state: subComp.__state});
+                    //Now that we have found a subcomponent, copy the __state and include pointers on how to find it
+                    //No need to include class ix here, that is already handled by the code that wraps this one
+                    subCompDatas.push({parentCompIx: k, subCompProp:prop, subCompIx: i, state: subComp.__state});
                 }
             }
-            continue; //Debug
+
+            //In some cases (like Fighting Style for lvl 1 fighters), comp renders itself, instead of having subcomponents
+            //In this case, we need to get the __state from comp itself
+            //Alternatively, we will also grab __state even if it's not rendered, and we just found subcomponents
+            let isSelfRendered = !!comp._lastMeta; //lazy but for now working way to dictate if this component is rendered
+            if(isSelfRendered || subCompDatas.length > 0){
+                compDatas.push({compIx: k, state: comp.__state, subCompDatas:subCompDatas});
+            }
+            //The important thing here is, we dont want to include *all* components in compArray, as some are never rendered and we just get issues trying to read/write their states
         }
-        console.log(compDatas);
         return compDatas;
     }
     /**

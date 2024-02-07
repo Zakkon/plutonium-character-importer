@@ -420,7 +420,6 @@ class CharacterBuilder {
       //Call this to let the components load some content before we start using them
       this.pLoad()
       .then(() => this.renderComponents()) //Then render the components
-      .then(() => this.loadFromSave())
       .then(() => testApplyDefaultSources()) //Use our test function to set only certain sources as active in the filter
       .then(() => this.e_switchTab("sheet")); //Then switch to the tab we want to start off with
     }
@@ -480,28 +479,24 @@ class CharacterBuilder {
 
         this.compClass.render().then(() => {
 
-        this.compRace.render();
-        if(doLoad){this.compRace.setStateFromSaveFile(this.actor);}
-        this.compAbility.render();
+          this.compRace.render();
+          if(doLoad){this.compRace.setStateFromSaveFile(this.actor);}
+          this.compAbility.render();
+          
+
+          this.compBackground.render();
+          
+
+          this.compEquipment.pRenderStarting().then(() => this.compEquipment.pRenderShop())
+            .then(() => {if(doLoad){this.compEquipment.setStateFromSaveFile(this.actor)}});
+          
+          this.compSpell.pRender().then(() => {if(doLoad){this.compSpell.setStateFromSaveFile(this.actor);}});
+          this.compFeat.render();
         
 
-        this.compBackground.render();
-        
-
-        this.compEquipment.pRenderStarting().then(() => this.compEquipment.pRenderShop())
-          .then(() => {if(doLoad){this.compEquipment.setStateFromSaveFile(this.actor)}});
-        
-        this.compSpell.pRender().then(() => {if(doLoad){this.compSpell.setStateFromSaveFile(this.actor);}});
-        this.compFeat.render();
-        
-
-        if(doLoad){this.compAbility.setStateFromSaveFile(this.actor);}
-        if(doLoad){this.compBackground.setStateFromSaveFile(this.actor);}
+          if(doLoad){this.compAbility.setStateFromSaveFile(this.actor);}
+          if(doLoad){this.compBackground.setStateFromSaveFile(this.actor);}
       }).then(()=> {this.compSheet.render();});
-    }
-    async loadFromSave(){
-      const delay = (ms) => {return new Promise(resolve => setTimeout(resolve, ms));}
-      //await delay(1000);
     }
 
     //#region Events
