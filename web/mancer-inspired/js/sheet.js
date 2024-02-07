@@ -336,11 +336,27 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
 
                 //Try to get features from class
                 let classFeaturesText = "";
-                for(let f of d.cls.classFeatures){
-                  for(let l of f.loadeds){
-                    if(l.entity.level > d.targetLevel){continue;}
-                    classFeaturesText += `${classFeaturesText.length > 0? ", " : ""}${l.entity.name}`;
+
+                const tryPrintFeature = (feature, text, bannedFeatureNames=[], bannedLoadedsNames=[]) => {
+                  if(feature.level > d.targetLevel){return text;}
+                  console.log("Feature:", feature);
+                  let drawParentFeature = true;
+                  for(let l of feature.loadeds){
+                    if(l.type=="optionalfeature" && !l.isRequiredOption){continue;}
+                    drawParentFeature = false;
+                    console.log("banned names", bannedLoadedsNames, l.entity.name);
+                    if(bannedLoadedsNames.includes(l.entity.name)){continue;}
+                    if(l.entity.level > d.targetLevel){continue;} //Must not be from a higher level than we are
+                    text += `${text.length > 0? ", " : ""}${l.entity.name}`;
                   }
+                  if(!drawParentFeature || bannedFeatureNames.includes(feature.name)){return text;}
+                  text += `${text.length > 0? ", " : ""}${feature.name}`;
+                  return text;
+                }
+
+                
+                for(let f of d.cls.classFeatures){
+                  classFeaturesText = tryPrintFeature(f, classFeaturesText);
                 }
                 if(classFeaturesText.length > 0){
                   $$`<div><b>${d.cls.name} Class Features:</b></div>`.appendTo($divFeatures);
@@ -350,10 +366,9 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
                 if(d.sc){
                   let subclassFeaturesText = "";
                   for(let f of d.sc.subclassFeatures){
-                    for(let l of f.loadeds){
-                      if(l.entity.level > d.targetLevel){continue;}
-                      subclassFeaturesText += `${subclassFeaturesText.length > 0? ", " : ""}${l.entity.name}`;
-                    }
+                    //Do not print subclass features named after the subclass (normally the first feature)
+                    
+                    subclassFeaturesText = tryPrintFeature(f, subclassFeaturesText, [d.sc.name], [d.sc.name]);
                   }
                   if(subclassFeaturesText.length > 0){
                     $$`<div><b>${d.sc.name} Subclass Features:</b></div>`.appendTo($divFeatures);
