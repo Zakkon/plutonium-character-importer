@@ -13986,66 +13986,50 @@ class ActorCharactermancerFeat extends ActorCharactermancerBaseComponent {
       }
     }
     
-    ['_feat_addFeatSection'](_0x28d80a, _0x5a0170, _0x22e7e5, _0x17a196) {
-      let _0x26766e = null;
-      const _0xe7fa06 = () => {
-        const _0xc8b456 = this._state[_0x22e7e5];
-        this._parent.featureSourceTracker_.unregister(_0x26766e);
-        if (_0x26766e) {
-          _0x26766e.unregisterFeatureSourceTracking();
-        }
-        _0x26766e = this._feat_renderAdditionalFeats({
-          '$wrpLeft': _0x28d80a,
-          '$wrpRight': _0x5a0170,
-          'namespace': _0x17a196,
-          'available': _0xc8b456,
-          'prevComp': _0x26766e
+    _feat_addFeatSection(wrpLeft, wrpRight, prop, namespace) {
+      let prevComp = null;
+      const hook = () => {
+        const val = this._state[prop];
+        this._parent.featureSourceTracker_.unregister(prevComp);
+        if (prevComp) { prevComp.unregisterFeatureSourceTracking(); }
+        prevComp = this._feat_renderAdditionalFeats({
+          $wrpLeft: wrpLeft,
+          $wrpRight: wrpRight,
+          namespace: namespace,
+          available: val,
+          prevComp: prevComp
         });
       };
-      this._addHookBase(_0x22e7e5, _0xe7fa06);
-      _0xe7fa06();
+      this._addHookBase(prop, hook);
+      hook();
     }
-    ["_feat_renderAdditionalFeats"]({
-      $wrpLeft: _0x2d3832,
-      $wrpRight: _0x48f4d1,
-      namespace: _0xcd091d,
-      available: _0x31988b,
-      prevComp = null
-    }) {
-      if (this._compAdditionalFeatsMetas[_0xcd091d]) {
-        this._compAdditionalFeatsMetas[_0xcd091d].cleanup();
+    _feat_renderAdditionalFeats({ $wrpLeft, $wrpRight, namespace, available, prevComp = null }) {
+      if (this._compAdditionalFeatsMetas[namespace]) {
+        this._compAdditionalFeatsMetas[namespace].cleanup();
       }
-      if (!_0x31988b?.["length"]) {
-        return;
-      }
-      const _0x40de9a = $("<div class=\"ve-flex-col w-100\"></div>").appendTo(_0x2d3832);
-      const _0x52590d = $("<div class=\"ve-flex-col w-100\"></div>").appendTo(_0x48f4d1);
-      const _0xdd1a71 = new Charactermancer_AdditionalFeatsSelect({
-        'available': _0x31988b,
-        'actor': this._actor,
-        'featDatas': this._data.feat,
-        'modalFilterFeats': this._modalFilterFeats,
-        'modalFilterSpells': this._parent.compSpell.modalFilterSpells,
-        'featureSourceTracker': this._parent.featureSourceTracker_,
-        'isFeatureSelect': true,
-        'prevComp': prevComp
+      if (!available?.length) { return; }
+      const colLeft = $("<div class=\"ve-flex-col w-100\"></div>").appendTo($wrpLeft);
+      const colRight = $("<div class=\"ve-flex-col w-100\"></div>").appendTo($wrpRight);
+      const addFeatsSelect = new Charactermancer_AdditionalFeatsSelect({
+        available: available,
+        actor: this._actor,
+        featDatas: this._data.feat,
+        modalFilterFeats: this._modalFilterFeats,
+        modalFilterSpells: this._parent.compSpell.modalFilterSpells,
+        featureSourceTracker: this._parent.featureSourceTracker_,
+        isFeatureSelect: true,
+        prevComp: prevComp
       });
       this._feat_renderAdditionalFeats_addStatgenHandling({
-        'compAdditionalFeats': _0xdd1a71,
-        'namespace': _0xcd091d
+        compAdditionalFeats: addFeatsSelect,
+        namespace: namespace
       });
-      this._compAdditionalFeatsMetas[_0xcd091d] = {
-        'comp': _0xdd1a71,
-        'cleanup': () => {
-          _0x40de9a.remove();
-          _0x52590d.remove();
-        }
+      this._compAdditionalFeatsMetas[namespace] = {
+        comp: addFeatsSelect,
+        cleanup: () => { colLeft.remove(); colRight.remove(); }
       };
-      _0xdd1a71.renderTwoColumn({
-        '$wrpLeft': _0x40de9a,
-        '$wrpRight': _0x52590d
-      });
-      return _0xdd1a71;
+      addFeatsSelect.renderTwoColumn({ $wrpLeft: colLeft, $wrpRight: colRight });
+      return addFeatsSelect;
     }
     ["_feat_renderAdditionalFeats_addStatgenHandling"]({
       compAdditionalFeats: _0xaff143,

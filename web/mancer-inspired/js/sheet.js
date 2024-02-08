@@ -59,39 +59,21 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
   
     }
     render(){
-        const tabSheet = this._tabSheet?.$wrpTab;
-        if (!tabSheet) { return; }
-        const wrapper = $$`<div class="ve-flex-col w-100 h-100 px-1 pt-1 overflow-y-auto ve-grow veapp__bg-foundry"></div>`;
-        //const noFeatsWarningLbl = $("<div><i class=\"ve-muted\">No feats are available for your current build.</i><hr class=\"hr-1\"></div>").appendTo(wrapper);
-        console.log("RENDER SHEET");
+      const tabSheet = this._tabSheet?.$wrpTab;
+      if (!tabSheet) { return; }
+      const wrapper = $$`<div class="ve-flex-col w-100 h-100 px-1 pt-1 overflow-y-auto ve-grow veapp__bg-foundry"></div>`;
+      //const noFeatsWarningLbl = $("<div><i class=\"ve-muted\">No feats are available for your current build.</i><hr class=\"hr-1\"></div>").appendTo(wrapper);
+      console.log("RENDER SHEET");
 
-        const sheet = $$`<div></div>`.appendTo(wrapper);
-        /* const $wrpSheetHeader = $$`<div></div>`.appendTo(sheet);
-        const $wrpCharName = $$`<div class="charname"><label>Character Name</label></div>`.appendTo($wrpSheetHeader);
-        const $wrpMisc = $$`<div class="misc"></div>`.appendTo($wrpSheetHeader);
+      const sheet = $$`<div></div>`.appendTo(wrapper);
 
-        const $wrpSheetMain = $$`<div></div>`.appendTo(sheet);
-        const $wrpAttributes = $$`<div class="attributes"></div>`.appendTo($wrpSheetMain);
-        const $scores = $$`<div class="scores"></div>`.appendTo($wrpAttributes);
-        const $scoresUl = $$`<ul></ul>`.appendTo($scores);
-        
-        //One score as test
-        $$`<li>
-            <div class="score">
-                <label for="Strengthscore">Strength</label><label class="stat"/>10</label>
-            </div>
-            <div class="modifier">
-                <label class="statmod"/>+0</label>
-            </div>
-        </li>`.appendTo($scoresUl); */
+      const $form = $$`<form class="charsheet"></form>`;
+      const $lblClass = $$`<label class="lblResult"></label>`;
+      const $lblRace = $$`<label class="lblResult"/></label>`;
+      const $lblBackground = $$`<label class="lblResult"/></label>`;
+      
 
-        const $form = $$`<form class="charsheet"></form>`;
-        const $lblClass = $$`<label class="lblResult"></label>`;
-        const $lblRace = $$`<label class="lblResult"/></label>`;
-        const $lblBackground = $$`<label class="lblResult"/></label>`;
-        
-
-        const headerSection = $$`<header><section class="charname">
+      const headerSection = $$`<header><section class="charname">
         <label for="charname">Character Name</label><input name="charname" placeholder="Thoradin Fireforge" />
       </section>
       <section class="misc">
@@ -116,30 +98,33 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
           </li>
         </ul>
       </section>
-    </header>`.appendTo($form);
+      </header>`.appendTo($form);
 
-    const $sectionAttributeScores = $$`<div class="scores"></div>`;
-    const $lblProfBonus = $$`<label class ="lblProfScore">+2</label>`;
-    const $lblPassivePerception = $$`<label class="score"></label>`;
-    const $sectionSkills = $$`<ul></ul>`;
-    const $lblArmorClass = $$`<label class="score"></label>`;
-    const $lblInitiative = $$`<label class="score"></label>`;
-    const $sectionSaves = $$`<ul></ul>`;
-    const $lblSpeed = $$`<label class="score"></label>`;
-    const $armorWornText = $$`<span></span>`;
-    const $spanWeaponProf = $$`<span></span>`;
-    const $spanArmorProf = $$`<span></span>`;
-    const $spanToolsProf = $$`<span></span>`;
-    const $spanLanguages = $$`<span></span>`;
-    const $divFeatures = $$`<div class ="featureTextArea textbox"></div>`;
-    const $divEquipment = $$`<div class ="equipmentTextArea textbox"></div>`;
-    const $attacksTextArea = $$`<div class ="attacksTextArea textbox"></div>`;
-    const $lblMaxHP = $$`<label class="score"></label>`;
-    const $lblHitDice = $$`<label class="scoreHitDice"></label>`;
-    const $lblCoinage = $$`<span></span>`;
-    const $divCarry = $$`<div class="textbox"></div>`;
+      const $sectionAttributeScores = $$`<div class="scores"></div>`;
+      const $lblProfBonus = $$`<label class ="lblProfScore">+2</label>`;
+      const $lblPassivePerception = $$`<label class="score"></label>`;
+      const $sectionSkills = $$`<ul></ul>`;
+      const $lblArmorClass = $$`<label class="score"></label>`;
+      const $lblInitiative = $$`<label class="score"></label>`;
+      const $sectionSaves = $$`<ul></ul>`;
+      const $lblSpeed = $$`<label class="score"></label>`;
+      const $armorWornText = $$`<span></span>`;
+      const $spanWeaponProf = $$`<span></span>`;
+      const $spanArmorProf = $$`<span></span>`;
+      const $spanToolsProf = $$`<span></span>`;
+      const $spanLanguages = $$`<span></span>`;
+      const $divFeatures = $$`<div class ="featureTextArea textbox"></div>`;
+      const $divClassFeatures = $$`<div></div>`;
+      const $divSubclassFeatures = $$`<div></div>`;
+      const $divFeatFeatures = $$`<div></div>`;
+      const $divEquipment = $$`<div class ="equipmentTextArea textbox"></div>`;
+      const $attacksTextArea = $$`<div class ="attacksTextArea textbox"></div>`;
+      const $lblMaxHP = $$`<label class="score"></label>`;
+      const $lblHitDice = $$`<label class="scoreHitDice"></label>`;
+      const $lblCoinage = $$`<span></span>`;
+      const $divCarry = $$`<div class="textbox"></div>`;
 
-    const mainSection = $$`<main>
+      const mainSection = $$`<main>
     <section>
       <section class="attributes">
         ${$sectionAttributeScores}
@@ -296,527 +281,559 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
       </section>
       <section class="features">
         <div>
-          <label class="upperCase">Features & Traits</label>${$divFeatures}
+          <label class="upperCase">Features & Traits</label>
+          <div class ="featureTextArea textbox">
+          ${$divClassFeatures}
+          ${$divSubclassFeatures}
+          ${$divFeatFeatures}
+          </div>
         </div>
       </section>
     </section>
-  </main>`;
-  mainSection.appendTo($form);
+      </main>`;
+      mainSection.appendTo($form);
 
-    $form.appendTo(sheet);
+      $form.appendTo(sheet);
 
 
-        const $wrpDisplay = $(`<div class="ve-flex-col min-h-0 ve-small"></div>`).appendTo(wrapper);
+      const $wrpDisplay = $(`<div class="ve-flex-col min-h-0 ve-small"></div>`).appendTo(wrapper);
 
-        //#region Class
-        //When class changes, redraw the elements
-        const hkClass = () => {
-            $divFeatures.empty();
-            let classData = this.getClassData(this._parent.compClass);
-            //If there are no classes selected, just print none and return
-            let textOut = "";
-            if(!classData?.length){ $lblClass.html(textOut); return; }
-            for(let i = 0; i < classData.length; ++i){
-                const d = classData[i];
-                textOut += `${textOut.length > 0? " / " : ""}${d.cls.name} ${d.targetLevel}${d.sc? ` (${d.sc.name})` : ""}`;
+      //#region Class
+      //When class changes, redraw the elements
+      const hkClass = () => {
+          $divClassFeatures.empty();
+          $divSubclassFeatures.empty();
+          let classData = this.getClassData(this._parent.compClass);
+          //If there are no classes selected, just print none and return
+          let textOut = "";
+          if(!classData?.length){ $lblClass.html(textOut); return; }
+          for(let i = 0; i < classData.length; ++i){
+              const d = classData[i];
+              textOut += `${textOut.length > 0? " / " : ""}${d.cls.name} ${d.targetLevel}${d.sc? ` (${d.sc.name})` : ""}`;
 
-                //Try to get features from class
-                let classFeaturesText = "";
+              //Try to get features from class
+              let classFeaturesText = "";
 
-                const tryPrintFeature = (feature, text, bannedFeatureNames=[], bannedLoadedsNames=[]) => {
-                  if(feature.level > d.targetLevel){return text;}
-                  console.log("Feature:", feature);
-                  let drawParentFeature = true;
-                  for(let l of feature.loadeds){
-                    if(l.type=="optionalfeature" && !l.isRequiredOption){continue;}
-                    drawParentFeature = false;
-                    console.log("banned names", bannedLoadedsNames, l.entity.name);
-                    if(bannedLoadedsNames.includes(l.entity.name)){continue;}
-                    if(l.entity.level > d.targetLevel){continue;} //Must not be from a higher level than we are
-                    text += `${text.length > 0? ", " : ""}${l.entity.name}`;
-                  }
-                  if(!drawParentFeature || bannedFeatureNames.includes(feature.name)){return text;}
-                  text += `${text.length > 0? ", " : ""}${feature.name}`;
-                  return text;
+              const tryPrintFeature = (feature, text, bannedFeatureNames=[], bannedLoadedsNames=[]) => {
+                if(feature.level > d.targetLevel){return text;}
+                console.log("Feature:", feature);
+                let drawParentFeature = true;
+                for(let l of feature.loadeds){
+                  if(l.type=="optionalfeature" && !l.isRequiredOption){continue;}
+                  drawParentFeature = false;
+                  console.log("banned names", bannedLoadedsNames, l.entity.name);
+                  if(bannedLoadedsNames.includes(l.entity.name)){continue;}
+                  if(l.entity.level > d.targetLevel){continue;} //Must not be from a higher level than we are
+                  text += `${text.length > 0? ", " : ""}${l.entity.name}`;
                 }
-
-                
-                for(let f of d.cls.classFeatures){
-                  classFeaturesText = tryPrintFeature(f, classFeaturesText);
-                }
-                if(classFeaturesText.length > 0){
-                  $$`<div><b>${d.cls.name} Class Features:</b></div>`.appendTo($divFeatures);
-                  $$`<div>${classFeaturesText}</div>`.appendTo($divFeatures);
-                }
-
-                if(d.sc){
-                  let subclassFeaturesText = "";
-                  for(let f of d.sc.subclassFeatures){
-                    //Do not print subclass features named after the subclass (normally the first feature)
-                    
-                    subclassFeaturesText = tryPrintFeature(f, subclassFeaturesText, [d.sc.name], [d.sc.name]);
-                  }
-                  if(subclassFeaturesText.length > 0){
-                    $$`<div><b>${d.sc.name} Subclass Features:</b></div>`.appendTo($divFeatures);
-                    $$`<div>${subclassFeaturesText}</div>`.appendTo($divFeatures);
-                  }
-                  
-                }
-            }
-            $lblClass.html(textOut);
-        };
-        //We need some hooks to redraw class info
-        this._parent.compClass.addHookBase("class_ixPrimaryClass", hkClass);
-        this._parent.compClass.addHookBase("class_ixMax", hkClass); 
-        this._parent.compClass.addHookBase("class_totalLevels", hkClass);
-        this._parent.compClass.addHookBase("class_pulseChange", hkClass); //This also senses when subclass is changed
-        hkClass();
-        //#endregion
-
-        //#region Race
-        //When race version changes, redraw the elements
-        const hkRace = () => {
-            let curRace = this.getRace_();
-            const n = curRace? curRace.name : "None";
-            $lblRace.text(n);
-        };
-        this._parent.compRace.addHookBase("race_ixRace_version", hkRace);
-        hkRace();
-        //#endregion
-        
-        //#region Background
-        const hkBackground = () => {
-            let curBackground = this.getBackground();
-            const n = curBackground? curBackground.name : "None";
-            $lblBackground.text(n);
-        };
-        this._parent.compBackground.addHookBase("background_pulseBackground", hkBackground);
-        hkBackground();
-        //#endregion
-
-        //#region Ability Scores
-        const hkAbilities = () => {
-            let totals = this.test_grabAbilityScoreTotals(this._parent.compAbility);
-
-
-            //NEW UI STUFF
-            const createAbilityScoreElement = (label, score) => {
-                const modifier = Math.floor((score-10) / 2);
-                return $$`<li>
-                <div class="score">
-                  <label class="ablName upperCase">${label}</label><label class="stat"/>${score}</label>
-                </div>
-                <div class="modifier">
-                  <label class="statmod"/>${modifier>=0?"+"+modifier : modifier}</label>
-                </div>
-              </li>`;
-            }
-            $sectionAttributeScores.empty();
-            const ul = $$`<ul></ul>`;
-            ul.append(createAbilityScoreElement("Strength", totals.values.str));
-            ul.append(createAbilityScoreElement("Dexterity", totals.values.dex));
-            ul.append(createAbilityScoreElement("Constitution", totals.values.con));
-            ul.append(createAbilityScoreElement("Wisdom", totals.values.wis,));
-            ul.append(createAbilityScoreElement("Intelligence", totals.values.int));
-            ul.append(createAbilityScoreElement("Charisma", totals.values.cha));
-            ul.appendTo($sectionAttributeScores);
-
-            //Calculate saving throws
-            let saves = this._grabSavingThrowProficiencies();
-            const createSavingThrowElement = (label, attr, totals, proficiencies, profBonus) => {
-
-                const isProficient = !!proficiencies[attr];
-                const modifier = this._getAbilityModifier(attr, totals.values[attr]) + (isProficient? profBonus : 0);
-                const checkbox = $$`<input type="checkbox"></input>`;
-                //TODO: Add another class to it if expertise? this could change the color of the checkbox
-                //Alternatively, just create two smaller checkboxes instead?
-                //Alternatively, just replace the checkbox with an icon
-                //Check it if proficient or expertise
-                checkbox.prop("checked", isProficient);
-
-                return $$`<li>
-                    <label>${label}</label>
-                    <label class="modifier">${modifier>=0?"+"+modifier : modifier}</label>
-                    ${checkbox}
-                </li>`;
-            }
-
-            const profBonus = this._getProfBonus(this._parent.compClass);
-            $sectionSaves.empty();
-            $sectionSaves.append(createSavingThrowElement("Strength", "str", totals, saves, profBonus));
-            $sectionSaves.append(createSavingThrowElement("Dexterity", "dex", totals, saves, profBonus));
-            $sectionSaves.append(createSavingThrowElement("Constitution", "con", totals, saves, profBonus));
-            $sectionSaves.append(createSavingThrowElement("Wisdom",  "wis", totals, saves, profBonus));
-            $sectionSaves.append(createSavingThrowElement("Intelligence",  "int", totals, saves, profBonus));
-            $sectionSaves.append(createSavingThrowElement("Charisma",  "cha", totals, saves, profBonus));
-        };
-        this._parent.compAbility.compStatgen.addHookBase("common_export_str", hkAbilities);
-        this._parent.compAbility.compStatgen.addHookBase("common_export_dex", hkAbilities);
-        this._parent.compAbility.compStatgen.addHookBase("common_export_con", hkAbilities);
-        this._parent.compAbility.compStatgen.addHookBase("common_export_int", hkAbilities);
-        this._parent.compAbility.compStatgen.addHookBase("common_export_wis", hkAbilities);
-        this._parent.compAbility.compStatgen.addHookBase("common_export_cha", hkAbilities);
-        hkAbilities();
-        //#endregion
-
-        //#region HP, Speed, Initiative
-        const hkHpSpeed = () => {
-            //Let's try to estimate HP
-            //Grab constitution score
-            const conMod = this._getAbilityModifier("con");
-            const dexMod = this._getAbilityModifier("dex");
-            //Grab HP increase mode from class component (from each of the classes!)
-            const classList = this.getClassData(this._parent.compClass);
-            let hpTotal = 0; //Calculate max
-            let levelTotal = 0;
-            let hitDiceInfo = {};
-            for(let ix = 0; ix < classList.length; ++ix){
-                const data = classList[ix];
-                if(!data.cls){continue;}
-                //A problem is we dont know what hp increase mode the class is using when a class is first picked (and this hook fires)
-                //This is because the components that handle that choice arent built yet
-                //So we will need a backup
-                let hpMode = -1; let customFormula = "";
-                const hpModeComp = this._parent.compClass._compsClassHpIncreaseMode[ix];
-                const hpInfoComp = this._parent.compClass._compsClassHpInfo[ix];
-                const targetLevel = data.targetLevel || 1;
-                
-                if(hpModeComp && hpInfoComp){
-                    const formData = hpModeComp.pGetFormData();
-                    if(formData.isFormComplete){
-                        hpMode = formData.data.mode;
-                        customFormula = formData.data.formula;
-                    }
-                }
-                if(hpMode<0){ //Fallback
-                    hpMode = Config.get("importClass", "hpIncreaseMode") ?? ConfigConsts.C_IMPORT_CLASS_HP_INCREASE_MODE__TAKE_AVERAGE;
-                    customFormula = Config.get("importClass", "hpIncreaseModeCustomRollFormula") ?? "(2 * @hd.number)d(@hd.faces / 2)";
-                }
-                
-                const hp = ActorCharactermancerSheet.calcHitPointsAtLevel(data.cls.hd.number, data.cls.hd.faces, targetLevel, hpMode, customFormula);
-                hpTotal += hp;
-                levelTotal += targetLevel;
-
-                if(!hitDiceInfo[data.cls.hd.faces]){
-                  hitDiceInfo[data.cls.hd.faces] = data.cls.hd.number;
-                }
-                else{
-                  hitDiceInfo[data.cls.hd.faces] += data.cls.hd.number;
-                }
-            }
-
-            hpTotal += (conMod * levelTotal);
-
-            $lblMaxHP.text(hpTotal);
-            $lblHitDice.empty();
-            for(let diceSize of Object.keys(hitDiceInfo)){
-              let str = hitDiceInfo[diceSize]+"d"+diceSize;
-              $$`<div>${str}</div>`.appendTo($lblHitDice);
-            }
-
-
-            const scoreInitiative = dexMod;
-            $lblInitiative.html(`${scoreInitiative>=0?"+"+scoreInitiative : scoreInitiative}`);
-
-            const speedFt = 30;
-            $lblSpeed.html(`${speedFt}`);
-        };
-        this._parent.compClass.addHookBase("class_ixMax", hkHpSpeed); 
-        this._parent.compClass.addHookBase("class_totalLevels", hkHpSpeed);
-        this._parent.compAbility.compStatgen.addHookBase("common_export_con", hkHpSpeed);
-        this._parent.compAbility.compStatgen.addHookBase("common_export_dex", hkHpSpeed);
-        this._parent.compClass.addHookBase("class_pulseChange", hkHpSpeed);
-        //needs a hook here in case any of the classes change their HP mode
-        hkHpSpeed();
-        //#endregion
-
-        //#region Proficiencies
-        //#region Skills
-        const hkSkills = () => {
-            $sectionSkills.empty();
-            //We need to get the proficiency bonus, which is based upon combined class levels
-            const profBonus = this._getProfBonus(this._parent.compClass);
-            //We now need to get the names of all skill proficiencies
-            const proficientSkills = this._grabSkillProficiencies();
-            const allSkillNames = Parser.SKILL_TO_ATB_ABV;
-            for(let skillName of Object.keys(allSkillNames)){
-                //Get the modifier for the ability score
-                let score = this._getAbilityModifier(Parser.SKILL_TO_ATB_ABV[skillName]);
-                //Get proficiency / expertise if we are proficient in the skill
-                if(proficientSkills[skillName] == 1){score += profBonus;}
-                else if(proficientSkills[skillName] == 2){score += (profBonus * 2);}
-
-                const checkbox = $$`<input type="checkbox"></input>`;
-                //TODO: Add another class to it if expertise? this could change the color of the checkbox
-                //Alternatively, just create two smaller checkboxes instead?
-                //Alternatively, just replace the checkbox with an icon
-                //Check it if proficient or expertise
-                checkbox.prop("checked", proficientSkills[skillName] > 0);
-                
-                $$`<li>
-                <label for="Acrobatics">${skillName} <span class="skill">(${Parser.SKILL_TO_ATB_ABV[skillName]})</span></label>
-                <label class="modifier">${score>=0?"+"+score : score}</label>${checkbox}
-                </li>`.appendTo($sectionSkills);
-
-                if(skillName.toLowerCase() == "perception"){
-                  $lblPassivePerception.text(`${(10 + score)}`);
-                }
-            }
-        }
-        this._parent.compAbility.compStatgen.addHookBase("common_export_str", hkSkills);
-        this._parent.compAbility.compStatgen.addHookBase("common_export_dex", hkSkills);
-        this._parent.compAbility.compStatgen.addHookBase("common_export_con", hkSkills);
-        this._parent.compAbility.compStatgen.addHookBase("common_export_int", hkSkills);
-        this._parent.compAbility.compStatgen.addHookBase("common_export_wis", hkSkills);
-        this._parent.compAbility.compStatgen.addHookBase("common_export_cha", hkSkills);
-        //We need a hook here to understand when proficiencies are lost/gained, and when we level up
-        //We can listen to feature source tracker for a pulse regarding skill proficiencies
-        this._parent.featureSourceTracker_._addHookBase("pulseSkillProficiencies", hkSkills);
-        this._parent.compClass.addHookBase("class_totalLevels", hkSkills);
-        hkSkills();
-        //#endregion
-
-        //#region Tools
-        const hkTools = () => {
-            $spanToolsProf.text("");
-            //We now need to get the names of all tool proficiencies
-            const proficientTools = this._grabToolProficiencies();
-            let outStr = "";
-            for(let toolName of Object.keys(proficientTools)){
-                outStr += outStr.length>0? ", " : "";
-                outStr += toolName;
-            }
-            $spanToolsProf.text(outStr);
-        }
-        //We need a hook here to understand when proficiencies are lost/gained, and when we level up
-        //We can listen to feature source tracker for a pulse regarding skill proficiencies
-        this._parent.featureSourceTracker_._addHookBase("pulseToolsProficiencies", hkTools);
-        this._parent.compClass.addHookBase("class_totalLevels", hkTools);
-        hkTools();
-        //#endregion
-        //#region Weapons
-        const hkWeaponsArmor = () => {
-            $spanWeaponProf.text("");
-            $spanArmorProf.text("");
-            let outStrWep = "";
-            let outStrArm = "";
-            //We now need to get the names of all tool proficiencies
-            const weapons = this._grabWeaponProficiencies();
-            for(let name of Object.keys(weapons)){
-                outStrWep += outStrWep.length>0? ", " : "";
-                outStrWep += name;
-            }
-            const armors = this._grabArmorProficiencies();
-            for(let name of Object.keys(armors)){
-                outStrArm += outStrArm.length>0? ", " : "";
-                outStrArm += name;
-            }
-            $spanWeaponProf.text(outStrWep);
-            $spanArmorProf.text(outStrArm);
-        }
-        //We need a hook here to understand when proficiencies are lost/gained, and when we level up
-        //We can listen to feature source tracker for a pulse regarding skill proficiencies
-        this._parent.featureSourceTracker_._addHookBase("pulseToolsProficiencies", hkWeaponsArmor);
-        this._parent.compClass.addHookBase("class_totalLevels", hkWeaponsArmor);
-        hkWeaponsArmor();
-        //#endregion
-        //#region Language
-        const hkLanguages = () => {
-            $spanLanguages.text("");
-            let outStr = "";
-            const languages = this._grabLanguageProficiencies();
-            for(let name of Object.keys(languages)){
-                outStr += outStr.length>0? ", " : "";
-                outStr += name;
-            }
-            $spanLanguages.text(outStr);
-        }
-        this._parent.featureSourceTracker_._addHookBase("pulseLanguageProficiencies", hkLanguages);
-        this._parent.compClass.addHookBase("class_totalLevels", hkLanguages);
-        hkLanguages();
-        //#endregion
-        //#region Saving Throws
-        //#endregion
-        //#endregion
-
-        //#region Attacks
-        const hkCalcAttacks = () => {
-          this._getOurItems().then(result => {
-            $attacksTextArea.empty();
-            //Try to fill in weapon attacks
-            const weaponProfs = this._grabWeaponProficiencies();
-            const strMod = this._getAbilityModifier("str");
-            const dexMod = this._getAbilityModifier("dex");
-            const profBonus = this._getProfBonus();
-            const calcMeleeAttack = (it, strMod, dexMod, weaponProfs) => {
-              const isProficient = !!weaponProfs[it.item.weaponCategory.toLowerCase()];
-              const attr = (!!it.item.property["F"] && dexMod > strMod)? dexMod : strMod; //If weapon is finesse and our dex is better, use dex
-              const toHit = attr + (isProficient? profBonus : 0);
-              const dmg = it.item.dmg1 + (attr>=0? "+" : "") + attr.toString();
-              return {toHit:(toHit>=0? "+" : "")+toHit.toString(), dmg:dmg, dmgType:it.item.dmgType};
-            }
-            const printWeaponAttack = (it) => {
-              const isMeleeWeapon = it.item._typeListText.includes("melee weapon");
-              const isRangedWeapon = it.item._typeListText.includes("ranged weapon");
-
-              if(isMeleeWeapon){
-                const result = calcMeleeAttack(it, strMod, dexMod, weaponProfs);
-                let str = `<i>Melee Weapon Attack</i>, ${result.toHit} to hit, ${result.dmg} ${Parser.dmgTypeToFull(result.dmgType)}.`;
-                $$`<div><b>${it.item.name}.</b> ${str}</div>`.appendTo($attacksTextArea);
+                if(!drawParentFeature || bannedFeatureNames.includes(feature.name)){return text;}
+                text += `${text.length > 0? ", " : ""}${feature.name}`;
+                return text;
               }
-              //TODO: ranged weapons
-            }
 
-            for(let it of result.startingItems){
-              if(!it.item.weapon){continue;}
-              printWeaponAttack(it);
-            }
-            for(let it of result.boughtItems){
-              if(!it.item.weapon){continue;}
-              printWeaponAttack(it);
               
-            }
-            //TODO: cantrip attacks
-          });
-          
-        }
-        this._parent.compEquipment._compEquipmentShopGold._addHookBase("itemPurchases", hkCalcAttacks);
-        this._parent.compAbility.compStatgen.addHookBase("common_export_dex", hkCalcAttacks);
-        hkCalcAttacks();
-        //#endregion
-
-        //#region Spells
-        const $colSpells = $$`<div></div>`.appendTo($wrpDisplay);
-        const hkSpells = () => {
-            $colSpells.empty();
-            $colSpells.append("<hr class=\"hr-2\"><div class=\"bold mb-2\">Spells</div>");
-            
-            const spellsByLvl = ActorCharactermancerSheet.getAllSpells(this._parent.compSpell);
-            for(let lvl = 0; lvl < spellsByLvl.length; ++lvl){
-                const spellsAtLvl = spellsByLvl[lvl] || null;
-                if(!spellsAtLvl || !spellsAtLvl.length){continue;}
-                let str = "Cantrips";
-                switch(lvl){
-                    case 0: str = "Cantrips"; break;
-                    case 1: str = "1st Level"; break;
-                    case 2: str = "2nd Level"; break;
-                    case 3: str = "3rd Level"; break;
-                    case 4: str = "4th Level"; break;
-                    case 5: str = "5th Level"; break;
-                    case 6: str = "6th Level"; break;
-                    case 7: str = "7th Level"; break;
-                    case 8: str = "8th Level"; break;
-                    case 9: str = "9th Level"; break;
-                    default: throw new Error("Unimplemented!"); break;
-                }
-                str += ":";
-                $colSpells.append(`<div class="bold mb-2">${str}</div>`);
-
-                let spellsStr = "";
-                for(let i = 0; i < spellsAtLvl.length; ++i){
-                    spellsStr += spellsAtLvl[i];
-                    if(i+1 < spellsAtLvl.length){spellsStr += ", ";}
-                }
-                $colSpells.append(`<div>${spellsStr}</div>`);
-            }
-
-            hkCalcAttacks(); //Calculate attacks as well, since it displays cantrip attacks
-        };
-        this._parent.compSpell.addHookBase("pulsePreparedLearned", hkSpells);
-        this._parent.compSpell.addHookBase("pulseAlwaysPrepared", hkSpells);
-        this._parent.compSpell.addHookBase("pulseAlwaysKnown", hkSpells);
-        this._parent.compSpell.addHookBase("pulseExpandedSpells", hkSpells); //Not sure if this one is needed
-        hkSpells();
-        //#endregion
-
-        //#region Equipment
-        const hkEquipment = () => {
-
-          const strScore = this._getAbilityScore("str");
-
-            this._calcArmorClass().then(result=>{
-                const str = `AC: ${result.ac} (${result.name})`;
-                $lblArmorClass.text(result.ac);
-                $armorWornText.text(result.name);
-            });
-
-            //Fill UI list of items
-            $divEquipment.empty();
-            $divCarry.empty();
-            
-            //Calculate currency
-            const currency = this._getRemainingCoinage();
-            $lblCoinage.text(`${currency.gold}gp, ${currency.silver}sp, ${currency.copper}cp`);
-
-            
-            let coinWeight = (currency.gold + currency.silver + currency.copper) * (1/50); //50 coins weigh 1 lbs
-            let weightLbs = 0;
-
-            this._getOurItems().then(result => {
-              $divEquipment.empty();
-              let outStr = "";
-              for(let it of result.startingItems){
-                outStr += (outStr.length>0? ", " : "") + (it.quantity>1? it.quantity+"x " : "") + it.item.name;
-                weightLbs += (it.item.weight * it.quantity);
+              for(let f of d.cls.classFeatures){
+                classFeaturesText = tryPrintFeature(f, classFeaturesText);
               }
-              for(let it of result.boughtItems){
-                outStr += (outStr.length>0? ", " : "") + (it.quantity>1? it.quantity+"x " : "") + it.item.name;
-                weightLbs += (it.item.weight * it.quantity);
+              if(classFeaturesText.length > 0){
+                $$`<div><b>${d.cls.name} Class Features:</b></div>`.appendTo($divClassFeatures);
+                $$`<div>${classFeaturesText}</div>`.appendTo($divClassFeatures);
               }
-              const span = $$`<span>${outStr}</span>`;
-              $$`<label><b>Carried Gear: </b>${span}</label>`.appendTo($divEquipment);
 
-              //Print carrying capacity info
-              const USE_COIN_WEIGHT = true;
-              const USE_VARIANT_ENCUMBERANCE = true;
-              if(USE_COIN_WEIGHT){weightLbs += coinWeight;}
-              const size = this.getCharacterSize().toUpperCase();
-              const sizeModifier = size == "T"? 1/4 : size == "S"? 1/2 : size == "M"? 1 :
-                size == "L"? 2 : size == "H"? 4 : size == "G"? 8 : 1; //fallback is 1
-              const pushDragLiftCapacity = strScore * 30 * sizeModifier;
-              const carryCapacityMax = strScore * 15 * sizeModifier;
-              const carryCapacityEncumberance = strScore * 5 * sizeModifier;
-              const carryCapacityHeavyEncumberance = strScore * 10 * sizeModifier;
-              let encumberanceText = "";
-              if(USE_VARIANT_ENCUMBERANCE){
-                if(weightLbs >= carryCapacityHeavyEncumberance){encumberanceText =
-                  " (heavily encumbered: -20ft speed, disadv. on ability checks, attacks, and saves that use STR, DEX or CON)";}
-                if(weightLbs >= carryCapacityEncumberance){encumberanceText =
-                  " (heavily encumbered: -5ft speed)";}
-                  $$`<label><b>Carrying Capacity: </b>${carryCapacityMax} lbs. (max), ${carryCapacityEncumberance} lbs. (light enc), ${carryCapacityHeavyEncumberance} lbs. (heavy enc.)</label>`.appendTo($divCarry);
+              if(d.sc){
+                let subclassFeaturesText = "";
+                for(let f of d.sc.subclassFeatures){
+                  //Do not print subclass features named after the subclass (normally the first feature)
+                  
+                  subclassFeaturesText = tryPrintFeature(f, subclassFeaturesText, [d.sc.name], [d.sc.name]);
+                }
+                if(subclassFeaturesText.length > 0){
+                  $$`<div><b>${d.sc.name} Subclass Features:</b></div>`.appendTo($divSubclassFeatures);
+                  $$`<div>${subclassFeaturesText}</div>`.appendTo($divSubclassFeatures);
+                }
+                
+              }
+          }
+          $lblClass.html(textOut);
+      };
+      //We need some hooks to redraw class info
+      this._parent.compClass.addHookBase("class_ixPrimaryClass", hkClass);
+      this._parent.compClass.addHookBase("class_ixMax", hkClass); 
+      this._parent.compClass.addHookBase("class_totalLevels", hkClass);
+      this._parent.compClass.addHookBase("class_pulseChange", hkClass); //This also senses when subclass is changed
+      hkClass();
+      //#endregion
+
+      //#region Race
+      //When race version changes, redraw the elements
+      const hkRace = () => {
+          let curRace = this.getRace_();
+          const n = curRace? curRace.name : "None";
+          $lblRace.text(n);
+      };
+      this._parent.compRace.addHookBase("race_ixRace_version", hkRace);
+      hkRace();
+      //#endregion
+      
+      //#region Background
+      const hkBackground = () => {
+          let curBackground = this.getBackground();
+          const n = curBackground? curBackground.name : "None";
+          $lblBackground.text(n);
+      };
+      this._parent.compBackground.addHookBase("background_pulseBackground", hkBackground);
+      hkBackground();
+      //#endregion
+
+      //#region Ability Scores
+      const hkAbilities = () => {
+          let totals = this.test_grabAbilityScoreTotals(this._parent.compAbility);
+
+
+          //NEW UI STUFF
+          const createAbilityScoreElement = (label, score) => {
+              const modifier = Math.floor((score-10) / 2);
+              return $$`<li>
+              <div class="score">
+                <label class="ablName upperCase">${label}</label><label class="stat"/>${score}</label>
+              </div>
+              <div class="modifier">
+                <label class="statmod"/>${modifier>=0?"+"+modifier : modifier}</label>
+              </div>
+            </li>`;
+          }
+          $sectionAttributeScores.empty();
+          const ul = $$`<ul></ul>`;
+          ul.append(createAbilityScoreElement("Strength", totals.values.str));
+          ul.append(createAbilityScoreElement("Dexterity", totals.values.dex));
+          ul.append(createAbilityScoreElement("Constitution", totals.values.con));
+          ul.append(createAbilityScoreElement("Wisdom", totals.values.wis,));
+          ul.append(createAbilityScoreElement("Intelligence", totals.values.int));
+          ul.append(createAbilityScoreElement("Charisma", totals.values.cha));
+          ul.appendTo($sectionAttributeScores);
+
+          //Calculate saving throws
+          let saves = this._grabSavingThrowProficiencies();
+          const createSavingThrowElement = (label, attr, totals, proficiencies, profBonus) => {
+
+              const isProficient = !!proficiencies[attr];
+              const modifier = this._getAbilityModifier(attr, totals.values[attr]) + (isProficient? profBonus : 0);
+              const checkbox = $$`<input type="checkbox"></input>`;
+              //TODO: Add another class to it if expertise? this could change the color of the checkbox
+              //Alternatively, just create two smaller checkboxes instead?
+              //Alternatively, just replace the checkbox with an icon
+              //Check it if proficient or expertise
+              checkbox.prop("checked", isProficient);
+
+              return $$`<li>
+                  <label>${label}</label>
+                  <label class="modifier">${modifier>=0?"+"+modifier : modifier}</label>
+                  ${checkbox}
+              </li>`;
+          }
+
+          const profBonus = this._getProfBonus(this._parent.compClass);
+          $sectionSaves.empty();
+          $sectionSaves.append(createSavingThrowElement("Strength", "str", totals, saves, profBonus));
+          $sectionSaves.append(createSavingThrowElement("Dexterity", "dex", totals, saves, profBonus));
+          $sectionSaves.append(createSavingThrowElement("Constitution", "con", totals, saves, profBonus));
+          $sectionSaves.append(createSavingThrowElement("Wisdom",  "wis", totals, saves, profBonus));
+          $sectionSaves.append(createSavingThrowElement("Intelligence",  "int", totals, saves, profBonus));
+          $sectionSaves.append(createSavingThrowElement("Charisma",  "cha", totals, saves, profBonus));
+      };
+      this._parent.compAbility.compStatgen.addHookBase("common_export_str", hkAbilities);
+      this._parent.compAbility.compStatgen.addHookBase("common_export_dex", hkAbilities);
+      this._parent.compAbility.compStatgen.addHookBase("common_export_con", hkAbilities);
+      this._parent.compAbility.compStatgen.addHookBase("common_export_int", hkAbilities);
+      this._parent.compAbility.compStatgen.addHookBase("common_export_wis", hkAbilities);
+      this._parent.compAbility.compStatgen.addHookBase("common_export_cha", hkAbilities);
+      this._parent.compAbility.compStatgen.addHookBase("common_pulseAsi", hkAbilities);
+      hkAbilities();
+      //#endregion
+
+      //#region HP, Speed, Initiative
+      const hkHpSpeed = () => {
+          //Let's try to estimate HP
+          //Grab constitution score
+          const conMod = this._getAbilityModifier("con");
+          const dexMod = this._getAbilityModifier("dex");
+          //Grab HP increase mode from class component (from each of the classes!)
+          const classList = this.getClassData(this._parent.compClass);
+          let hpTotal = 0; //Calculate max
+          let levelTotal = 0;
+          let hitDiceInfo = {};
+          for(let ix = 0; ix < classList.length; ++ix){
+              const data = classList[ix];
+              if(!data.cls){continue;}
+              //A problem is we dont know what hp increase mode the class is using when a class is first picked (and this hook fires)
+              //This is because the components that handle that choice arent built yet
+              //So we will need a backup
+              let hpMode = -1; let customFormula = "";
+              const hpModeComp = this._parent.compClass._compsClassHpIncreaseMode[ix];
+              const hpInfoComp = this._parent.compClass._compsClassHpInfo[ix];
+              const targetLevel = data.targetLevel || 1;
+              
+              if(hpModeComp && hpInfoComp){
+                  const formData = hpModeComp.pGetFormData();
+                  if(formData.isFormComplete){
+                      hpMode = formData.data.mode;
+                      customFormula = formData.data.formula;
+                  }
+              }
+              if(hpMode<0){ //Fallback
+                  hpMode = Config.get("importClass", "hpIncreaseMode") ?? ConfigConsts.C_IMPORT_CLASS_HP_INCREASE_MODE__TAKE_AVERAGE;
+                  customFormula = Config.get("importClass", "hpIncreaseModeCustomRollFormula") ?? "(2 * @hd.number)d(@hd.faces / 2)";
+              }
+              
+              const hp = ActorCharactermancerSheet.calcHitPointsAtLevel(data.cls.hd.number, data.cls.hd.faces, targetLevel, hpMode, customFormula);
+              hpTotal += hp;
+              levelTotal += targetLevel;
+
+              if(!hitDiceInfo[data.cls.hd.faces]){
+                hitDiceInfo[data.cls.hd.faces] = data.cls.hd.number;
               }
               else{
-                $$`<div><label><b>Carrying Capacity: </b>${carryCapacityMax} lbs.</label></div>`.appendTo($divCarry);
+                hitDiceInfo[data.cls.hd.faces] += data.cls.hd.number;
               }
-              $$`<div><label><b>Carried Weight: </b>${weightLbs} lbs.${USE_COIN_WEIGHT? " (coins included)":""}</label></div>`.appendTo($divCarry);
-              $$`<div><label><b>Lifting, Pushing & Dragging: </b>${pushDragLiftCapacity} lbs.</label></div>`.appendTo($divCarry);
-            });
+          }
 
+          hpTotal += (conMod * levelTotal);
+
+          $lblMaxHP.text(hpTotal);
+          $lblHitDice.empty();
+          for(let diceSize of Object.keys(hitDiceInfo)){
+            let str = hitDiceInfo[diceSize]+"d"+diceSize;
+            $$`<div>${str}</div>`.appendTo($lblHitDice);
+          }
+
+
+          const scoreInitiative = dexMod;
+          $lblInitiative.html(`${scoreInitiative>=0?"+"+scoreInitiative : scoreInitiative}`);
+
+          const speedFt = 30;
+          $lblSpeed.html(`${speedFt}`);
+      };
+      this._parent.compClass.addHookBase("class_ixMax", hkHpSpeed); 
+      this._parent.compClass.addHookBase("class_totalLevels", hkHpSpeed);
+      this._parent.compAbility.compStatgen.addHookBase("common_export_con", hkHpSpeed);
+      this._parent.compAbility.compStatgen.addHookBase("common_export_dex", hkHpSpeed);
+      this._parent.compClass.addHookBase("class_pulseChange", hkHpSpeed);
+      //needs a hook here in case any of the classes change their HP mode
+      hkHpSpeed();
+      //#endregion
+
+      //#region Proficiencies
+      //#region Skills
+      const hkSkills = () => {
+          $sectionSkills.empty();
+          //We need to get the proficiency bonus, which is based upon combined class levels
+          const profBonus = this._getProfBonus(this._parent.compClass);
+          //We now need to get the names of all skill proficiencies
+          const proficientSkills = this._grabSkillProficiencies();
+          const allSkillNames = Parser.SKILL_TO_ATB_ABV;
+          for(let skillName of Object.keys(allSkillNames)){
+              //Get the modifier for the ability score
+              let score = this._getAbilityModifier(Parser.SKILL_TO_ATB_ABV[skillName]);
+              //Get proficiency / expertise if we are proficient in the skill
+              if(proficientSkills[skillName] == 1){score += profBonus;}
+              else if(proficientSkills[skillName] == 2){score += (profBonus * 2);}
+
+              const checkbox = $$`<input type="checkbox"></input>`;
+              //TODO: Add another class to it if expertise? this could change the color of the checkbox
+              //Alternatively, just create two smaller checkboxes instead?
+              //Alternatively, just replace the checkbox with an icon
+              //Check it if proficient or expertise
+              checkbox.prop("checked", proficientSkills[skillName] > 0);
+              
+              $$`<li>
+              <label for="Acrobatics">${skillName} <span class="skill">(${Parser.SKILL_TO_ATB_ABV[skillName]})</span></label>
+              <label class="modifier">${score>=0?"+"+score : score}</label>${checkbox}
+              </li>`.appendTo($sectionSkills);
+
+              if(skillName.toLowerCase() == "perception"){
+                $lblPassivePerception.text(`${(10 + score)}`);
+              }
+          }
+      }
+      this._parent.compAbility.compStatgen.addHookBase("common_export_str", hkSkills);
+      this._parent.compAbility.compStatgen.addHookBase("common_export_dex", hkSkills);
+      this._parent.compAbility.compStatgen.addHookBase("common_export_con", hkSkills);
+      this._parent.compAbility.compStatgen.addHookBase("common_export_int", hkSkills);
+      this._parent.compAbility.compStatgen.addHookBase("common_export_wis", hkSkills);
+      this._parent.compAbility.compStatgen.addHookBase("common_export_cha", hkSkills);
+      //We need a hook here to understand when proficiencies are lost/gained, and when we level up
+      //We can listen to feature source tracker for a pulse regarding skill proficiencies
+      this._parent.featureSourceTracker_._addHookBase("pulseSkillProficiencies", hkSkills);
+      this._parent.compClass.addHookBase("class_totalLevels", hkSkills);
+      hkSkills();
+      //#endregion
+
+      //#region Tools
+      const hkTools = () => {
+          $spanToolsProf.text("");
+          //We now need to get the names of all tool proficiencies
+          const proficientTools = this._grabToolProficiencies();
+          let outStr = "";
+          for(let toolName of Object.keys(proficientTools)){
+              outStr += outStr.length>0? ", " : "";
+              outStr += toolName;
+          }
+          $spanToolsProf.text(outStr);
+      }
+      //We need a hook here to understand when proficiencies are lost/gained, and when we level up
+      //We can listen to feature source tracker for a pulse regarding skill proficiencies
+      this._parent.featureSourceTracker_._addHookBase("pulseToolsProficiencies", hkTools);
+      this._parent.compClass.addHookBase("class_totalLevels", hkTools);
+      hkTools();
+      //#endregion
+      //#region Weapons
+      const hkWeaponsArmor = () => {
+          $spanWeaponProf.text("");
+          $spanArmorProf.text("");
+          let outStrWep = "";
+          let outStrArm = "";
+          //We now need to get the names of all tool proficiencies
+          const weapons = this._grabWeaponProficiencies();
+          for(let name of Object.keys(weapons)){
+              outStrWep += outStrWep.length>0? ", " : "";
+              outStrWep += name;
+          }
+          const armors = this._grabArmorProficiencies();
+          for(let name of Object.keys(armors)){
+              outStrArm += outStrArm.length>0? ", " : "";
+              outStrArm += name;
+          }
+          $spanWeaponProf.text(outStrWep);
+          $spanArmorProf.text(outStrArm);
+      }
+      //We need a hook here to understand when proficiencies are lost/gained, and when we level up
+      //We can listen to feature source tracker for a pulse regarding skill proficiencies
+      this._parent.featureSourceTracker_._addHookBase("pulseToolsProficiencies", hkWeaponsArmor);
+      this._parent.compClass.addHookBase("class_totalLevels", hkWeaponsArmor);
+      hkWeaponsArmor();
+      //#endregion
+      //#region Language
+      const hkLanguages = () => {
+          $spanLanguages.text("");
+          let outStr = "";
+          const languages = this._grabLanguageProficiencies();
+          for(let name of Object.keys(languages)){
+              outStr += outStr.length>0? ", " : "";
+              outStr += name;
+          }
+          $spanLanguages.text(outStr);
+      }
+      this._parent.featureSourceTracker_._addHookBase("pulseLanguageProficiencies", hkLanguages);
+      this._parent.compClass.addHookBase("class_totalLevels", hkLanguages);
+      hkLanguages();
+      //#endregion
+      //#region Saving Throws
+      //#endregion
+      //#endregion
+
+      //#region Attacks
+      const hkCalcAttacks = () => {
+        this._getOurItems().then(result => {
+          $attacksTextArea.empty();
+          //Try to fill in weapon attacks
+          const weaponProfs = this._grabWeaponProficiencies();
+          const strMod = this._getAbilityModifier("str");
+          const dexMod = this._getAbilityModifier("dex");
+          const profBonus = this._getProfBonus();
+          const calcMeleeAttack = (it, strMod, dexMod, weaponProfs) => {
+            const isProficient = !!weaponProfs[it.item.weaponCategory.toLowerCase()];
+            const attr = (!!it.item.property["F"] && dexMod > strMod)? dexMod : strMod; //If weapon is finesse and our dex is better, use dex
+            const toHit = attr + (isProficient? profBonus : 0);
+            const dmg = it.item.dmg1 + (attr>=0? "+" : "") + attr.toString();
+            return {toHit:(toHit>=0? "+" : "")+toHit.toString(), dmg:dmg, dmgType:it.item.dmgType};
+          }
+          const printWeaponAttack = (it) => {
+            const isMeleeWeapon = it.item._typeListText.includes("melee weapon");
+            const isRangedWeapon = it.item._typeListText.includes("ranged weapon");
+
+            if(isMeleeWeapon){
+              const result = calcMeleeAttack(it, strMod, dexMod, weaponProfs);
+              let str = `<i>Melee Weapon Attack</i>, ${result.toHit} to hit, ${result.dmg} ${Parser.dmgTypeToFull(result.dmgType)}.`;
+              $$`<div><b>${it.item.name}.</b> ${str}</div>`.appendTo($attacksTextArea);
+            }
+            //TODO: ranged weapons
+          }
+
+          for(let it of result.startingItems){
+            if(!it.item.weapon){continue;}
+            printWeaponAttack(it);
+          }
+          for(let it of result.boughtItems){
+            if(!it.item.weapon){continue;}
+            printWeaponAttack(it);
             
+          }
+          //TODO: cantrip attacks
+        });
+        
+      }
+      this._parent.compEquipment._compEquipmentShopGold._addHookBase("itemPurchases", hkCalcAttacks);
+      this._parent.compAbility.compStatgen.addHookBase("common_export_dex", hkCalcAttacks);
+      hkCalcAttacks();
+      //#endregion
+
+      //#region Spells
+      const $colSpells = $$`<div></div>`.appendTo($wrpDisplay);
+      const hkSpells = () => {
+          $colSpells.empty();
+          $colSpells.append("<hr class=\"hr-2\"><div class=\"bold mb-2\">Spells</div>");
+          
+          const spellsByLvl = ActorCharactermancerSheet.getAllSpells(this._parent.compSpell);
+          for(let lvl = 0; lvl < spellsByLvl.length; ++lvl){
+              const spellsAtLvl = spellsByLvl[lvl] || null;
+              if(!spellsAtLvl || !spellsAtLvl.length){continue;}
+              let str = "Cantrips";
+              switch(lvl){
+                  case 0: str = "Cantrips"; break;
+                  case 1: str = "1st Level"; break;
+                  case 2: str = "2nd Level"; break;
+                  case 3: str = "3rd Level"; break;
+                  case 4: str = "4th Level"; break;
+                  case 5: str = "5th Level"; break;
+                  case 6: str = "6th Level"; break;
+                  case 7: str = "7th Level"; break;
+                  case 8: str = "8th Level"; break;
+                  case 9: str = "9th Level"; break;
+                  default: throw new Error("Unimplemented!"); break;
+              }
+              str += ":";
+              $colSpells.append(`<div class="bold mb-2">${str}</div>`);
+
+              let spellsStr = "";
+              for(let i = 0; i < spellsAtLvl.length; ++i){
+                  spellsStr += spellsAtLvl[i];
+                  if(i+1 < spellsAtLvl.length){spellsStr += ", ";}
+              }
+              $colSpells.append(`<div>${spellsStr}</div>`);
+          }
+
+          hkCalcAttacks(); //Calculate attacks as well, since it displays cantrip attacks
+      };
+      this._parent.compSpell.addHookBase("pulsePreparedLearned", hkSpells);
+      this._parent.compSpell.addHookBase("pulseAlwaysPrepared", hkSpells);
+      this._parent.compSpell.addHookBase("pulseAlwaysKnown", hkSpells);
+      this._parent.compSpell.addHookBase("pulseExpandedSpells", hkSpells); //Not sure if this one is needed
+      hkSpells();
+      //#endregion
+
+      //#region Equipment
+      const hkEquipment = () => {
+
+        const strScore = this._getAbilityScore("str");
+
+          this._calcArmorClass().then(result=>{
+              const str = `AC: ${result.ac} (${result.name})`;
+              $lblArmorClass.text(result.ac);
+              $armorWornText.text(result.name);
+          });
+
+          //Fill UI list of items
+          $divEquipment.empty();
+          $divCarry.empty();
+          
+          //Calculate currency
+          const currency = this._getRemainingCoinage();
+          $lblCoinage.text(`${currency.gold}gp, ${currency.silver}sp, ${currency.copper}cp`);
+
+          
+          let coinWeight = (currency.gold + currency.silver + currency.copper) * (1/50); //50 coins weigh 1 lbs
+          let weightLbs = 0;
+
+          this._getOurItems().then(result => {
+            $divEquipment.empty();
+            let outStr = "";
+            for(let it of result.startingItems){
+              outStr += (outStr.length>0? ", " : "") + (it.quantity>1? it.quantity+"x " : "") + it.item.name;
+              weightLbs += (it.item.weight * it.quantity);
+            }
+            for(let it of result.boughtItems){
+              outStr += (outStr.length>0? ", " : "") + (it.quantity>1? it.quantity+"x " : "") + it.item.name;
+              weightLbs += (it.item.weight * it.quantity);
+            }
+            const span = $$`<span>${outStr}</span>`;
+            $$`<label><b>Carried Gear: </b>${span}</label>`.appendTo($divEquipment);
+
+            //Print carrying capacity info
+            const USE_COIN_WEIGHT = true;
+            const USE_VARIANT_ENCUMBERANCE = true;
+            if(USE_COIN_WEIGHT){weightLbs += coinWeight;}
+            const size = this.getCharacterSize().toUpperCase();
+            const sizeModifier = size == "T"? 1/4 : size == "S"? 1/2 : size == "M"? 1 :
+              size == "L"? 2 : size == "H"? 4 : size == "G"? 8 : 1; //fallback is 1
+            const pushDragLiftCapacity = strScore * 30 * sizeModifier;
+            const carryCapacityMax = strScore * 15 * sizeModifier;
+            const carryCapacityEncumberance = strScore * 5 * sizeModifier;
+            const carryCapacityHeavyEncumberance = strScore * 10 * sizeModifier;
+            let encumberanceText = "";
+            if(USE_VARIANT_ENCUMBERANCE){
+              if(weightLbs >= carryCapacityHeavyEncumberance){encumberanceText =
+                " (heavily encumbered: -20ft speed, disadv. on ability checks, attacks, and saves that use STR, DEX or CON)";}
+              if(weightLbs >= carryCapacityEncumberance){encumberanceText =
+                " (heavily encumbered: -5ft speed)";}
+                $$`<label><b>Carrying Capacity: </b>${carryCapacityMax} lbs. (max), ${carryCapacityEncumberance} lbs. (light enc), ${carryCapacityHeavyEncumberance} lbs. (heavy enc.)</label>`.appendTo($divCarry);
+            }
+            else{
+              $$`<div><label><b>Carrying Capacity: </b>${carryCapacityMax} lbs.</label></div>`.appendTo($divCarry);
+            }
+            $$`<div><label><b>Carried Weight: </b>${weightLbs} lbs.${USE_COIN_WEIGHT? " (coins included)":""}</label></div>`.appendTo($divCarry);
+            $$`<div><label><b>Lifting, Pushing & Dragging: </b>${pushDragLiftCapacity} lbs.</label></div>`.appendTo($divCarry);
+          });
+
+          
+      }
+      this._parent.compRace.addHookBase("race_ixRace_version", hkEquipment); //needed to refresh race size, which impacts carrying capacity
+      this._parent.compRace.addHookBase("pulseSize", hkEquipment); //needed to refresh race size, which impacts carrying capacity
+      this._parent.compEquipment._compEquipmentCurrency._addHookBase("cpRolled", hkEquipment);
+      this._parent.compEquipment._compEquipmentShopGold._addHookBase("itemPurchases", hkEquipment);
+      this._parent.compAbility.compStatgen.addHookBase("common_export_str", hkEquipment);
+      this._parent.compAbility.compStatgen.addHookBase("common_export_dex", hkEquipment);
+      this._parent.compAbility.compStatgen.addHookBase("common_export_cha", hkEquipment);
+      hkEquipment();
+      //#endregion
+
+      //#region Feats
+      const hkFeats = () => {
+        //We need to get all our feats somehow
+        let featInfo = this._getFeats();
+        $$`<div><b>Feats:</b></div>`.appendTo($divFeatFeatures);
+        let featsText = "";
+        for(let asiFeat of featInfo.asiFeats){
+          featsText += (featsText.length>0? ", " : "") + asiFeat.feat.name;
         }
-        this._parent.compRace.addHookBase("race_ixRace_version", hkEquipment); //needed to refresh race size, which impacts carrying capacity
-        this._parent.compRace.addHookBase("pulseSize", hkEquipment); //needed to refresh race size, which impacts carrying capacity
-        this._parent.compEquipment._compEquipmentCurrency._addHookBase("cpRolled", hkEquipment);
-        this._parent.compEquipment._compEquipmentShopGold._addHookBase("itemPurchases", hkEquipment);
-        this._parent.compAbility.compStatgen.addHookBase("common_export_str", hkEquipment);
-        this._parent.compAbility.compStatgen.addHookBase("common_export_dex", hkEquipment);
-        this._parent.compAbility.compStatgen.addHookBase("common_export_cha", hkEquipment);
-        hkEquipment();
-        //#endregion
 
+        const race = this.getRace_();
+        if(race != null){
+          for(let asiFeat of featInfo.raceFeats){
+            featsText += (featsText.length>0? ", " : "") + asiFeat.feat.name;
+            // + ` (${race.name})`;
+          }
+        }
         
+        $$`<div>${featsText}</div>`.appendTo($divFeatFeatures);
+      }
+      this._parent.compClass.addHookBase("class_ixPrimaryClass", hkFeats);
+      this._parent.compClass.addHookBase("class_ixMax", hkFeats); 
+      this._parent.compClass.addHookBase("class_totalLevels", hkFeats);
+      this._parent.compClass.addHookBase("class_pulseChange", hkFeats); //This also senses when subclass is changed
+      this._parent.compAbility.compStatgen.addHookBase("common_pulseAsi", hkFeats); //This gets fired like all the time feats get added/removed/altered
+      //#endregion
 
-        wrapper.appendTo(tabSheet);
+      wrapper.appendTo(tabSheet);
 
-        
-       /*  this.setAdditionalFeatStateFromStatgen_();
-        const onBackgroundPulse = () => this._state.feat_availableFromBackground =
-            this._parent.compBackground.getFeatureCustomizedBackground_({'isAllowStub': false })?.["feats"];
-        this._parent.compBackground.addHookBase("background_pulseBackground", onBackgroundPulse);
+      
+      /*  this.setAdditionalFeatStateFromStatgen_();
+      const onBackgroundPulse = () => this._state.feat_availableFromBackground =
+          this._parent.compBackground.getFeatureCustomizedBackground_({'isAllowStub': false })?.["feats"];
+      this._parent.compBackground.addHookBase("background_pulseBackground", onBackgroundPulse);
 
-        this._state.feat_availableFromBackground = this._parent.compBackground.getFeatureCustomizedBackground_({
-          'isAllowStub': false
-        })?.["feats"]; */
+      this._state.feat_availableFromBackground = this._parent.compBackground.getFeatureCustomizedBackground_({
+        'isAllowStub': false
+      })?.["feats"]; */
     }
 
     getRace_() { return this._parent.compRace.getRace_(); }
@@ -932,6 +949,53 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
         if(info.mode == "none"){return {mode: info.mode, values: {str:0,dex:0, con:0, int:0, wis:0, cha:0}};}
         const result = info.totals[info.mode];
         return {mode: info.mode, values: result};
+    }
+    _getFeats(){
+      const s = this._parent.compAbility.compStatgen.__state;
+      let asiData = {};
+      //We can get feats from ASIs, Races, and... what else? Backgrounds?
+      //TODO: Add background support here
+      for(let prop of Object.keys(s)){
+          if(prop.startsWith("common_asi_") || prop.startsWith("common_additionalFeats_")){
+              asiData[prop] = s[prop];
+          }
+          //Some races provide ASI choices, include them here while we are at it
+          else if(prop.startsWith("common_raceChoice")){
+            asiData[prop] = s[prop];
+          }
+          //Keep track of number of custom feats
+          //TODO: only include custom feats with index lower than this number
+          else if (prop.startsWith("common_cntFeatsCustom")){
+            asiData[prop] = s[prop];
+          }
+      }
+
+      //Figure out feats gained through ASI's
+      const numASIFeatOpportunities = Object.keys(asiData).filter((prop, val) => prop.startsWith("common_asi_ability_") && prop.endsWith("_mode")).length;
+      const asiFeats = [];
+      for(let i = 0; i < numASIFeatOpportunities; ++i){
+        const mode = asiData[(`common_asi_ability_${i}_mode`)];
+        if(mode != "feat"){continue;} //Mode must be feat, else it means the user choise an ASI instead
+        const ixFeat = asiData[(`common_asi_ability_${i}_ixFeat`)];
+        if(ixFeat==null || ixFeat<0){continue;} //No feat selected yet
+        const feat = this._parent.compAbility._data.feat[ixFeat];
+        asiFeats.push({asiIx:i, ixFeat:ixFeat, feat:feat});
+      }
+
+      //Figure out feats gained through race
+      const numRaceFeats = Object.keys(asiData).filter((prop, val) => prop.startsWith("common_additionalFeats_race_fromFilter_") && prop.endsWith("_ixFeat")).length;
+      const raceFeats = [];
+      for(let i = 0; i < numRaceFeats; ++i){
+        const ixFeat = asiData[(`common_additionalFeats_race_fromFilter_${i}_ixFeat`)];
+        if(ixFeat==null || ixFeat<0){continue;} //No feat selected yet
+        const feat = this._parent.compAbility._data.feat[ixFeat];
+        raceFeats.push({raceFeatIx:i, ixFeat:ixFeat, feat:feat});
+      }
+      //common_additionalFeats_race_fromFilter_0_ixFeatAbility: 0
+      //common_additionalFeats_race_ixSel: 0
+
+      console.log("FEAT INFO", asiData);
+      return {asiFeats: asiFeats, raceFeats: raceFeats};
     }
 
     _pullProficienciesFromComponentForm(component, output, prop, isStringArray = false){
