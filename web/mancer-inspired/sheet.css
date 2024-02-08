@@ -436,6 +436,12 @@
     padding-left: 10px;
     padding-top: 5px;
   }
+  form.charsheet .coinage {
+    font-size: 12px;
+    padding-left: 10px;
+    padding-top: 5px;
+    padding-bottom: 5px;
+  }
   form.charsheet main section.combat > div.hp {
     flex-basis: 100%;
   }
@@ -637,7 +643,7 @@
   form.charsheet main section.equipment > div {
     padding: 10px;
     display: flex;
-    flex-direction: row;
+    flex-direction: column;
     flex-wrap: wrap;
   }
   form.charsheet main section.equipment > div > div.money ul {

@@ -136,6 +136,8 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
     const $attacksTextArea = $$`<div class ="attacksTextArea textbox"></div>`;
     const $lblMaxHP = $$`<label class="score"></label>`;
     const $lblHitDice = $$`<label class="scoreHitDice"></label>`;
+    const $lblCoinage = $$`<span></span>`;
+    const $divCarry = $$`<div class="textbox"></div>`;
 
     const mainSection = $$`<main>
     <section>
@@ -270,28 +272,12 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
       <section class="equipment">
         <div>
           <label class="upperCase">Equipment</label>
-          <div class="money">
-            <ul>
-              <li>
-                <label for="cp">cp</label><input name="cp" />
-              </li>
-              <li>
-                <label for="sp">sp</label><input name="sp" />
-              </li>
-              <li>
-                <label for="ep">ep</label><input name="ep" />
-              </li>
-              <li>
-                <label for="gp">gp</label><input name="gp" />
-              </li>
-              <li>
-                <label for="pp">pp</label><input name="pp" />
-              </li>
-            </ul>
-          </div>
           ${$divEquipment}
+          <div class="coinage"><b>Currency: </b>${$lblCoinage}</div>
         </div>
       </section>
+      
+      ${$divCarry}
     </section>
     <section>
       <section class="flavor">
@@ -743,7 +729,11 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
         hkSpells();
         //#endregion
 
+        //#region Equipment
         const hkEquipment = () => {
+
+          const strScore = this._getAbilityScore("str");
+
             this._calcArmorClass().then(result=>{
                 const str = `AC: ${result.ac} (${result.name})`;
                 $lblArmorClass.text(result.ac);
@@ -752,27 +742,67 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
 
             //Fill UI list of items
             $divEquipment.empty();
+            $divCarry.empty();
             
+            //Calculate currency
+            const currency = this._getRemainingCoinage();
+            $lblCoinage.text(`${currency.gold}gp, ${currency.silver}sp, ${currency.copper}cp`);
+
+            
+            let coinWeight = (currency.gold + currency.silver + currency.copper) * (1/50); //50 coins weigh 1 lbs
+            let weightLbs = 0;
 
             this._getOurItems().then(result => {
               $divEquipment.empty();
-             
               let outStr = "";
               for(let it of result.startingItems){
                 outStr += (outStr.length>0? ", " : "") + (it.quantity>1? it.quantity+"x " : "") + it.item.name;
+                weightLbs += (it.item.weight * it.quantity);
               }
               for(let it of result.boughtItems){
                 outStr += (outStr.length>0? ", " : "") + (it.quantity>1? it.quantity+"x " : "") + it.item.name;
+                weightLbs += (it.item.weight * it.quantity);
               }
               const span = $$`<span>${outStr}</span>`;
               $$`<label><b>Carried Gear: </b>${span}</label>`.appendTo($divEquipment);
+
+              //Print carrying capacity info
+              const USE_COIN_WEIGHT = true;
+              const USE_VARIANT_ENCUMBERANCE = true;
+              if(USE_COIN_WEIGHT){weightLbs += coinWeight;}
+              const size = this.getCharacterSize().toUpperCase();
+              const sizeModifier = size == "T"? 1/4 : size == "S"? 1/2 : size == "M"? 1 :
+                size == "L"? 2 : size == "H"? 4 : size == "G"? 8 : 1; //fallback is 1
+              const pushDragLiftCapacity = strScore * 30 * sizeModifier;
+              const carryCapacityMax = strScore * 15 * sizeModifier;
+              const carryCapacityEncumberance = strScore * 5 * sizeModifier;
+              const carryCapacityHeavyEncumberance = strScore * 10 * sizeModifier;
+              let encumberanceText = "";
+              if(USE_VARIANT_ENCUMBERANCE){
+                if(weightLbs >= carryCapacityHeavyEncumberance){encumberanceText =
+                  " (heavily encumbered: -20ft speed, disadv. on ability checks, attacks, and saves that use STR, DEX or CON)";}
+                if(weightLbs >= carryCapacityEncumberance){encumberanceText =
+                  " (heavily encumbered: -5ft speed)";}
+                  $$`<label><b>Carrying Capacity: </b>${carryCapacityMax} lbs. (max), ${carryCapacityEncumberance} lbs. (light enc), ${carryCapacityHeavyEncumberance} lbs. (heavy enc.)</label>`.appendTo($divCarry);
+              }
+              else{
+                $$`<div><label><b>Carrying Capacity: </b>${carryCapacityMax} lbs.</label></div>`.appendTo($divCarry);
+              }
+              $$`<div><label><b>Carried Weight: </b>${weightLbs} lbs.${USE_COIN_WEIGHT? " (coins included)":""}</label></div>`.appendTo($divCarry);
+              $$`<div><label><b>Lifting, Pushing & Dragging: </b>${pushDragLiftCapacity} lbs.</label></div>`.appendTo($divCarry);
             });
+
             
         }
+        this._parent.compRace.addHookBase("race_ixRace_version", hkEquipment); //needed to refresh race size, which impacts carrying capacity
+        this._parent.compRace.addHookBase("pulseSize", hkEquipment); //needed to refresh race size, which impacts carrying capacity
+        this._parent.compEquipment._compEquipmentCurrency._addHookBase("cpRolled", hkEquipment);
         this._parent.compEquipment._compEquipmentShopGold._addHookBase("itemPurchases", hkEquipment);
+        this._parent.compAbility.compStatgen.addHookBase("common_export_str", hkEquipment);
         this._parent.compAbility.compStatgen.addHookBase("common_export_dex", hkEquipment);
         this._parent.compAbility.compStatgen.addHookBase("common_export_cha", hkEquipment);
         hkEquipment();
+        //#endregion
 
         
 
@@ -790,6 +820,15 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
     }
 
     getRace_() { return this._parent.compRace.getRace_(); }
+    getCharacterSize(fallback="M"){
+      const race = this.getRace_();
+      if(!race){return fallback;}
+      const compSize = this._parent.compRace.compRaceSize;
+      if(!compSize){return fallback;}
+      const form = compSize.pGetFormData();
+      if(!form || !form.isFormComplete){return fallback;}
+      return form.data;
+    }
     getClassData(compClass) {
         const primaryClassIndex = compClass._state.class_ixPrimaryClass;
         //If we have 2 classes, this will be 1
@@ -949,6 +988,26 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
       }
 
       return {boughtItems: boughtItems, startingItems:startingItems};
+    }
+    _getRemainingCoinage(){
+      const compGold = this._parent.compEquipment._compEquipmentCurrency;
+      const state = compGold.__state;
+      let startingCp = state.cpRolled != null? state.cpRolled : state.cpFromDefault;
+      let spentCp = state.cpSpent;
+      let remainingCp = startingCp - spentCp;
+      const totalCp = remainingCp;
+
+      const ratio_pp = 1000;
+      const ratio_gp = 100;
+      //const ratio_el = 50;
+      const ratio_sp = 10;
+      //let platinum = Math.floor(remainingCp / ratio_pp); remainingCp -= (platinum * ratio_pp);
+      let gold = Math.floor(remainingCp / ratio_gp); remainingCp -= (gold * ratio_gp);
+      let silver = Math.floor(remainingCp / ratio_sp); remainingCp -= (silver * ratio_sp);
+      
+      console.log("COMPGOLD", state);
+
+      return {copper:remainingCp, silver:silver, gold:gold};
     }
 
     /**
@@ -1154,13 +1213,16 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
 
         return Parser.levelToPb(levelTotal);
     }
-    _getAbilityModifier(abl_abrivation, total=null){
+    _getAbilityModifier(abl_abbreviation, total=null){
         if(total == null){
-            const compability = this._parent.compAbility.compStatgen;
             const totals = this.test_grabAbilityScoreTotals(this._parent.compAbility);
-            total = totals.values[abl_abrivation];
+            total = totals.values[abl_abbreviation];
         }
         return Math.floor((total-10) / 2);
+    }
+    _getAbilityScore(abl_abbreviation){
+      const totals = this.test_grabAbilityScoreTotals(this._parent.compAbility);
+      return totals.values[abl_abbreviation];
     }
 
     async _calcArmorClass(){

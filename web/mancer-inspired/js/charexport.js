@@ -261,7 +261,7 @@ class CharacterExportFvtt{
     }
     /**
      * @param {ActorCharactermancerRace} compRace
-     * @returns {any}
+     * @returns {{stateInfo:{subcomps:any, _compRaceSize:any}}}
      */
     static getRaceData(compRace){
         let out = null;
@@ -292,6 +292,8 @@ class CharacterExportFvtt{
             grabState("_compRaceSkillToolLanguageProficiencies");
             grabState("_compRaceToolProficiencies");
             grabState("_compRaceWeaponProficiencies");
+
+            if(compRace.compRaceSize){out.stateInfo._compRaceSize = compRace.compRaceSize.__state;}
             
         }
         else{

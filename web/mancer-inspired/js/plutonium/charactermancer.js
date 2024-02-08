@@ -7062,6 +7062,13 @@ class ActorCharactermancerRace extends ActorCharactermancerBaseComponent {
         this._state.race_ixRace = ixRace;
         this._state.race_ixRace_version = ixRaceVersion;
 
+        //Apply state to size component (if it exists)
+        if(!!this.compRaceSize && !!data.stateInfo._compRaceSize){
+            for(let prop of Object.keys(data.stateInfo._compRaceSize)){
+                this.compRaceSize._state[prop] = data.stateInfo._compRaceSize[prop];
+            }
+        }
+
         //Apply state info to subcomponents
         for(let subCompName of Object.keys(data.stateInfo.subcomps)){
             console.log("Applying states to ", subCompName, data.stateInfo.subcomps[subCompName], this[subCompName]);
@@ -7087,15 +7094,22 @@ class ActorCharactermancerRace extends ActorCharactermancerBaseComponent {
         return raceVersions[this._state.race_ixRace_version];
     }
     _race_renderRace_stgSize({$stgSize: parentDiv, race: race}) {
+        const hkFireSizePulse = () => {
+            this._state["pulseSize"] = !this._state["pulseSize"];
+        }
         parentDiv.empty();
         if (race && race.size) {
             parentDiv.showVe().append("<hr class=\"hr-2\"><div class=\"bold mb-2\">Size</div>");
-            this._compRaceSize = new Charactermancer_Race_SizeSelect({'sizes': race.size});
+            this._compRaceSize = new Charactermancer_Race_SizeSelect({sizes: race.size});
+            this._compRaceSize._addHookBase("size", hkFireSizePulse);
             this._compRaceSize.render(parentDiv);
         }
-        else { parentDiv.hideVe(); this._compRaceSize = null; }
+        else {
+            parentDiv.hideVe();
+            this._compRaceSize = null;
+        }
     }
-    _getDefaultState() { return {'race_ixRace': null, 'race_ixRace_version': null}; }
+    _getDefaultState() { return {race_ixRace: null, race_ixRace_version: null}; }
 }
 
 class Charactermancer_Race_Util {
