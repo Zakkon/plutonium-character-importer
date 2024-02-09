@@ -303,6 +303,7 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
       const hkClass = () => {
           $divClassFeatures.empty();
           $divSubclassFeatures.empty();
+          $lblProfBonus.text("+2"); //Default, even for lvl 0 characters
           let classData = this.getClassData(this._parent.compClass);
           //If there are no classes selected, just print none and return
           let textOut = "";
@@ -330,7 +331,6 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
                 text += `${text.length > 0? ", " : ""}${feature.name}`;
                 return text;
               }
-
               
               for(let f of d.cls.classFeatures){
                 classFeaturesText = tryPrintFeature(f, classFeaturesText);
@@ -355,6 +355,10 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
               }
           }
           $lblClass.html(textOut);
+
+          //Calculate proficiency bonus
+          const profBonus = this._getProfBonus(this._parent.compClass);
+          $lblProfBonus.text(`${(profBonus > 0? "+":"")}${profBonus}`);
       };
       //We need some hooks to redraw class info
       this._parent.compClass.addHookBase("class_ixPrimaryClass", hkClass);
