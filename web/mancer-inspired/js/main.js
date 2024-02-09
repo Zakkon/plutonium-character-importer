@@ -409,7 +409,7 @@ class CharacterBuilder {
       //Note that this does not delete the sources, and they can still be toggled on again via the filter
       const DEFAULT_SOURCES = [Parser.SRC_PHB, Parser.SRC_DMG, Parser.SRC_XGE, Parser.SRC_VGM, Parser.SRC_MPMM];
       const testApplyDefaultSources = () => {
-          HelperFunctions.setModalFilterSourcesStrings(this.compBackground.modalFilterBackgrounds, DEFAULT_SOURCES);
+          //HelperFunctions.setModalFilterSourcesStrings(this.compBackground.modalFilterBackgrounds, DEFAULT_SOURCES);
           HelperFunctions.setModalFilterSourcesStrings(this.compRace.modalFilterRaces, DEFAULT_SOURCES);
 
           //This is a simple way to toggle on homebrew sources

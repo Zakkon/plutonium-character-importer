@@ -749,16 +749,19 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
             let outStr = "";
             for(let it of result.startingItems){
               outStr += (outStr.length>0? ", " : "") + (it.quantity>1? it.quantity+"x " : "") + it.item.name;
+              if(!it.item.weight){continue;}
               weightLbs += (it.item.weight * it.quantity);
             }
             for(let it of result.boughtItems){
               outStr += (outStr.length>0? ", " : "") + (it.quantity>1? it.quantity+"x " : "") + it.item.name;
+              if(!it.item.weight){continue;}
               weightLbs += (it.item.weight * it.quantity);
             }
             const span = $$`<span>${outStr}</span>`;
             $$`<label><b>Carried Gear: </b>${span}</label>`.appendTo($divEquipment);
 
             //Print carrying capacity info
+            console.log("WEIGHT", weightLbs, coinWeight);
             const USE_COIN_WEIGHT = true;
             const USE_VARIANT_ENCUMBERANCE = true;
             if(USE_COIN_WEIGHT){weightLbs += coinWeight;}
@@ -798,6 +801,7 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
 
       //#region Feats
       const hkFeats = () => {
+        $divFeatFeatures.empty();
         //We need to get all our feats somehow
         let featInfo = this._getFeats();
         $$`<div><b>Feats:</b></div>`.appendTo($divFeatFeatures);
@@ -808,12 +812,23 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
 
         const race = this.getRace_();
         if(race != null){
-          for(let asiFeat of featInfo.raceFeats){
-            featsText += (featsText.length>0? ", " : "") + asiFeat.feat.name;
+          for(let raceFeat of featInfo.raceFeats){
+            featsText += (featsText.length>0? ", " : "") + raceFeat.feat.name;
             // + ` (${race.name})`;
           }
         }
-        
+
+        const bk = this.getBackground();
+        for(let bkFeat of featInfo.backgroundFeats){
+          featsText += (featsText.length>0? ", " : "") + bkFeat.feat.name;
+          // + ` (${bk.name})`;
+        }
+
+        for(let customFeat of featInfo.customFeats){
+          featsText += (featsText.length>0? ", " : "") + customFeat.feat.name;
+          // + ` (${bk.name})`;
+        }
+
         $$`<div>${featsText}</div>`.appendTo($divFeatFeatures);
       }
       this._parent.compClass.addHookBase("class_ixPrimaryClass", hkFeats);
@@ -991,11 +1006,40 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
         const feat = this._parent.compAbility._data.feat[ixFeat];
         raceFeats.push({raceFeatIx:i, ixFeat:ixFeat, feat:feat});
       }
-      //common_additionalFeats_race_fromFilter_0_ixFeatAbility: 0
-      //common_additionalFeats_race_ixSel: 0
+      
+
+      //Get feats from backgrounds
+      //For now, assume we get ALL feats from the background (i dont know of a background that lets you choose between feats)
+      const bkFeats = [];
+      const bk = this.getBackground();
+      if(bk && bk.feats){
+        for(let f of bk.feats){
+          //find feat by uid
+          //TODO: improve this
+          const featUid = Object.keys(f)[0];
+          let parts = featUid.split("|");
+          if(parts.length!=2){console.error("Feat UID does not seem to be structured correctly:", featUid);}
+          let name = parts[0].toLowerCase();
+          let source = parts[1].toLowerCase();
+          const feat = this._parent.compAbility._data.feat.filter(f => f.name.toLowerCase() == name && f.source.toLowerCase() == source)[0];
+          bkFeats.push({feat:feat});
+        }
+      }
+
+      //Add custom added feats
+      const numCustomASIFeatOpportunities = Object.keys(asiData).filter((prop, val) => prop.startsWith("common_asi_custom_") && prop.endsWith("_mode")).length;
+      const customFeats = [];
+      for(let i = 0; i < numCustomASIFeatOpportunities; ++i){
+        const mode = asiData[(`common_asi_custom_${i}_mode`)];
+        if(mode != "feat"){continue;} //Mode must be feat, else it means the user choise an ASI instead
+        const ixFeat = asiData[(`common_asi_custom_${i}_ixFeat`)];
+        if(ixFeat==null || ixFeat<0){continue;} //No feat selected yet
+        const feat = this._parent.compAbility._data.feat[ixFeat];
+        customFeats.push({asiIx:i, ixFeat:ixFeat, feat:feat});
+      }
 
       console.log("FEAT INFO", asiData);
-      return {asiFeats: asiFeats, raceFeats: raceFeats};
+      return {asiFeats: asiFeats, raceFeats: raceFeats, backgroundFeats:bkFeats, customFeats:customFeats};
     }
 
     _pullProficienciesFromComponentForm(component, output, prop, isStringArray = false){
@@ -1061,15 +1105,14 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
       let remainingCp = startingCp - spentCp;
       const totalCp = remainingCp;
 
-      const ratio_pp = 1000;
-      const ratio_gp = 100;
-      //const ratio_el = 50;
-      const ratio_sp = 10;
+      //const ratio_pp = Parser.COIN_CONVERSIONS[Parser.COIN_ABVS.indexOf("pp")];
+      const ratio_gp = Parser.COIN_CONVERSIONS[Parser.COIN_ABVS.indexOf("gp")];
+      //const ratio_el = Parser.COIN_CONVERSIONS[Parser.COIN_ABVS.indexOf("ep")];
+      const ratio_sp = Parser.COIN_CONVERSIONS[Parser.COIN_ABVS.indexOf("sp")];
       //let platinum = Math.floor(remainingCp / ratio_pp); remainingCp -= (platinum * ratio_pp);
       let gold = Math.floor(remainingCp / ratio_gp); remainingCp -= (gold * ratio_gp);
       let silver = Math.floor(remainingCp / ratio_sp); remainingCp -= (silver * ratio_sp);
       
-      console.log("COMPGOLD", state);
 
       return {copper:remainingCp, silver:silver, gold:gold};
     }
