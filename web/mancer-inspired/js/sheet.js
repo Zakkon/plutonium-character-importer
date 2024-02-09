@@ -650,6 +650,7 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
           const printWeaponAttack = (it) => {
             const isMeleeWeapon = it.item._typeListText.includes("melee weapon");
             const isRangedWeapon = it.item._typeListText.includes("ranged weapon");
+            if(!isMeleeWeapon && !isRangedWeapon){console.log("weapon type not recognized:", it.item, it.item._typeListText);}
 
             if(isMeleeWeapon){
               const result = calcMeleeAttack(it, strMod, dexMod, weaponProfs);
@@ -673,7 +674,11 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
         
       }
       this._parent.compEquipment._compEquipmentShopGold._addHookBase("itemPurchases", hkCalcAttacks);
+      this._parent.compEquipment._compEquipmentCurrency._addHookBase("cpRolled", hkCalcAttacks);
+      this._parent.compEquipment._compEquipmentStartingDefault._addHookBase("defaultItemPulse", hkCalcAttacks);
+      this._parent.compAbility.compStatgen.addHookBase("common_export_str", hkCalcAttacks);
       this._parent.compAbility.compStatgen.addHookBase("common_export_dex", hkCalcAttacks);
+      
       hkCalcAttacks();
       //#endregion
 
@@ -793,6 +798,7 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
       this._parent.compRace.addHookBase("pulseSize", hkEquipment); //needed to refresh race size, which impacts carrying capacity
       this._parent.compEquipment._compEquipmentCurrency._addHookBase("cpRolled", hkEquipment);
       this._parent.compEquipment._compEquipmentShopGold._addHookBase("itemPurchases", hkEquipment);
+      this._parent.compEquipment._compEquipmentStartingDefault._addHookBase("defaultItemPulse", hkEquipment);
       this._parent.compAbility.compStatgen.addHookBase("common_export_str", hkEquipment);
       this._parent.compAbility.compStatgen.addHookBase("common_export_dex", hkEquipment);
       this._parent.compAbility.compStatgen.addHookBase("common_export_cha", hkEquipment);
@@ -1070,7 +1076,7 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
     async _getOurItems() {
       let boughtItems = [];
       let startingItems = [];
-      //Try to get items from bought items (we will do starting items later)
+      //Try to get bought items first
       const compEquipShop = this._parent.compEquipment._compEquipmentShopGold;
       //Go through bought items
       const itemKeys = compEquipShop.__state.itemPurchases;
@@ -1082,7 +1088,7 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
           boughtItems.push({item:foundItem, quantity:item.data.quantity});
       }
 
-      //We also need to go through starting items
+      //We also need to go through starting items, but only if we didnt roll for gold instead
       const rolledForGold = !!this._parent.compEquipment._compEquipmentCurrency._state.cpRolled;
       if(!rolledForGold)
       {
@@ -1090,9 +1096,8 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
           const compEquipDefault = this._parent.compEquipment._compEquipmentStartingDefault;
           const form = await compEquipDefault.pGetFormData();
           const items = form.data.equipmentItemEntries;
-          for(let it of items){
-            startingItems.push(it);
-          }
+          console.log("STARTING EQ FORM:", form);
+          for(let it of items){ startingItems.push(it); }
       }
 
       return {boughtItems: boughtItems, startingItems:startingItems};

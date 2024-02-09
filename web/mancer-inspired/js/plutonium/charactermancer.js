@@ -9394,6 +9394,9 @@ Charactermancer_StartingEquipment.ComponentDefault = class extends Charactermanc
                                 sel.change(()=>{
                                     const val = sel.val();
                                     this._state[propGroup] = ixChoice;
+                                    //fire a pulse here too
+                                    this._state["defaultItemPulse"] = !this._state["defaultItemPulse"];
+                                    console.log("PARENT: ", this._compCurrency);
                                 });
                                 sel.appendTo($listOptions);
 
@@ -9422,18 +9425,16 @@ Charactermancer_StartingEquipment.ComponentDefault = class extends Charactermanc
                                 title: `Are you sure?`,
                                 htmlDescription: `You have already rolled or set gold for equipment!<br>Selecting default starting equipment will discard this roll or value.`,
                             });
-                            if (!isSure)
-                                return;
+                            if (!isSure){return;}
 
                             this._compCurrency.cpRolled = null;
                         }
-
-                        if (isSingleOption)
-                            return;
+                        
+                        if (isSingleOption){return;}
 
                         this._state[propGroup] = ixChoice;
-                    }
-                    );
+                        this._state["defaultItemPulse"] = !this._state["defaultItemPulse"];
+                    });
 
                     const $wrpChildren = $$`<div class="w-100">${children}</div>`;
 
@@ -9447,15 +9448,12 @@ Charactermancer_StartingEquipment.ComponentDefault = class extends Charactermanc
                             return;
                         }
 
-                        if (isSingleOption)
-                            $btnSelGroup.prop("disabled", true);
+                        if (isSingleOption){$btnSelGroup.prop("disabled", true);}
 
-                        if (this._state[propGroup] === ixChoice)
-                            $btnSelGroup.addClass("active");
-                        else
-                            $btnSelGroup.removeClass("active");
-                    }
-                    ;
+                        if (this._state[propGroup] === ixChoice){$btnSelGroup.addClass("active");}
+                        else{$btnSelGroup.removeClass("active");}
+
+                    };
                     this._addHookBase(propGroup, hkSelGroup);
                     this._compCurrency.addHookCpRolled(hkSelGroup);
                     this._fnsUnhook.push(()=>this._removeHookBase(propGroup, hkSelGroup));
@@ -9481,6 +9479,7 @@ Charactermancer_StartingEquipment.ComponentDefault = class extends Charactermanc
             if (!$rows.length) {
                 $wrpRows.append(`<div class="ve-flex-vh-center w-100 h-100 italic ve-muted">No starting equipment available.</div>`);
             }
+
         };
         
         this._compCurrency.addHookStartingEquipment(hkStartingEquipment);
