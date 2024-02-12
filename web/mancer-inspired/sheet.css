@@ -713,6 +713,11 @@
   form.charsheet main section.flavor div:last-child {
     border-radius: 0 0 10px 10px;
   }
+  form.charsheet main .bkFeatures li{
+    list-style-type: initial;
+    margin-left: 10px;
+    display: list-item;
+  }
   form.charsheet main section.features {
     padding: 10px;
   }
@@ -732,6 +737,9 @@
     height: 33em;
   }
   form.charsheet main section.features div .featureTextArea > div {
-    padding-bottom: 2px;
+    padding-bottom: 10px;
     font-size: 12px;
+  }
+  form.charsheet .ml10 {
+    margin-left: 10px;
   }

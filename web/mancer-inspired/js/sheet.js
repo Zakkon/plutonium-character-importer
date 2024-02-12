@@ -117,6 +117,7 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
       const $divClassFeatures = $$`<div></div>`;
       const $divSubclassFeatures = $$`<div></div>`;
       const $divFeatFeatures = $$`<div></div>`;
+      const $divBackgroundFeatures = $$`<div class="bkFeatures"></div>`;
       const $divEquipment = $$`<div class ="equipmentTextArea textbox"></div>`;
       const $attacksTextArea = $$`<div class ="attacksTextArea textbox"></div>`;
       const $lblMaxHP = $$`<label class="score"></label>`;
@@ -283,6 +284,7 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
         <div>
           <label class="upperCase">Features & Traits</label>
           <div class ="featureTextArea textbox">
+          ${$divBackgroundFeatures}
           ${$divClassFeatures}
           ${$divSubclassFeatures}
           ${$divFeatFeatures}
@@ -381,9 +383,71 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
       
       //#region Background
       const hkBackground = () => {
+          $divBackgroundFeatures.empty();
           let curBackground = this.getBackground();
           const n = curBackground? curBackground.name : "None";
           $lblBackground.text(n);
+
+          //Lets also do some info for the personalities, ideals, bonds and flaws
+          if(!curBackground){return;}
+          $$`<div><b>${curBackground.name} Background:</b></div>`.appendTo($divBackgroundFeatures);
+          //Get feature from background
+          let foundFeature = "";
+          for(let i = 0; i < curBackground.entries.length && foundFeature.length < 1; ++i){
+            let e = curBackground.entries[i];
+            if(e.type=="entries" && e.name.startsWith("Feature: ")){
+              foundFeature = e.name.substr(("Feature: ").length);
+            }
+          }
+          let list = $$`<ul></ul>`;
+          if(foundFeature){
+            $$`<li><div><b>Feature: </b>${foundFeature}</div></li>`.appendTo(list);
+          }
+          list.appendTo($divBackgroundFeatures);
+          console.log("BK", curBackground);
+          let characteristics = this.getBackgroundChoices();
+          let bonds = [];
+          let flaws = [];
+          let ideals = [];
+          let personalityTraits = [];
+          for(let key of Object.keys(characteristics)){
+            const val = characteristics[key];
+            if(!val){continue;}
+            key = key.toLowerCase();
+            if(key.startsWith("bond")){bonds.push(val);}
+            else if(key.startsWith("flaw")){flaws.push(val);}
+            else if(key.startsWith("ideal")){ideals.push(val);}
+            else if(key.startsWith("personalitytrait")){personalityTraits.push(val);}
+          }
+
+          const createSubElements = (strings, title) => {
+            let firstString = "";
+            let subElements = [];
+            for(let s of strings){
+              if(firstString.length<1){
+                firstString = s;
+              }
+              else{
+                subElements.push($$`<div class="ml10">${s}</div>`);
+              }
+            }
+
+            const mainElement = $$`<div><b>${title}</b>${firstString}</div>`;
+            for(let sub of subElements){mainElement.append(sub);}
+            return $$`<li>${mainElement}</li>`;
+          }
+          if(personalityTraits.length>0){
+            createSubElements(personalityTraits, `Trait${personalityTraits.length>1?"s":""}: `).appendTo(list);
+          }
+          if(ideals.length > 0){
+            createSubElements(ideals, `Ideal${ideals.length>1?"s":""}: `).appendTo(list);
+          }
+          if(bonds.length > 0){
+            createSubElements(bonds, `Bond${bonds.length>1?"s":""}: `).appendTo(list);
+          }
+          if(flaws.length > 0){
+            createSubElements(flaws, `Flaw${flaws.length>1?"s":""}: `).appendTo(list);
+          }
       };
       this._parent.compBackground.addHookBase("background_pulseBackground", hkBackground);
       hkBackground();
@@ -814,7 +878,7 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
         $divFeatFeatures.empty();
         //We need to get all our feats somehow
         let featInfo = this._getFeats();
-        $$`<div><b>Feats:</b></div>`.appendTo($divFeatFeatures);
+        
         let featsText = "";
         for(let asiFeat of featInfo.asiFeats){
           featsText += (featsText.length>0? ", " : "") + asiFeat.feat.name;
@@ -838,7 +902,8 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
           featsText += (featsText.length>0? ", " : "") + customFeat.feat.name;
           // + ` (${bk.name})`;
         }
-
+        if(featsText.length<1){return;}
+        $$`<div><b>Feats:</b></div>`.appendTo($divFeatFeatures);
         $$`<div>${featsText}</div>`.appendTo($divFeatFeatures);
       }
       this._parent.compClass.addHookBase("class_ixPrimaryClass", hkFeats);
@@ -847,7 +912,6 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
       this._parent.compClass.addHookBase("class_pulseChange", hkFeats); //This also senses when subclass is changed
       this._parent.compAbility.compStatgen.addHookBase("common_pulseAsi", hkFeats); //This gets fired like all the time feats get added/removed/altered
       //#endregion
-
       wrapper.appendTo(tabSheet);
 
       
@@ -917,6 +981,12 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
     }
     getBackground(){
         return this._parent.compBackground.getBackground_(); 
+    }
+    getBackgroundChoices(){
+      let compBk = this._parent.compBackground;
+      let form = compBk.compBackgroundCharacteristics.pGetFormData();
+      console.log("FORM", form);
+      return form.data;
     }
 
     test_gatherExportInfo() {
