@@ -116,6 +116,7 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
       const $divFeatures = $$`<div class ="featureTextArea textbox"></div>`;
       const $divClassFeatures = $$`<div></div>`;
       const $divSubclassFeatures = $$`<div></div>`;
+      const $divSpells = $$`<div></div>`;
       const $divFeatFeatures = $$`<div></div>`;
       const $divBackgroundFeatures = $$`<div class="bkFeatures"></div>`;
       const $divEquipment = $$`<div class ="equipmentTextArea textbox"></div>`;
@@ -266,20 +267,6 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
       ${$divCarry}
     </section>
     <section>
-      <section class="flavor">
-        <div class="personality">
-          <label for="personality">Personality</label><textarea name="personality"></textarea>
-        </div>
-        <div class="ideals">
-          <label for="ideals">Ideals</label><textarea name="ideals"></textarea>
-        </div>
-        <div class="bonds">
-          <label for="bonds">Bonds</label><textarea name="bonds"></textarea>
-        </div>
-        <div class="flaws">
-          <label for="flaws">Flaws</label><textarea name="flaws"></textarea>
-        </div>
-      </section>
       <section class="features">
         <div>
           <label class="upperCase">Features & Traits</label>
@@ -288,6 +275,14 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
           ${$divClassFeatures}
           ${$divSubclassFeatures}
           ${$divFeatFeatures}
+          </div>
+        </div>
+      </section>
+      <section class="spells">
+        <div>
+          <label class="upperCase">Spells</label>
+          <div class ="spellsTextArea textbox">
+          ${$divSpells}
           </div>
         </div>
       </section>
@@ -306,7 +301,7 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
           $divClassFeatures.empty();
           $divSubclassFeatures.empty();
           $lblProfBonus.text("+2"); //Default, even for lvl 0 characters
-          let classData = this.getClassData(this._parent.compClass);
+          let classData = ActorCharactermancerSheet.getClassData(this._parent.compClass);
           //If there are no classes selected, just print none and return
           let textOut = "";
           if(!classData?.length){ $lblClass.html(textOut); return; }
@@ -526,7 +521,7 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
           const conMod = this._getAbilityModifier("con");
           const dexMod = this._getAbilityModifier("dex");
           //Grab HP increase mode from class component (from each of the classes!)
-          const classList = this.getClassData(this._parent.compClass);
+          const classList = ActorCharactermancerSheet.getClassData(this._parent.compClass);
           let hpTotal = 0; //Calculate max
           let levelTotal = 0;
           let hitDiceInfo = {};
@@ -753,13 +748,27 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
       //#region Spells
       const $colSpells = $$`<div></div>`.appendTo($wrpDisplay);
       const hkSpells = () => {
-          $colSpells.empty();
-          $colSpells.append("<hr class=\"hr-2\"><div class=\"bold mb-2\">Spells</div>");
+          $divSpells.empty();
+          $divSpells.append("<hr class=\"hr-2\"><div class=\"bold mb-2\">Spells</div>");
           
-          const spellsByLvl = ActorCharactermancerSheet.getAllSpells(this._parent.compSpell);
-          for(let lvl = 0; lvl < spellsByLvl.length; ++lvl){
-              const spellsAtLvl = spellsByLvl[lvl] || null;
-              if(!spellsAtLvl || !spellsAtLvl.length){continue;}
+          const spellsListStr = (spells) => {
+            let spellsStr = "";
+            for(let i = 0; i < spells.length; ++i){
+                spellsStr += spells[i];
+                if(i+1 < spells.length){spellsStr += ", ";}
+            }
+            return spellsStr;
+          };
+          
+          const spellsKnownByLvl = ActorCharactermancerSheet.getAllSpellsKnown(this._parent.compSpell);
+          //List cantrips known (these never change)
+          $$`<div class="mb10"><b>Cantrips Known: </b><i>${spellsListStr(spellsKnownByLvl[0])}</i></div>`.appendTo($divSpells);
+          //Add a bit of a spacing here
+
+          $$`<div><b>Prepared Spells</b></div>`.appendTo($divSpells);
+          for(let lvl = 1; lvl < spellsKnownByLvl.length; ++lvl){
+              const knownSpellsAtLvl = spellsKnownByLvl[lvl] || null;
+              if(!knownSpellsAtLvl || !knownSpellsAtLvl.length){continue;}
               let str = "Cantrips";
               switch(lvl){
                   case 0: str = "Cantrips"; break;
@@ -774,15 +783,8 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
                   case 9: str = "9th Level"; break;
                   default: throw new Error("Unimplemented!"); break;
               }
-              str += ":";
-              $colSpells.append(`<div class="bold mb-2">${str}</div>`);
-
-              let spellsStr = "";
-              for(let i = 0; i < spellsAtLvl.length; ++i){
-                  spellsStr += spellsAtLvl[i];
-                  if(i+1 < spellsAtLvl.length){spellsStr += ", ";}
-              }
-              $colSpells.append(`<div>${spellsStr}</div>`);
+              const slots = ActorCharactermancerSheet.getSpellSlotsAtLvl(lvl, this._parent.compClass);
+              $$`<div class="mb10">${str} (${slots} slots): <i>${spellsListStr(knownSpellsAtLvl)}</i></div>`.appendTo($divSpells);
           }
 
           hkCalcAttacks(); //Calculate attacks as well, since it displays cantrip attacks
@@ -935,7 +937,7 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
       if(!form || !form.isFormComplete){return fallback;}
       return form.data;
     }
-    getClassData(compClass) {
+    static getClassData(compClass) {
         const primaryClassIndex = compClass._state.class_ixPrimaryClass;
         //If we have 2 classes, this will be 1
         const highestClassIndex = compClass._state.class_ixMax;
@@ -1388,7 +1390,7 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
      * @returns {number}
      */
     _getProfBonus(){
-        const classList = this.getClassData(this._parent.compClass);
+        const classList = ActorCharactermancerSheet.getClassData(this._parent.compClass);
         let levelTotal = 0;
         for(let ix = 0; ix < classList.length; ++ix){
             const data = classList[ix];
@@ -1516,7 +1518,7 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
      * @param {ActorCharactermancerSpell} compSpells
      * @returns {any[][]}
      */
-    static getAllSpells(compSpells){
+    static getAllSpellsKnown(compSpells){
         let spellsBylevel = [[],[],[],[],[],[],[],[],[],[]];
         //Go through each component that can add spells
         for(let j = 0; j < compSpells.compsSpellSpells.length; ++j)
@@ -1535,6 +1537,38 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
         }
 
         return spellsBylevel;
+    }
+    static getSpellSlotsAtLvl(spellLevel, compClass){
+      
+      let total = 0;
+      let classData = ActorCharactermancerSheet.getClassData(compClass);
+      //console.log("CLASSATA", classData);
+      for(let d of classData){
+
+        //Ask class for spellslots
+        if(d.cls?.classTableGroups){
+          //What is the level we have achieved for this class?
+          let classLevel = d.targetLevel; //this is base 1, so value 1 = level 1
+          let foundSpellSlotsTable = false;
+          for(let i = 0; i < d.cls.classTableGroups.length && !foundSpellSlotsTable; ++i){
+            const t = d.cls.classTableGroups[i];
+            if(!t.rowsSpellProgression){continue;}
+            foundSpellSlotsTable = true;
+            total += t.rowsSpellProgression[classLevel-1][spellLevel-1]; //0 is level 1, 1 is level 2, etc (this applies for both)
+          }
+        }
+        //TODO: Ask subclass for spells lots
+        /* if(d.sc?.classTableGroups){
+          let foundSpellSlotsTable = false;
+          for(let i = 0; i < d.cls.classTableGroups.length && !foundSpellSlotsTable; ++i){
+            const t = d.cls.classTableGroups[i];
+            if(!t.rowsSpellProgression){continue;}
+            foundSpellSlotsTable = true;
+            total += t.rowsSpellProgression[level-1]; //0 is level 1, 1 is level 2, etc
+          }
+        } */
+      }
+      return total;
     }
 
 

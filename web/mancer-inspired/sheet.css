@@ -734,12 +734,38 @@
   form.charsheet main section.features div .featureTextArea {
     border: 0;
     padding: 5px;
-    height: 33em;
+    height: 100%;
   }
   form.charsheet main section.features div .featureTextArea > div {
+    padding-bottom: 10px;
+    font-size: 12px;
+  }
+  form.charsheet main section.spells {
+    padding: 10px;
+  }
+  form.charsheet main section.spells > div {
+    padding: 10px;
+    border: 1px solid black;
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+  }
+  form.charsheet main section.spells div label {
+    text-align: center;
+  }
+  form.charsheet main section.spells div .spellsTextArea {
+    border: 0;
+    padding: 5px;
+    height: 100%;
+  }
+  form.charsheet main section.spells div .spellsTextArea > div {
     padding-bottom: 10px;
     font-size: 12px;
   }
   form.charsheet .ml10 {
     margin-left: 10px;
   }
+  form.charsheet .mb10 {
+    margin-bottom: 10px;
+  }
+
