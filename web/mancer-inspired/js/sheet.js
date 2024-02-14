@@ -749,7 +749,6 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
       const $colSpells = $$`<div></div>`.appendTo($wrpDisplay);
       const hkSpells = () => {
           $divSpells.empty();
-          $divSpells.append("<hr class=\"hr-2\"><div class=\"bold mb-2\">Spells</div>");
           
           const spellsListStr = (spells) => {
             let spellsStr = "";
