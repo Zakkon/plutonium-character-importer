@@ -593,14 +593,17 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
           const profBonus = this._getProfBonus(this._parent.compClass);
           //We now need to get the names of all skill proficiencies
           const proficientSkills = this._grabSkillProficiencies();
+          console.log("PROFSKILLS", proficientSkills);
           const allSkillNames = Parser.SKILL_TO_ATB_ABV;
           for(let skillName of Object.keys(allSkillNames)){
               //Get the modifier for the ability score
               let score = this._getAbilityModifier(Parser.SKILL_TO_ATB_ABV[skillName]);
               //Get proficiency / expertise if we are proficient in the skill
-              if(proficientSkills[skillName] == 1){score += profBonus;}
-              else if(proficientSkills[skillName] == 2){score += (profBonus * 2);}
+              let iconClass = "fa-regular fa-circle";
+              if(proficientSkills[skillName] == 1){score += profBonus; iconClass = "fas fa-fw fa-check";}
+              else if(proficientSkills[skillName] == 2){score += (profBonus * 2); iconClass = "fas fa-fw fa-check-double";}
 
+              const icon = $$`<i class="${iconClass} ptb2"></i>`
               const checkbox = $$`<input type="checkbox"></input>`;
               //TODO: Add another class to it if expertise? this could change the color of the checkbox
               //Alternatively, just create two smaller checkboxes instead?
@@ -610,7 +613,7 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
               
               $$`<li>
               <label for="Acrobatics">${skillName} <span class="skill">(${Parser.SKILL_TO_ATB_ABV[skillName]})</span></label>
-              <label class="modifier">${score>=0?"+"+score : score}</label>${checkbox}
+              <label class="modifier">${score>=0?"+"+score : score}</label>${icon}
               </li>`.appendTo($sectionSkills);
 
               if(skillName.toLowerCase() == "perception"){
@@ -1198,7 +1201,6 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
     }
 
     /**
-     * Description
      * @param {ActorCharactermancerClass} compClass
      * @param {ActorCharactermancerBackground} compBackground
      * @param {ActorCharactermancerRace} compRace
@@ -1224,6 +1226,11 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
         //Then paste skills gained from each class
         for(let ix = 0; ix <= highestClassIndex; ++ix){
             this._pullProficienciesFromComponentForm(compClass.compsClassSkillProficiencies[ix], out, dataProp);
+            for(let fos of compClass.compsClassFeatureOptionsSelect[ix]){
+              if(fos._subCompsExpertise){for(let subcomp of fos._subCompsExpertise){this._pullProficienciesFromComponentForm(subcomp, out, dataProp);}}
+              if(fos._subCompsExpertise){for(let subcomp of fos._subCompsSkillProficiencies){this._pullProficienciesFromComponentForm(subcomp, out, dataProp);}}
+              if(fos._subCompsExpertise){for(let subcomp of fos._subCompsSkillToolLanguageProficiencies){this._pullProficienciesFromComponentForm(subcomp, out, dataProp);}}
+            }
         }
         this._pullProficienciesFromComponentForm(compRace.compRaceSkillProficiencies, out, dataProp);
         this._pullProficienciesFromComponentForm(compBackground.compBackgroundSkillProficiencies, out, dataProp);
@@ -1231,7 +1238,6 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
         return out;
     }
      /**
-     * Description
      * @param {ActorCharactermancerClass} compClass
      * @param {ActorCharactermancerBackground} compBackground
      * @param {ActorCharactermancerRace} compRace

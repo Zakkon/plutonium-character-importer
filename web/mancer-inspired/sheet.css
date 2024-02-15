@@ -234,6 +234,10 @@
     display: inline-block;
     font-size: 20px;
   }
+  form.charsheet main > section section.attributes div.attr-applications{
+    width: 100%;
+    padding-left: 10px;
+  }
   form.charsheet main > section section.attributes div.attr-applications div.inspiration {
     display: flex;
     flex-direction: row-reverse;
@@ -266,7 +270,7 @@
   form.charsheet main > section section.attributes div.attr-applications div.list-section {
     border: 1px solid black;
     border-radius: 10px;
-    padding: 10px 5px;
+    padding: 10px 2px;
   }
   form.charsheet main > section section.attributes div.attr-applications div.list-section div.label {
     margin-top: 10px;
@@ -285,7 +289,7 @@
   }
   form.charsheet main > section section.attributes div.attr-applications div.list-section ul li label {
     text-transform: none;
-    font-size: 8px;
+    font-size: 12px;
     text-align: left;
     order: 3;
   }
@@ -301,7 +305,7 @@
     order: 2;
   }
   form.charsheet main > section section.attributes div.attr-applications div.list-section ul li label.modifier{
-    width: 30px;
+    width: 20px;
     font-size: 12px;
     text-align: center;
     border: 0;
@@ -767,5 +771,12 @@
   }
   form.charsheet .mb10 {
     margin-bottom: 10px;
+  }
+  form.charsheet .ptb2{
+    padding-top: 2px;
+    padding-bottom: 2px;
+    font-size: 13px;
+    width: 10px;
+    height: 10px;
   }
 
