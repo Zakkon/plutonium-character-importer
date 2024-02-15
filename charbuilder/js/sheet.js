@@ -1547,7 +1547,6 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
       
       let total = 0;
       let classData = ActorCharactermancerSheet.getClassData(compClass);
-      //console.log("CLASSATA", classData);
       for(let d of classData){
 
         //Ask class for spellslots
