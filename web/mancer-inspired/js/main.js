@@ -16,12 +16,14 @@ async function handleInit(){
     get() { return true; },
     set(val) {},
   });
+  console.log("Init complete");
 }
 async function handleReady(){
   await Config.pInit(); //Important
   //Prepare indexes of homebrew content
   await Vetools.pDoPreload();
   SideDataInterfaces.init(); //Important
+  console.log("Ready complete");
 }
 
 class SourceManager {

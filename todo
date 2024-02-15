@@ -1,6 +1,9 @@
 BUGS:
 Switching from Sorcerer class lvl 3 to rogue class lvl 3 creates double Expertise (lvl3) select components
 
+WEB:
+    - Use mirror2's render.js instead
+    - Use mirror2's utils-dataloader.js instead (free sidedatainterface to another file)
 
 CLASS
 - Make subclass dropdown be locked until high enough level
