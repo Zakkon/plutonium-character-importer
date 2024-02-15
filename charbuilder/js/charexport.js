@@ -556,14 +556,14 @@ class CharacterExportFvtt{
      */
     static isUploadedFileSource(source){
         //First, get all the brew sourceIds from somewhere
-        let srcIds = this.getLoadedSources();
+        let srcIds = CharacterExportFvtt.getLoadedSources();
         //Next, filter the sources until we get one called 'Upload File'.
         //Alternatively, just check if source.isFile
         srcIds = srcIds.filter(srcId => srcId.isFile);
         if(!srcIds || srcIds.length < 1){return false;}
         //Now that we have confirmed the user did include an 'Upload File' source, we need to check if any uploaded files match
         //We need the uploadedFileMetas for this
-        const fileMetas = CharacterBuilder._testUploadedFileMetas;
+        const fileMetas = SourceManager._testUploadedFileMetas;
         return fileMetas.filter(meta => meta.name == source.filename).length > 0;
     }
 
@@ -593,7 +593,7 @@ class CharacterExportFvtt{
      * abbreviations:string[] _isAutoDetectPrereleaseBrew:boolean, _isExistingPrereleaseBrew:boolean}[]}
      */
     static getLoadedSources(){
-        return CharacterBuilder._testLoadedSources;
+        return SourceManager._testLoadedSources;
     }
     static getBrewSourceIds(){
         //Only return non-default sources for now
@@ -689,7 +689,7 @@ class CharacterExportFvtt{
         //DEBUG - try to only match to uploaded files
         const uploadedFileSources = brewSourceIds.filter(srcId => srcId.isFile);
         if(uploadedFileSources.length > 0){
-            const fileMetas = CharacterBuilder._testUploadedFileMetas;
+            const fileMetas = SourceManager._testUploadedFileMetas;
             console.log("FILE METAS", fileMetas);
             for(let file of fileMetas){
                 if(!file.contents?._meta){continue;}
