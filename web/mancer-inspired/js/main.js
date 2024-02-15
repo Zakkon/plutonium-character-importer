@@ -3,7 +3,7 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 window.addEventListener('load', function () {
    
-    handleInit().then(() => handleReady().then(() => SourceManager._pOpen({actor:null})));
+    handleInit().then(() => handleReady().then(() => SourceManager.defaultStart({actor:null})));
 });
 async function handleInit(){
   //UtilGameSettings.prePreInit();
@@ -36,7 +36,7 @@ class SourceManager {
    * and creates a character builder window that can play around with those sources
    * @param {any} actor Can just be left as null, not used at the moment
    */
-  static async _pOpen({ actor: actor }) {
+  static async defaultStart({ actor: actor }) {
 
     //Try to load source ids from localstorage
     let sourceIds = await this._loadSourceIdsFromStorage({actor});
@@ -53,6 +53,26 @@ class SourceManager {
     const window = new CharacterBuilder(data);
     this._curWindow = window;
   }
+  
+  /**
+   * @param {{sourceIds:any[], uploadedFileMetas:any, customUrls:any}} sourceInfo
+   * @returns {{class:{}[], background:{}[], classFeature:{}[], race:{}[], monster:{}[], item:{}[]
+  * , spell:{}[], subclassFeature:{}[], feat:{}[], optionalFeature:{}[], foundryClass:{}[]}}
+  */
+ static async _loadSources(sourceInfo){
+   //Process and post-process the data
+   //Get entities such as classes, races, backgrounds using the source ids
+   const content = await SourceManager._getOutputEntities(sourceInfo.sourceIds, sourceInfo.uploadedFileMetas, sourceInfo.customUrls, true);
+   //Then perform some post processing
+   const postProcessedData = SourceManager._postProcessAllSelectedData(content);
+   const mergedData = postProcessedData;
+   //Make sure that the data always has an array for classes, races, feats, etc, even if none were provided by the sources
+   SourceManager._DATA_PROPS_EXPECTED.forEach(propExpected => mergedData[propExpected] = mergedData[propExpected] || []);
+   SourceManager._setUsedSourceIds(sourceInfo.sourceIds);
+   SourceManager._testUploadedFileMetas = sourceInfo.uploadedFileMetas;
+
+   return mergedData;
+ }
   /**
    * Perform some post-processing on entities extracted from sources
    * @param {{class:{}[], background:{}[], classFeature:{}[], race:{}[], monster:{}[], item:{}[]
@@ -104,35 +124,6 @@ class SourceManager {
     })), ...(await UtilDataSource.pGetSourcesBrew(ActorCharactermancerSourceSelector._BREW_DIRS, {
       pPostLoad: SourceManager._pPostLoad.bind(this, { isBrew: true, actor: actor })
     }))].filter(dataSource => !UtilWorldDataSourceSelector.isFiltered(dataSource));
-  }
-
-  
-  static async _getDefaultSourceIds({actor}){
-    const isStreamerMode = true;
-      //Create a source obj that contains all the official sources (PHB, XGE, TCE, etc)
-      //This object will have the 'isDefault' property set to true
-      const officialSources = new UtilDataSource.DataSourceSpecial(
-        isStreamerMode? "SRD" : "5etools", this._pLoadVetoolsSource.bind(this),
-        {
-          cacheKey: '5etools-charactermancer',
-          filterTypes: [UtilDataSource.SOURCE_TYP_OFFICIAL_ALL],
-          isDefault: true,
-          pPostLoad: this._pPostLoad.bind(this, { actor: actor })
-      });
-
-      const allBrews = await Vetools.pGetBrewSources(...SourceManager._BREW_DIRS);
-      console.log("Allbrews", allBrews);
-      const chosenBrew = allBrews[202];
-      console.log("Adding brew ", chosenBrew);
-
-      const chosenBrewSourceUrl = new UtilDataSource.DataSourceUrl(chosenBrew.name, chosenBrew.url,{
-        pPostLoad: this._pPostLoad.bind(this, { isBrew: true, actor: actor }),
-        filterTypes: [UtilDataSource.SOURCE_TYP_BREW],
-        abbreviations: chosenBrew.abbreviations,
-        brewUtil: BrewUtil2,
-      });
-
-      return [officialSources, chosenBrewSourceUrl];
   }
 
   /**
@@ -210,17 +201,19 @@ Renderer.spell.populateBrewLookup(await BrewUtil2.pGetBrewProcessed(), {isForce:
       //TEMPFIX
       /* const { DataConverterClassSubclassFeature: convSubclFeature  } = await Promise.resolve().then(function () {
         return DataConverterClassSubclassFeature;
-      }); */
+      });
+      const isIgnoredLookup = await convSubclFeature.pGetClassSubclassFeatureIgnoredLookup({ data: data });
+      */
 
-      const isIgnoredLookup = await DataConverterClassSubclassFeature/*convSubclFeature*/.pGetClassSubclassFeatureIgnoredLookup({ data: data });
+      const isIgnoredLookup = await DataConverterClassSubclassFeature.pGetClassSubclassFeatureIgnoredLookup({ data: data });
       const postLoadedData = await PageFilterClassesFoundry.pPostLoad({
-        'class': data.class,
-        'subclass': data.subclass,
-        'classFeature': data.classFeature,
-        'subclassFeature': data.subclassFeature
+        class: data.class,
+        subclass: data.subclass,
+        classFeature: data.classFeature,
+        subclassFeature: data.subclassFeature
       }, {
-        //'actor': _0x5d48db,
-        'isIgnoredLookup': isIgnoredLookup
+        actor: null,
+        isIgnoredLookup: isIgnoredLookup
       });
       Object.assign(data, postLoadedData);
       if (data.class) {
@@ -232,32 +225,6 @@ Renderer.spell.populateBrewLookup(await BrewUtil2.pGetBrewProcessed(), {isForce:
       data.optionalfeature = MiscUtil.copy(data.optionalfeature);
     }
     return data;
-  }
-
-  /**
-   * @param {any} sourceIds
-   */
-  static async _setUsedSourceIds(sourceIds){
-    CharacterBuilder._testLoadedSources = sourceIds;
-  }
-  /**
-   * @param {{sourceIds:any[], uploadedFileMetas:any, customUrls:any}} sourceInfo
-   * @returns {{class:{}[], background:{}[], classFeature:{}[], race:{}[], monster:{}[], item:{}[]
-   * , spell:{}[], subclassFeature:{}[], feat:{}[], optionalFeature:{}[], foundryClass:{}[]}}
-   */
-  static async _loadSources(sourceInfo){
-    //Process and post-process the data
-    //Get entities such as classes, races, backgrounds using the source ids
-    const content = await SourceManager._getOutputEntities(sourceInfo.sourceIds, sourceInfo.uploadedFileMetas, sourceInfo.customUrls, true);
-    //Then perform some post processing
-    const postProcessedData = SourceManager._postProcessAllSelectedData(content);
-    const mergedData = postProcessedData;
-    //Make sure that the data always has an array for classes, races, feats, etc, even if none were provided by the sources
-    SourceManager._DATA_PROPS_EXPECTED.forEach(propExpected => mergedData[propExpected] = mergedData[propExpected] || []);
-    SourceManager._setUsedSourceIds(sourceInfo.sourceIds);
-    CharacterBuilder._testUploadedFileMetas = sourceInfo.uploadedFileMetas;
-
-    return mergedData;
   }
   /**
    * Apply new source IDs, and fetch entities from them. Completely reloads the entire character builder.
@@ -272,6 +239,12 @@ Renderer.spell.populateBrewLookup(await BrewUtil2.pGetBrewProcessed(), {isForce:
     //Create a new window
     const window = new CharacterBuilder(data);
     this._curWindow = window;
+  }
+  /**
+   * @param {any} sourceIds
+   */
+  static async _setUsedSourceIds(sourceIds){
+    SourceManager._testLoadedSources = sourceIds;
   }
   static saveSourceIdsToStorage(sourceIds){
     //First, we need to compress the sourceIds into the minimal used information
@@ -311,6 +284,33 @@ Renderer.spell.populateBrewLookup(await BrewUtil2.pGetBrewProcessed(), {isForce:
       }
       return match;
     });
+  }
+  static async _getDefaultSourceIds({actor}){
+    const isStreamerMode = true;
+      //Create a source obj that contains all the official sources (PHB, XGE, TCE, etc)
+      //This object will have the 'isDefault' property set to true
+      const officialSources = new UtilDataSource.DataSourceSpecial(
+        isStreamerMode? "SRD" : "5etools", this._pLoadVetoolsSource.bind(this),
+        {
+          cacheKey: '5etools-charactermancer',
+          filterTypes: [UtilDataSource.SOURCE_TYP_OFFICIAL_ALL],
+          isDefault: true,
+          pPostLoad: this._pPostLoad.bind(this, { actor: actor })
+      });
+
+      const allBrews = await Vetools.pGetBrewSources(...SourceManager._BREW_DIRS);
+      console.log("Allbrews", allBrews);
+      const chosenBrew = allBrews[202];
+      console.log("Adding brew ", chosenBrew);
+
+      const chosenBrewSourceUrl = new UtilDataSource.DataSourceUrl(chosenBrew.name, chosenBrew.url,{
+        pPostLoad: this._pPostLoad.bind(this, { isBrew: true, actor: actor }),
+        filterTypes: [UtilDataSource.SOURCE_TYP_BREW],
+        abbreviations: chosenBrew.abbreviations,
+        brewUtil: BrewUtil2,
+      });
+
+      return [officialSources, chosenBrewSourceUrl];
   }
   static minifySourceId(sourceId){
     let out = {name:sourceId.name};
@@ -459,10 +459,6 @@ class CharacterBuilder {
         this.tabSpells = newPanel();
         this.tabFeats = newPanel();
         this.tabSheet = newPanel();
-
-        /* const modal = TestModal2.createNew();
-        console.log(modal);
-        modal.show(); */
     }
     async pLoad(){
         if(!SETTINGS.FILTERS){return;}
@@ -535,7 +531,7 @@ class CharacterBuilder {
       //Get all available sources
       const allSources = await SourceManager._pGetSources({actor: this.actor});
       //Get the names of the sources we already have set as enabled
-      const preEnabledSources = CharacterBuilder._testLoadedSources;
+      const preEnabledSources = SourceManager._testLoadedSources;
       const sourceSelector = new ActorCharactermancerSourceSelector({
         title: "Select Sources",
         filterNamespace: 'ActorCharactermancerSourceSelector_filter',

@@ -48,29 +48,28 @@ class ActorCharactermancerBaseComponent extends BaseComponent {
         else { element.hideVe(); this[propComp] = null; }
     }
     _shared_renderEntity_stgDiDrDvCi({
-      $stg: _0x53e426,
-      ent: _0x137c88,
-      propComp: _0x528966,
-      CompClass: _0x49593b,
-      title: _0xf6f71d,
-      propRaceData: _0xcf0cc,
-      propTraits: _0x141da8
+      $stg: $stg,
+      ent: ent,
+      propComp: propComp,
+      CompClass: compClass,
+      title: title,
+      propRaceData: propRaceData,
+      propTraits: propTraits
     }) {
-      _0x53e426.empty();
-      if (_0x137c88 && _0x137c88[_0xcf0cc]) {
-        _0x53e426.showVe().append("<hr class=\"hr-2\"><div class=\"bold mb-2\">" + _0xf6f71d + "</div>");
-        const _0x44ab2c = {
-          [_0xcf0cc]: MiscUtil.get(this._actor, "_source", "system", "traits", _0x141da8)
-        };
-        this[_0x528966] = new _0x49593b({
-          'existing': _0x49593b.getExisting(_0x44ab2c),
-          'existingFvtt': _0x44ab2c,
-          'available': _0x137c88[_0xcf0cc]
+      $stg.empty();
+      if (ent && ent[propRaceData]) {
+        $stg.showVe().append("<hr class=\"hr-2\"><div class=\"bold mb-2\">" + title + "</div>");
+        const actorRaceData = {[propRaceData]: MiscUtil.get(this._actor, "_source", "system", "traits", propTraits)};
+        this[propComp] = new compClass({
+          existing: compClass.getExisting(actorRaceData),
+          existingFvtt: actorRaceData,
+          available: ent[propRaceData]
         });
-        this[_0x528966].render(_0x53e426);
-      } else {
-        _0x53e426.hideVe();
-        this[_0x528966] = null;
+        this[propComp].render($stg);
+      }
+      else {
+        $stg.hideVe();
+        this[propComp] = null;
       }
     }
 
@@ -193,7 +192,7 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
             $iptSearch: inputSearch,
             fnUpdateHidden: fnUpdateHidden
         } = ComponentUiUtil.$getSelSearchable(this, propIxClass, {
-            values: this._data.class.map((_0x2b7aa2, _0x2f3ba4) => _0x2f3ba4), //Think this is just the ix's of the classes
+            values: this._data.class.map((key, val) => val), //Think this is just the ix's of the classes
             isAllowNull: true,
             fnDisplay: clsIx => {
                 //Using a simple index, ask _data for the class
@@ -255,7 +254,7 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
             if (userSelection == null || !userSelection.class) {
             return;
             }
-            const class_index = this._data.class.findIndex(_0x46996f => _0x46996f.name === userSelection.class.name && _0x46996f.source === userSelection['class'].source);
+            const class_index = this._data.class.findIndex(ix => ix.name === userSelection.class.name && ix.source === userSelection['class'].source);
             if (!~class_index) { throw new Error("Could not find selected class: " + JSON.stringify(userSelection["class"])); }
             this._state[propIxClass] = class_index;
             await this._pGate(lockChangeClass);
@@ -575,14 +574,14 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
         console.warn(...LGT, failMatchSc, "Strict source matching is: " + Config.get("import", "isStrictMatching") + '.');
         }
         return new ActorCharactermancerClass.ExistingClassMeta({
-        'item': cls,
-        'ixClass': _clsIx,
-        'isUnknownClass': !~_clsIx,
-        'ixSubclass': _scIx,
-        'isUnknownSubclass': _scIx == null && !~_scIx,
-        'level': Number(cls.system.levels || 0x0),
-        'isPrimary': isPrimaryClass,
-        'spellSlotLevelSelection': cls?.flags?.[SharedConsts.MODULE_ID]?.['spellSlotLevelSelection']
+        item: cls,
+        ixClass: _clsIx,
+        isUnknownClass: !~_clsIx,
+        ixSubclass: _scIx,
+        isUnknownSubclass: _scIx == null && !~_scIx,
+        level: Number(cls.system.levels || 0),
+        isPrimary: isPrimaryClass,
+        spellSlotLevelSelection: cls?.flags?.[SharedConsts.MODULE_ID]?.['spellSlotLevelSelection']
         });
       });
 
@@ -624,19 +623,15 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
             (UtilDocumentSource.getDocumentSource(cls).source || '').toLowerCase() === Parser.sourceJsonToAbv(_cls.source).toLowerCase());
         });
     }
-    _pLoad_getExistingSubclassIndex(_0x161fa4, _0x3e14d4) {
-      if (!_0x3e14d4 || !~_0x161fa4) {
-        return null;
+    _pLoad_getExistingSubclassIndex(clsIx, subclasses) {
+      if (!subclasses || !~clsIx) { return null;  }
+      const classInfo = this._data['class'][clsIx];
+      const flag = subclasses.flags?.[SharedConsts.MODULE_ID];
+      if (flag?.["propDroppable"] === "subclass" && flag?.["source"] && flag?.["hash"]) {
+        const match = classInfo.subclasses.findIndex(sc => flag.source === sc.source && flag.hash === UrlUtil.URL_TO_HASH_BUILDER.subclass(sc));
+        if (~match) {return match;}
       }
-      const _0x10558f = this._data['class'][_0x161fa4];
-      const _0x50af12 = _0x3e14d4.flags?.[SharedConsts.MODULE_ID];
-      if (_0x50af12?.["propDroppable"] === "subclass" && _0x50af12?.["source"] && _0x50af12?.["hash"]) {
-        const _0x37d579 = _0x10558f.subclasses.findIndex(_0x5067b7 => _0x50af12.source === _0x5067b7.source && _0x50af12.hash === UrlUtil.URL_TO_HASH_BUILDER.subclass(_0x5067b7));
-        if (~_0x37d579) {
-          return _0x37d579;
-        }
-      }
-      return _0x10558f.subclasses.findIndex(_0x54c0e7 => (IntegrationBabele.getOriginalName(_0x3e14d4) || '').toLowerCase().trim() === _0x54c0e7.name.toLowerCase().trim() && (!Config.get("import", 'isStrictMatching') || (UtilDocumentSource.getDocumentSource(_0x3e14d4).source || '').toLowerCase() === Parser.sourceJsonToAbv(_0x54c0e7.source).toLowerCase()));
+      return classInfo.subclasses.findIndex(sc => (IntegrationBabele.getOriginalName(subclasses) || '').toLowerCase().trim() === sc.name.toLowerCase().trim() && (!Config.get("import", 'isStrictMatching') || (UtilDocumentSource.getDocumentSource(subclasses).source || '').toLowerCase() === Parser.sourceJsonToAbv(sc.source).toLowerCase()));
     }
     //#endregion
     //#region WEB
@@ -1252,57 +1247,43 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
             await this._class_renderClass_pClassTable({ 'ix': ix, 'cls': cls, 'sc': sc });
         }
     }
-    async _class_renderClass_pDispSubclass({
-      ix: _0xd8d788,
-      $dispSubclass: _0x189ba0,
-      cls: _0x3f21f6,
-      sc: _0x5dd639
-    }) {
-      _0x189ba0.empty();
-      if (_0x5dd639) {
-        _0x189ba0.append("<hr class=\"hr-1\">");
-        const _0x19c6a9 = _0x5dd639._isStub ? _0x5dd639 : await DataLoader.pCacheAndGet("subclass", _0x5dd639.source, UrlUtil.URL_TO_HASH_BUILDER.subclass(_0x5dd639));
-        let _0x4cd88b = MiscUtil.copy(_0x19c6a9.subclassFeatures).flat();
-        _0x4cd88b = Charactermancer_Class_Util.getFilteredEntries_bySource(_0x4cd88b, this._modalFilterClasses.pageFilter, this._modalFilterClasses.pageFilter.filterBox.getValues());
-        const _0x92cb5c = {
-          'type': "section",
-          'entries': _0x4cd88b
-        };
-        if (_0x92cb5c.entries[0x0] && _0x92cb5c.entries[0x0].name) {
-          delete _0x92cb5c.entries[0x0].name;
-        }
-        this._class_renderEntriesSection(_0x189ba0, _0x5dd639.name, _0x92cb5c);
+    async _class_renderClass_pDispSubclass({ix: ix, $dispSubclass: parentElement, cls: cls, sc: sc }) {
+      parentElement.empty();
+      if (sc) {
+        parentElement.append("<hr class=\"hr-1\">");
+        const subclassInfo = sc._isStub ? sc : await DataLoader.pCacheAndGet("subclass", sc.source, UrlUtil.URL_TO_HASH_BUILDER.subclass(sc));
+        let scFeatures = MiscUtil.copy(subclassInfo.subclassFeatures).flat();
+        scFeatures = Charactermancer_Class_Util.getFilteredEntries_bySource(scFeatures, this._modalFilterClasses.pageFilter, this._modalFilterClasses.pageFilter.filterBox.getValues());
+        const obj = { type: "section", entries: scFeatures };
+        if (obj.entries[0] && obj.entries[0].name) { delete obj.entries[0].name; }
+        this._class_renderEntriesSection(parentElement, sc.name, obj);
       }
       await this._class_renderClass_pClassTable({
-        'ix': _0xd8d788,
-        'cls': _0x3f21f6,
-        'sc': _0x5dd639
+        'ix': ix,
+        'cls': cls,
+        'sc': sc
       });
     }
-    async _class_renderClass_pClassTable({
-      ix: _0x29a0a3,
-      cls: _0xed637d,
-      sc: _0x386619
-    }) {
-      const _0x57a945 = _0xed637d ? _0xed637d._isStub ? _0xed637d : await DataLoader.pCacheAndGet('class', _0xed637d.source, UrlUtil.URL_TO_HASH_BUILDER["class"](_0xed637d)) : null;
-      const _0x4d6b47 = _0x386619 ? _0x386619._isStub ? _0x386619 : await DataLoader.pCacheAndGet("subclass", _0x386619.source, UrlUtil.URL_TO_HASH_BUILDER.subclass(_0x386619)) : null;
-      const _0x2da178 = _0x57a945?.["classFeatures"] || _0x4d6b47?.["subclassFeatures"] ? this._modalFilterClasses.pageFilter.filterBox.getValues() : null;
-      if (_0x57a945?.["classFeatures"]) {
-        _0x57a945.classFeatures = _0x57a945.classFeatures.map(_0x2106c1 => {
-          _0x2106c1 = MiscUtil.copy(_0x2106c1);
-          _0x2106c1 = Charactermancer_Class_Util.getFilteredEntries_bySource(_0x2106c1, this._modalFilterClasses.pageFilter, _0x2da178);
-          return _0x2106c1;
+    async _class_renderClass_pClassTable({ ix: ix, cls: cls, sc: sc }) {
+      const classInfo = cls ? cls._isStub ? cls : await DataLoader.pCacheAndGet('class', cls.source, UrlUtil.URL_TO_HASH_BUILDER["class"](cls)) : null;
+      const subclassInfo = sc ? sc._isStub ? sc : await DataLoader.pCacheAndGet("subclass", sc.source, UrlUtil.URL_TO_HASH_BUILDER.subclass(sc)) : null;
+      const features = classInfo?.["classFeatures"] || subclassInfo?.["subclassFeatures"] ? this._modalFilterClasses.pageFilter.filterBox.getValues() : null;
+      if (classInfo?.["classFeatures"]) {
+        classInfo.classFeatures = classInfo.classFeatures.map(f => {
+          f = MiscUtil.copy(f);
+          f = Charactermancer_Class_Util.getFilteredEntries_bySource(f, this._modalFilterClasses.pageFilter, features);
+          return f;
         });
       }
-      if (_0x4d6b47?.["subclassFeatures"]) {
-        _0x4d6b47.subclassFeatures = _0x4d6b47.subclassFeatures.map(_0x3cb3f1 => {
-          _0x3cb3f1 = MiscUtil.copy(_0x3cb3f1);
-          _0x3cb3f1 = Charactermancer_Class_Util.getFilteredEntries_bySource(_0x3cb3f1, this._modalFilterClasses.pageFilter, _0x2da178);
-          return _0x3cb3f1;
+      if (subclassInfo?.["subclassFeatures"]) {
+        subclassInfo.subclassFeatures = subclassInfo.subclassFeatures.map(f => {
+          f = MiscUtil.copy(f);
+          f = Charactermancer_Class_Util.getFilteredEntries_bySource(f, this._modalFilterClasses.pageFilter, features);
+          return f;
         });
       }
-      const _0x5e497c = DataConverterClass.getRenderedClassTableFromDereferenced(_0x57a945, _0x4d6b47);
-      this._$wrpsClassTable[_0x29a0a3].html('').fastSetHtml(_0x5e497c);
+      const table = DataConverterClass.getRenderedClassTableFromDereferenced(classInfo, subclassInfo);
+      this._$wrpsClassTable[ix].html('').fastSetHtml(table);
     }
     _class_renderEntriesSection(parentElement, cls, toRender, { $wrpTable = null } = {}) {
         const minimizeButton = $("<div class=\"py-1 pl-2 clickable ve-muted\">[‒]</div>").click(() => {
@@ -1516,14 +1497,11 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
         let lvlMin = 0;
         let lvlMax = 0;
         if (this._compsClassLevelSelect[ix]) {
-            const _0xbda027 = await this._compsClassLevelSelect[ix].pGetFormData().data;
-            lvlMin = Math.min(..._0xbda027) + 1;
-            lvlMax = Math.max(..._0xbda027) + 1;
+            const data = await this._compsClassLevelSelect[ix].pGetFormData().data;
+            lvlMin = Math.min(...data) + 1;
+            lvlMax = Math.max(...data) + 1;
         }
-        return {
-            'lvlMin': lvlMin,
-            'lvlMax': lvlMax
-        };
+        return { lvlMin: lvlMin, lvlMax: lvlMax };
     }
     
     
@@ -3692,8 +3670,8 @@ class ActorCharactermancerAbility extends ActorCharactermancerBaseComponent {
         /* const clientThenWorld = GameStorage.getClientThenWorld(this.constructor._STORAGE_KEY__PB_CUSTOM);
         if (clientThenWorld != null) {this._compStatgen.setStateFrom(clientThenWorld);} */
 
-        const _0x8ec07a = MiscUtil.throttle(this._doSavePbRules.bind(this), 0x64); 
-        this._compStatgen.addHookPointBuyCustom(_0x8ec07a);
+        const pbRulesHook = MiscUtil.throttle(this._doSavePbRules.bind(this), 100); 
+        this._compStatgen.addHookPointBuyCustom(pbRulesHook);
 
         //Render the ui for changing ability scores
         this._compStatgen.render(parentDiv);
@@ -7252,7 +7230,7 @@ class ActorCharactermancerBackground extends ActorCharactermancerBaseComponent {
             1: $$`<label class="ve-flex-v-center ve-muted mb-1" title="Toggling this off will disable customization for the whole Language &amp; Tool proficiencies section.">${wrpCustomize4}</label>`
         };
 
-        const renderBackground = _0x3c9e9c => {
+        const renderBackground = input => {
             const background = this.getFeatureCustomizedBackground_({'isAllowStub': false});
             this._background_renderBackground_stgSkills({
                 '$stgSkills': holderSkills,
@@ -7279,17 +7257,17 @@ class ActorCharactermancerBackground extends ActorCharactermancerBaseComponent {
                 '$stgCharacteristics': holderCharacteristics, 'background': background});
             this._background_hk_showCustomizingRules({'$stgRulesCustomize': holderRulesCustomize});
             this._hk_shared_doRenderBackground({'$dispBackground': newCol});
-            if (!_0x3c9e9c) {
+            if (!input) {
                 this._state.background_pulseBackground = !this._state.background_pulseBackground;
             }
         };
         this._addHookBase('background_pulseBackground', renderBackground);
   
         const refresh = () => {
-            const _0x3b9a0d = Object.keys(this.__state).filter(prop =>
+            const stateProps = Object.keys(this.__state).filter(prop =>
                 prop.startsWith('background_') && prop !== 'background_ixBackground').mergeMap(p => ({[p]: null}));
 
-            this._proxyAssignSimple("state", _0x3b9a0d);
+            this._proxyAssignSimple("state", stateProps);
             const curBackground = this._data.background[this._state.background_ixBackground];
 
             if (UtilEntityBackground.isCustomBackground(curBackground)) {
@@ -7562,8 +7540,8 @@ class ActorCharactermancerBackground extends ActorCharactermancerBaseComponent {
       return this._data.background[this._state.background_ixBackground];
     }
     
-    ["_background_renderBackground_$getWrpCbCustomize"](_0x43dcba) {
-      return $$`<label class="ve-flex-v-center ml-auto"><span class="mr-1">Customize</span>${_0x43dcba}</label>`;
+    _background_renderBackground_$getWrpCbCustomize(content) {
+      return $$`<label class="ve-flex-v-center ml-auto"><span class="mr-1">Customize</span>${content}</label>`;
     }
     _background_renderBackground_stgFeatures({
       $stgFeatures: parentDiv,
@@ -7742,7 +7720,7 @@ class ActorCharactermancerBackground extends ActorCharactermancerBaseComponent {
       });
       background.entries = walker.walk(background.entries || [], {
         'array': ar => {
-          ar = ar.filter(_0x2f5ea1 => _0x2f5ea1 != null && !_0x2f5ea1?.["data"]?.["isFeature"]);
+          ar = ar.filter(entry => entry != null && !entry?.["data"]?.["isFeature"]);
           if (!ar.length) {
             return undefined;
           }
@@ -7750,9 +7728,9 @@ class ActorCharactermancerBackground extends ActorCharactermancerBaseComponent {
         },
         'object': ar => {
           if (ar.type === "list") {
-            ar.items = (ar.items || []).filter(_0x48b331 => {
-              const _0x586aa6 = (_0x48b331.name || '').trim().toLowerCase();
-              return !(_0x48b331.type === "item" && (/^skill/.test(_0x586aa6) || /^language/.test(_0x586aa6) || /^tool/.test(_0x586aa6)));
+            ar.items = (ar.items || []).filter(it => {
+              const nameLower = (it.name || '').trim().toLowerCase();
+              return !(it.type === "item" && (/^skill/.test(nameLower) || /^language/.test(nameLower) || /^tool/.test(nameLower)));
             });
             if (!ar.items.length) {
               return undefined;
@@ -7784,7 +7762,7 @@ class ActorCharactermancerBackground extends ActorCharactermancerBaseComponent {
 ActorCharactermancerBackground._ENTRY_CUSTOMIZING = {
 'type': 'entries',
 'name': "Customizing a Background",
-'page': 0x7d,
+'page': 125,
 'source': Parser.SRC_PHB,
 'entries': ["You might want to tweak some of the features of a background so it better fits your character or the campaign setting. To customize a background, you can replace one feature with any other one, choose any two skills, and choose a total of two tool proficiencies or languages from the sample backgrounds. [...] Finally, choose two personality traits, one ideal, one bond, and one flaw.", "If you can't find a feature that matches your desired background, work with your DM to create one."]
 };
@@ -10411,87 +10389,84 @@ class ActorCharactermancerSpell extends ActorCharactermancerBaseComponent {
     });
     }
     _spell_renderRaceBackgroundSection({
-    $wrpLeft: _0x131507,
-    propPulse: _0x4d4b30,
-    propCompAdditionalSpells: _0x2c7856,
-    propAlwaysPreparedSpells: _0x386d55,
-    propExpandedSpells: _0x43a2cb,
-    propAlwaysKnownSpells: _0x1ad25b,
-    compEntity: _0x643cf8,
-    fnGetEntity: _0x130b8f
+    $wrpLeft: $wrpLeft,
+    propPulse: propPulse,
+    propCompAdditionalSpells: compAdditionalSpells,
+    propAlwaysPreparedSpells: compAlwaysPreparedSpells,
+    propExpandedSpells: propExpandedSpells,
+    propAlwaysKnownSpells: propAlwaysKnownSpells,
+    compEntity: compEntity,
+    fnGetEntity: fnGetEntity
     }) {
-    const _0x4daa7e = $$`<div class="ve-flex-col"></div>`.hideVe();
-    const _0x1e5e23 = () => {
-        const _0x25399e = this._parent.compClass.getExistingClassTotalLevels_();
-        const _0x5d1c58 = this._parent.compClass.state.class_totalLevels;
-        if (this[_0x2c7856]) {
-        this[_0x2c7856].curLevel = _0x25399e;
-        this[_0x2c7856].targetLevel = Math.max(0x1, _0x5d1c58);
-        const {
-            min: _0x359352,
-            max: _0x46f5a0,
-            isAnyCantrips: _0x23be13
-        } = this._parent.compClass.class_getMinMaxSpellLevel();
-        this[_0x2c7856].spellLevelLow = _0x359352;
-        this[_0x2c7856].spellLevelHigh = _0x46f5a0;
-        this[_0x2c7856].isAnyCantrips = _0x23be13;
+    const content = $$`<div class="ve-flex-col"></div>`.hideVe();
+    const hkLevelChange = () => {
+        const existingLevel = this._parent.compClass.getExistingClassTotalLevels_();
+        const newLevel = this._parent.compClass.state.class_totalLevels;
+        if (this[compAdditionalSpells]) {
+        this[compAdditionalSpells].curLevel = existingLevel;
+        this[compAdditionalSpells].targetLevel = Math.max(1, newLevel);
+        const { min, max, isAnyCantrips } = this._parent.compClass.class_getMinMaxSpellLevel();
+        this[compAdditionalSpells].spellLevelLow = min;
+        this[compAdditionalSpells].spellLevelHigh = max;
+        this[compAdditionalSpells].isAnyCantrips = isAnyCantrips;
         }
     };
-    this._parent.compClass.addHookBase("class_totalLevels", _0x1e5e23);
-    this._parent.compClass.addHookBase("class_pulseChange", _0x1e5e23);
-    const _0x5951b3 = $("<h2 class=\"m-0 b-0 py-1\"></h2>");
-    const _0x236ff0 = $("<div class=\"py-1 clickable ve-muted\">[‒]</div>").click(() => {
-        _0x236ff0.text(_0x236ff0.text() === "[+]" ? "[‒]" : "[+]");
-        _0x3dfdd1.toggleVe();
+    this._parent.compClass.addHookBase("class_totalLevels", hkLevelChange);
+    this._parent.compClass.addHookBase("class_pulseChange", hkLevelChange);
+    const header = $("<h2 class=\"m-0 b-0 py-1\"></h2>");
+    const minimizer = $("<div class=\"py-1 clickable ve-muted\">[‒]</div>").click(() => {
+        minimizer.text(minimizer.text() === "[+]" ? "[‒]" : "[+]");
+        contentWrapper.toggleVe();
     });
-    const _0x3dfdd1 = $$`<div class="ve-flex-col w-100">
-            ${_0x4daa7e}
-        </div>`;
-    const _0x385acb = $$`<div class="ve-flex-col w-100 mb-2">
+    const contentWrapper = $$`<div class="ve-flex-col w-100"> ${content} </div>`;
+    const mainWrapper = $$`<div class="ve-flex-col w-100 mb-2">
             <div class="split-v-center">
-                ${_0x5951b3}
-                ${_0x236ff0}
+                ${header}
+                ${minimizer}
             </div>
 
-            ${_0x3dfdd1}
-        </div>`.hideVe().appendTo(_0x131507);
-    const _0x3fde61 = () => {
-        _0x4daa7e.empty();
-        const _0x4b8090 = _0x130b8f();
-        let _0x41e5d8 = false;
-        if (_0x4b8090 && _0x4b8090.additionalSpells) {
-        _0x41e5d8 = true;
-        _0x4daa7e.showVe();
-        this[_0x2c7856] = new Charactermancer_AdditionalSpellsSelect({
-            'spellDatas': this._data.spell,
-            'additionalSpells': _0x4b8090.additionalSpells,
-            'modalFilterSpells': this._modalFilterSpells
-        });
-        this[_0x2c7856].render(_0x4daa7e);
-        const _0x102760 = () => this._compsSpellSpells.filter(Boolean).forEach(_0x3d6b3a => _0x3d6b3a[_0x386d55] = MiscUtil.copy(this[_0x2c7856].spellsAlwaysPrepared));
-        this[_0x2c7856].addHookAlwaysPreparedSpells(_0x102760);
-        _0x102760();
-        const _0x58b6da = () => this._compsSpellSpells.filter(Boolean).forEach(_0x169ba4 => _0x169ba4[_0x43a2cb] = MiscUtil.copy(this[_0x2c7856].spellsExpanded));
-        this[_0x2c7856].addHookExpandedSpells(_0x58b6da);
-        _0x58b6da();
-        const _0x347f7c = () => this._compsSpellSpells.filter(Boolean).forEach(_0x4ad8ca => _0x4ad8ca[_0x1ad25b] = MiscUtil.copy(this[_0x2c7856].spellsAlwaysKnown));
-        this[_0x2c7856].addHookAlwaysKnownSpells(_0x347f7c);
-        _0x347f7c();
-        } else {
-        _0x4daa7e.hideVe();
-        this[_0x2c7856] = null;
-        this._compsSpellSpells.filter(Boolean).forEach(_0x36b14f => _0x36b14f[_0x43a2cb] = []);
+            ${contentWrapper}
+        </div>`.hideVe().appendTo($wrpLeft);
+    const hkPulse = () => {
+        content.empty();
+        const e = fnGetEntity();
+        let hasAdditionalSpells = false;
+        if (e && e.additionalSpells) {
+            hasAdditionalSpells = true;
+            content.showVe();
+            this[compAdditionalSpells] = new Charactermancer_AdditionalSpellsSelect({
+                spellDatas: this._data.spell,
+                additionalSpells: e.additionalSpells,
+                modalFilterSpells: this._modalFilterSpells
+            });
+            this[compAdditionalSpells].render(content);
+            const fnAlwaysPrepared = () => this._compsSpellSpells.filter(Boolean).forEach(comp => comp[compAlwaysPreparedSpells]
+                = MiscUtil.copy(this[compAdditionalSpells].spellsAlwaysPrepared));
+            this[compAdditionalSpells].addHookAlwaysPreparedSpells(fnAlwaysPrepared);
+            fnAlwaysPrepared();
+            const fnExpanded = () => this._compsSpellSpells.filter(Boolean).forEach(comp => comp[propExpandedSpells]
+                = MiscUtil.copy(this[compAdditionalSpells].spellsExpanded));
+            this[compAdditionalSpells].addHookExpandedSpells(fnExpanded);
+            fnExpanded();
+            const fnAlwaysKnown = () => this._compsSpellSpells.filter(Boolean).forEach(comp => comp[propAlwaysKnownSpells]
+                = MiscUtil.copy(this[compAdditionalSpells].spellsAlwaysKnown));
+            this[compAdditionalSpells].addHookAlwaysKnownSpells(fnAlwaysKnown);
+            fnAlwaysKnown();
         }
-        if (_0x4b8090 && _0x41e5d8) {
-        _0x385acb.showVe();
-        _0x5951b3.text(_0x4b8090.name);
-        } else {
-        _0x385acb.hideVe();
+        else {
+        content.hideVe();
+        this[compAdditionalSpells] = null;
+        this._compsSpellSpells.filter(Boolean).forEach(comp => comp[propExpandedSpells] = []);
         }
-        _0x1e5e23();
+        if (e && hasAdditionalSpells) {
+            mainWrapper.showVe();
+            header.text(e.name);
+        }
+        else { mainWrapper.hideVe(); }
+        hkLevelChange();
     };
-    _0x643cf8.addHookBase(_0x4d4b30, _0x3fde61);
-    _0x3fde61();
+    compEntity.addHookBase(propPulse, hkPulse);
+    hkPulse();
     }
 
     get modalFilterSpells() {
@@ -10532,56 +10507,54 @@ class ActorCharactermancerSpell extends ActorCharactermancerBaseComponent {
     }
     
     async _spell_pRenderFilterBox(leftContent) {
-      const _0x58361b = $("<button class=\"btn-5et veapp__btn-filter\">Filter</button>");
-      const _0x6136bd = $("<button class=\"btn btn-5et\" title=\"Toggle Filter Summary Display\"><span class=\"glyphicon glyphicon-resize-small\"></span></button>");
-      const _0x40698b = $("<input type=\"search\" class=\"search w-100 form-control h-initial\" placeholder=\"Find spell...\">");
-      const _0x4f7872 = $("<button class=\"btn-5et veapp__btn-list-reset\">Reset</button>").click(() => _0x40698b.val('').keyup());
-      const _0x3f79c5 = $("<div class=\"fltr__mini-view btn-group\"></div>");
-      const _0x48d54c = $("<button class=\"btn btn-default btn-xs mr-1\" title=\"Save a copy of the current filters, to use when filtering spell lists during import of &quot;prepared spell&quot; casters. For example, if you want your Cleric's spell list to include only PHB spells, you would filter (using the interface above) for PHB spells, then click this button. Note that all the spells that you have selected as learned or that you have selected as prepared will be imported regardless.\">Set Prepared Spell Filter</button>").click(() => {
+      const btnFilter = $("<button class=\"btn-5et veapp__btn-filter\">Filter</button>");
+      const btnFilterSummary = $("<button class=\"btn btn-5et\" title=\"Toggle Filter Summary Display\"><span class=\"glyphicon glyphicon-resize-small\"></span></button>");
+      const inputFind = $("<input type=\"search\" class=\"search w-100 form-control h-initial\" placeholder=\"Find spell...\">");
+      const btnReset = $("<button class=\"btn-5et veapp__btn-list-reset\">Reset</button>").click(() => inputFind.val('').keyup());
+      const view = $("<div class=\"fltr__mini-view btn-group\"></div>");
+      const btnSaveCopy = $("<button class=\"btn btn-default btn-xs mr-1\" title=\"Save a copy of the current filters, to use when filtering spell lists during import of &quot;prepared spell&quot; casters. For example, if you want your Cleric's spell list to include only PHB spells, you would filter (using the interface above) for PHB spells, then click this button. Note that all the spells that you have selected as learned or that you have selected as prepared will be imported regardless.\">Set Prepared Spell Filter</button>").click(() => {
         this._filterValuesSpellsCache = this._pageFilterSpells.filterBox.getValues();
         ui.notifications.info("Set!");
       });
-      const _0x3c7f8e = ComponentUiUtil.$getBtnBool(this, "spells_isIncludeUaEtcSpellLists", {
+      const btnIncludeUA = ComponentUiUtil.$getBtnBool(this, "spells_isIncludeUaEtcSpellLists", {
         '$ele': $("<button class=\"btn btn-default btn-xs\" title=\"Include spell lists defined in Unearthed Arcana, Plane Shift, and other semi-official products when generating the list of spells which can be learned/prepared.\">Include UA/etc. Spell Lists</button>")
       });
-      const _0x37412f = () => this._compsSpellSpells.filter(Boolean).forEach(_0x2638d9 => _0x2638d9.isIncludeUaEtcSpellLists = this._state.spells_isIncludeUaEtcSpellLists);
-      this._addHookBase("spells_isIncludeUaEtcSpellLists", _0x37412f);
-      _0x37412f();
+      const hkSpellLists = () => this._compsSpellSpells.filter(Boolean).forEach(comp => comp.isIncludeUaEtcSpellLists = this._state.spells_isIncludeUaEtcSpellLists);
+      this._addHookBase("spells_isIncludeUaEtcSpellLists", hkSpellLists);
+      hkSpellLists();
       $$(leftContent)`
               <div class="ve-flex-v-stretch input-group input-group--top no-shrink">
-                  ${_0x58361b}
-                  ${_0x6136bd}
-                  ${_0x40698b}
-                  ${_0x4f7872}
+                  ${btnFilter}
+                  ${btnFilterSummary}
+                  ${inputFind}
+                  ${btnReset}
               </div>
-              ${_0x3f79c5}
+              ${view}
               <div class="ve-flex-v-stretch input-group input-group--bottom mb-1 no-shrink">
                   <button class="btn-5et w-100" disabled></button>
               </div>
   
-              <div class="mb-1 ve-flex-v-center">${_0x48d54c}${_0x3c7f8e}</div>
+              <div class="mb-1 ve-flex-v-center">${btnSaveCopy}${btnIncludeUA}</div>
           `;
       await this._pageFilterSpells.pInitFilterBox({
-        '$iptSearch': _0x40698b,
-        '$btnReset': _0x4f7872,
-        '$btnOpen': _0x58361b,
-        '$btnToggleSummaryHidden': _0x6136bd,
-        '$wrpMiniPills': _0x3f79c5,
-        'namespace': "ActorCharactermancer.spells_page"
+        $iptSearch: inputFind,
+        $btnReset: btnReset,
+        $btnOpen: btnFilter,
+        $btnToggleSummaryHidden: btnFilterSummary,
+        $wrpMiniPills: view,
+        namespace: "ActorCharactermancer.spells_page"
       });
-      this._data.spell.forEach(_0x420235 => this._pageFilterSpells.mutateAndAddToFilters(_0x420235));
+      this._data.spell.forEach(sp => this._pageFilterSpells.mutateAndAddToFilters(sp));
       this._pageFilterSpells.trimState();
       this._pageFilterSpells.filterBox.render();
       this._filterValuesSpellsCache = this._pageFilterSpells.filterBox.getValues();
       UiUtil.bindTypingEnd({
-        '$ipt': _0x40698b,
-        'fnKeyup': () => {
-          const _0xd1900 = List.getCleanSearchTerm(_0x40698b.val());
-          if (this._lastSearchTermSpells === _0xd1900) {
-            return;
-          }
-          this._lastSearchTermSpells = _0xd1900;
-          this._compsSpellSpells.filter(Boolean).forEach(_0x34795b => _0x34795b.handleSearch(_0xd1900));
+        $ipt: inputFind,
+        fnKeyup: () => {
+          const term = List.getCleanSearchTerm(inputFind.val());
+          if (this._lastSearchTermSpells === term) { return; }
+          this._lastSearchTermSpells = term;
+          this._compsSpellSpells.filter(Boolean).forEach(comp => comp.handleSearch(term));
         }
       });
       this._pageFilterSpells.filterBox.on(FilterBox.EVNT_VALCHANGE, this._spell_handleFilterChange.bind(this));
@@ -10590,18 +10563,15 @@ class ActorCharactermancerSpell extends ActorCharactermancerBaseComponent {
       const filterVals = this._pageFilterSpells.filterBox.getValues();
       this._compsSpellSpells.filter(Boolean).forEach(spell => spell.handleFilterChange(filterVals));
     }
-    _spell_getFixedLearnedProgression(_0x17551c, _0x501a5c, _0x53b321, _0x1a246c, {
-      isExistingClass: _0x5b35a8,
-      isDefault = false
-    } = {}) {
-      const _0x20bca5 = this._compsSpellSpellSlotLevelSelect[_0x17551c] ? this._compsSpellSpellSlotLevelSelect[_0x17551c].getFormData() : null;
+    _spell_getFixedLearnedProgression(ix, cls, sc, targetLevel, { isExistingClass, isDefault = false } = {}) {
+      const formData = this._compsSpellSpellSlotLevelSelect[ix] ? this._compsSpellSpellSlotLevelSelect[ix].getFormData() : null;
       return Charactermancer_Spell_Util.getFixedLearnedProgression({
-        'cls': _0x501a5c,
-        'sc': _0x53b321,
-        'targetLevel': _0x1a246c,
-        'isExistingClass': _0x5b35a8,
-        'isDefault': isDefault,
-        'formDataSlotSelectFromComp': _0x20bca5
+        cls: cls,
+        sc: sc,
+        targetLevel: targetLevel,
+        isExistingClass: isExistingClass,
+        isDefault: isDefault,
+        formDataSlotSelectFromComp: formData
       });
     }
     _spell_getMaxPreparedSpells(cls, subclass, targetLevel, {
@@ -10609,11 +10579,11 @@ class ActorCharactermancerSpell extends ActorCharactermancerBaseComponent {
     } = {}) {
       const abilityScoresFromComp = this._parent.compAbility.getTotals();
       return Charactermancer_Spell_Util.getMaxPreparedSpells({
-        'cls': cls,
-        'sc': subclass,
-        'targetLevel': targetLevel,
-        'existingAbilityScores': existingAbilityScores,
-        'abilityScoresFromComp': abilityScoresFromComp
+        cls: cls,
+        sc: subclass,
+        targetLevel: targetLevel,
+        existingAbilityScores: existingAbilityScores,
+        abilityScoresFromComp: abilityScoresFromComp
       });
     }
 
@@ -10849,31 +10819,18 @@ class ActorCharactermancerSpell extends ActorCharactermancerBaseComponent {
             MiscUtil.copy(this._compSpellAdditionalSpellBackground.spellsExpanded);
       }
     }
-    ["_hk_shared_doUpdateRenderedClassSubclass"]({
-      ix: _0x554247
-    }) {
-      if (!this._compsSpellSpells[_0x554247]) {
-        return;
-      }
+    _hk_shared_doUpdateRenderedClassSubclass({ ix }) {
+      if (!this._compsSpellSpells[ix]) { return; }
       const filterValues = this._pageFilterSpells.filterBox.getValues();
-      this._compsSpellSpells[_0x554247].handleFilterChange(filterValues);
+      this._compsSpellSpells[ix].handleFilterChange(filterValues);
     }
-    ['_hk_onChangeAbilityScores'](_0x2f45dd) {
-      const {
-        propIxClass: _0x115421,
-        propTargetLevel: _0x46283c,
-        propIxSubclass: _0x30dd06
-      } = ActorCharactermancerBaseComponent.class_getProps(_0x2f45dd);
-      const _0x30db5b = this._parent.compClass.getClass_({
-        'propIxClass': _0x115421
-      });
-      const _0x1df5a1 = this._parent.compClass.getSubclass_({
-        'cls': _0x30db5b,
-        'propIxSubclass': _0x30dd06
-      });
-      const _0x4a29fe = this._parent.compClass.state[_0x46283c];
-      if (this._compsSpellSpells[_0x2f45dd]) {
-        this._compsSpellSpells[_0x2f45dd].maxPrepared = this._spell_getMaxPreparedSpells(_0x30db5b, _0x1df5a1, _0x4a29fe);
+    _hk_onChangeAbilityScores(classIx) {
+      const { propIxClass, propTargetLevel, propIxSubclass } = ActorCharactermancerBaseComponent.class_getProps(classIx);
+      const classInfo = this._parent.compClass.getClass_({ propIxClass: propIxClass });
+      const subclassInfo = this._parent.compClass.getSubclass_({ cls: classInfo, propIxSubclass: propIxSubclass });
+      const level = this._parent.compClass.state[propTargetLevel];
+      if (this._compsSpellSpells[classIx]) {
+        this._compsSpellSpells[classIx].maxPrepared = this._spell_getMaxPreparedSpells(classInfo, subclassInfo, level);
       }
     }
     _hk_onChangeSubclass(classIndex, {
@@ -10933,29 +10890,29 @@ class ActorCharactermancerSpell extends ActorCharactermancerBaseComponent {
       if (subcls && subcls.additionalSpells) {
         stgSubclassAdditionalSpells.showVe().append("<div class=\"bold mb-2\">Subclass Spells (" + subcls.name + ")</div>");
         this._compsSpellAdditionalSpellSubclass[classIndex] = new Charactermancer_AdditionalSpellsSelect({
-          'spellDatas': this._data.spell,
-          'additionalSpells': subcls.additionalSpells,
-          'modalFilterSpells': this._modalFilterSpells
+          spellDatas: this._data.spell,
+          additionalSpells: subcls.additionalSpells,
+          modalFilterSpells: this._modalFilterSpells
         });
         this._compsSpellAdditionalSpellSubclass[classIndex].render(stgSubclassAdditionalSpells);
-        const _0x44f9bf = () => {
+        const fnAlwaysPrepared = () => {
           if (this._compsSpellSpells[classIndex]) {
             this._compsSpellSpells[classIndex].alwaysPreparedSpellsSubclass = MiscUtil.copy(this._compsSpellAdditionalSpellSubclass[classIndex].spellsAlwaysPrepared);
           }
         };
-        this._compsSpellAdditionalSpellSubclass[classIndex].addHookAlwaysPreparedSpells(_0x44f9bf);
-        const _0x12cd92 = () => {
+        this._compsSpellAdditionalSpellSubclass[classIndex].addHookAlwaysPreparedSpells(fnAlwaysPrepared);
+        const fnExpanded = () => {
           if (this._compsSpellSpells[classIndex]) {
             this._compsSpellSpells[classIndex].expandedSpellsSubclass = MiscUtil.copy(this._compsSpellAdditionalSpellSubclass[classIndex].spellsExpanded);
           }
         };
-        this._compsSpellAdditionalSpellSubclass[classIndex].addHookExpandedSpells(_0x12cd92);
-        const _0xe969c1 = () => {
+        this._compsSpellAdditionalSpellSubclass[classIndex].addHookExpandedSpells(fnExpanded);
+        const fnAlwaysKnown = () => {
           if (this._compsSpellSpells[classIndex]) {
             this._compsSpellSpells[classIndex].alwaysKnownSpellsSubclass = MiscUtil.copy(this._compsSpellAdditionalSpellSubclass[classIndex].spellsAlwaysKnown);
           }
         };
-        this._compsSpellAdditionalSpellSubclass[classIndex].addHookAlwaysKnownSpells(_0xe969c1);
+        this._compsSpellAdditionalSpellSubclass[classIndex].addHookAlwaysKnownSpells(fnAlwaysKnown);
       }
       else {
         stgSubclassAdditionalSpells.hideVe();
@@ -11003,41 +10960,30 @@ class ActorCharactermancerSpell extends ActorCharactermancerBaseComponent {
         this._hk_shared_doUpdateRenderedClassSubclass({ ix: classIndex });
       }
     }
-    async ["_hk_onChangeSubclass_pRenderSpellTable"](_0x260cc7, {
-      cls: _0xf89f34,
-      sc: _0x4b6e25,
-      $stgSpellsTable: _0x1981f6
-    }) {
+    async _hk_onChangeSubclass_pRenderSpellTable(classIndex, { cls, sc, $stgSpellsTable }) {
       const {
-        lockChangeSubclassTable: _0x3807b9
-      } = this.constructor._spell_getLocks(_0x260cc7);
+        lockChangeSubclassTable: lockChangeSubclassTable
+      } = this.constructor._spell_getLocks(classIndex);
       try {
-        await this._pLock(_0x3807b9);
-        await this._hk_onChangeSubclass_pRenderSpellTable_(_0x260cc7, {
-          'cls': _0xf89f34,
-          'sc': _0x4b6e25,
-          '$stgSpellsTable': _0x1981f6
+        await this._pLock(lockChangeSubclassTable);
+        await this._hk_onChangeSubclass_pRenderSpellTable_(classIndex, {
+          cls: cls,
+          sc: sc,
+          $stgSpellsTable: $stgSpellsTable
         });
-      } finally {
-        this._unlock(_0x3807b9);
+      }
+      finally {
+        this._unlock(lockChangeSubclassTable);
       }
     }
-    async ['_hk_onChangeSubclass_pRenderSpellTable_'](_0x3851f4, {
-      cls: _0x466edf,
-      sc: _0x38f6f5,
-      $stgSpellsTable: _0x2a454d
-    }) {
-      const _0x1c8632 = _0x466edf ? await DataLoader.pCacheAndGet("class", _0x466edf.source, UrlUtil.URL_TO_HASH_BUILDER["class"](_0x466edf)) : null;
-      const _0x4665b7 = _0x38f6f5 ? await DataLoader.pCacheAndGet("subclass", _0x38f6f5.source, UrlUtil.URL_TO_HASH_BUILDER.subclass(_0x38f6f5)) : null;
-      const _0x195423 = DataConverterClass.getRenderedClassTableFromDereferenced(_0x1c8632, _0x4665b7, {
-        'isSpellsOnly': true
-      });
-      _0x2a454d.html('').fastSetHtml(_0x195423);
+    async _hk_onChangeSubclass_pRenderSpellTable_(classIndex, { cls, sc, $stgSpellsTable }) {
+      const classInfo = cls ? await DataLoader.pCacheAndGet("class", cls.source, UrlUtil.URL_TO_HASH_BUILDER["class"](cls)) : null;
+      const subclassInfo = sc ? await DataLoader.pCacheAndGet("subclass", sc.source, UrlUtil.URL_TO_HASH_BUILDER.subclass(sc)) : null;
+      const table = DataConverterClass.getRenderedClassTableFromDereferenced(classInfo, subclassInfo, { isSpellsOnly: true });
+      $stgSpellsTable.html('').fastSetHtml(table);
     }
-    static ["_spell_getLocks"](_0x262a86) {
-      return {
-        'lockChangeSubclassTable': "spell_" + _0x262a86 + '_changeSubclassTable'
-      };
+    static _spell_getLocks(ix) {
+      return { lockChangeSubclassTable: "spell_" + ix + '_changeSubclassTable' };
     }
     _hk_onChangeLevel(classIx, {
         $wrpLeftInner: wrpLeftInner,
@@ -11102,12 +11048,9 @@ class ActorCharactermancerSpell extends ActorCharactermancerBaseComponent {
             this._compsSpellAdditionalSpellClass[classIx].curLevel = curLevel;
             this._compsSpellAdditionalSpellClass[classIx].targetLevel = targetLevel;
             if (casterProgressionMeta) {
-            const {
-                spellLevelLow: _0x5e1ad3,
-                spellLevelHigh: _0x2b3c8c
-            } = casterProgressionMeta;
-            this._compsSpellAdditionalSpellClass[classIx].spellLevelLow = _0x5e1ad3;
-            this._compsSpellAdditionalSpellClass[classIx].spellLevelHigh = _0x2b3c8c;
+            const { spellLevelLow, spellLevelHigh } = casterProgressionMeta;
+            this._compsSpellAdditionalSpellClass[classIx].spellLevelLow = spellLevelLow;
+            this._compsSpellAdditionalSpellClass[classIx].spellLevelHigh = spellLevelHigh;
             } else {
             this._compsSpellAdditionalSpellClass[classIx].spellLevelLow = null;
             this._compsSpellAdditionalSpellClass[classIx].spellLevelHigh = null;
@@ -11117,15 +11060,13 @@ class ActorCharactermancerSpell extends ActorCharactermancerBaseComponent {
             this._compsSpellAdditionalSpellSubclass[classIx].curLevel = curLevel;
             this._compsSpellAdditionalSpellSubclass[classIx].targetLevel = targetLevel;
             if (casterProgressionMeta) {
-            const {
-                spellLevelLow: _0x494b35,
-                spellLevelHigh: _0x11243b
-            } = casterProgressionMeta;
-            this._compsSpellAdditionalSpellSubclass[classIx].spellLevelLow = _0x494b35;
-            this._compsSpellAdditionalSpellSubclass[classIx].spellLevelHigh = _0x11243b;
-            } else {
-            this._compsSpellAdditionalSpellSubclass[classIx].spellLevelLow = null;
-            this._compsSpellAdditionalSpellSubclass[classIx].spellLevelHigh = null;
+                const { spellLevelLow, spellLevelHigh } = casterProgressionMeta;
+                this._compsSpellAdditionalSpellSubclass[classIx].spellLevelLow = spellLevelLow;
+                this._compsSpellAdditionalSpellSubclass[classIx].spellLevelHigh = spellLevelHigh;
+            }
+            else {
+                this._compsSpellAdditionalSpellSubclass[classIx].spellLevelLow = null;
+                this._compsSpellAdditionalSpellSubclass[classIx].spellLevelHigh = null;
             }
         }
         if (cls) {
@@ -11145,63 +11086,42 @@ class ActorCharactermancerSpell extends ActorCharactermancerBaseComponent {
     static _spell_isCasterClassAtLevel(_class, _subclass, _level) {
       if (!this._spell_isClassCaster(_class, _subclass)) { return false; }
       if (_level == null) { return false; }
-      const { casterProgression: casterProgression } 
-      = Charactermancer_Class_Util.getCasterProgression(_class, _subclass, {targetLevel: _level });
-      const _0x462c11 = UtilDataConverter.CASTER_TYPE_TO_PROGRESSION[casterProgression];
-      if ((_0x462c11?.[_level - 0x1] || []).some(Boolean)) {
-        return true;
-      }
-      if (this._spell_isCasterClassAtLevel_additionalSpells(_class?.["additionalSpells"], _level)) {
-        return true;
-      }
-      if (this._spell_isCasterClassAtLevel_additionalSpells(_subclass?.["additionalSpells"], _level)) {
-        return true;
-      }
-      if (this._spell_isCasterClassAtLevel_cantrips(_class?.["cantripProgression"], _level)) {
-        return true;
-      }
-      if (this._spell_isCasterClassAtLevel_cantrips(_subclass?.['cantripProgression'], _level)) {
-        return true;
-      }
+      const { casterProgression: casterProgression } = Charactermancer_Class_Util.getCasterProgression(_class, _subclass, {targetLevel: _level });
+      const progression = UtilDataConverter.CASTER_TYPE_TO_PROGRESSION[casterProgression];
+      if ((progression?.[_level - 1] || []).some(Boolean)) { return true; }
+      if (this._spell_isCasterClassAtLevel_additionalSpells(_class?.["additionalSpells"], _level)) { return true; }
+      if (this._spell_isCasterClassAtLevel_additionalSpells(_subclass?.["additionalSpells"], _level)) { return true; }
+      if (this._spell_isCasterClassAtLevel_cantrips(_class?.["cantripProgression"], _level)) { return true; }
+      if (this._spell_isCasterClassAtLevel_cantrips(_subclass?.['cantripProgression'], _level)) { return true; }
       return false;
     }
-    static _spell_isCasterClassAtLevel_additionalSpells(_0x38e4ef, _0x2fbd60) {
-      if (!_0x38e4ef) {
-        return false;
-      }
-      if (_0x2fbd60 == null) {
-        return false;
-      }
-      return _0x38e4ef.some(_0x3b9665 => this._spell_isCasterClassAtLevel_additionalSpellsBlock(_0x3b9665, _0x2fbd60));
+    static _spell_isCasterClassAtLevel_additionalSpells(spells, level) {
+      if (!spells) { return false; }
+      if (level == null) { return false; }
+      return spells.some(sp => this._spell_isCasterClassAtLevel_additionalSpellsBlock(sp, level));
     }
-    static _spell_isCasterClassAtLevel_additionalSpellsBlock(_0x269f28, _0x72034d) {
-      const _0x5c8362 = Object.keys(_0x269f28);
-      for (const _0x300d1e of _0x5c8362) {
-        switch (_0x300d1e) {
+    static _spell_isCasterClassAtLevel_additionalSpellsBlock(spells, level) {
+      const types = Object.keys(spells);
+      for (const type of types) {
+        switch (type) {
           case "innate":
           case "prepared":
           case "expanded":
             {
-              const _0x19d91e = Object.keys(_0x269f28[_0x300d1e] || {}).some(_0x4dbcd1 => {
-                const _0x48a620 = /^s(\d+)$/i.exec(_0x4dbcd1);
-                if (_0x48a620) {
-                  return false;
-                }
-                if (isNaN(_0x4dbcd1)) {
-                  return false;
-                }
-                return Number(_0x4dbcd1) <= _0x72034d;
+              const isOk = Object.keys(spells[type] || {}).some(lvl => {
+                const regex = /^s(\d+)$/i.exec(lvl);
+                if (regex) { return false; }
+                if (isNaN(lvl)) { return false; }
+                return Number(lvl) <= level;
               });
-              if (_0x19d91e) {
-                return true;
-              }
+              if (isOk) { return true; }
             }
         }
       }
       return false;
     }
-    static _spell_isCasterClassAtLevel_cantrips(_0x2d0ad1, _0x1d6ef4) {
-      return !!_0x2d0ad1?.[_0x1d6ef4 - 0x1];
+    static _spell_isCasterClassAtLevel_cantrips(spells, level) {
+      return !!spells?.[level - 1];
     }
     _spell_getExistingCasterMeta({
       ix: ix,
@@ -13937,52 +13857,45 @@ class ActorCharactermancerFeat extends ActorCharactermancerBaseComponent {
     }
 
     setAdditionalFeatStateFromStatgen_() {
-      const _0x534748 = this._parent.compAbility.compStatgen.getFormDataAsi();
-      if (!_0x534748.feats) {
-        const _0x15f14b = this._getDefaultState();
-        const _0xd28403 = ["feat_availableFromAsi", "feat_availableFromRace", "feat_availableFromBackground", 'feat_availableFromCustom'].mergeMap(_0x32df08 => ({
-          'prop': _0x15f14b[_0x32df08]
+      const formData = this._parent.compAbility.compStatgen.getFormDataAsi();
+      if (!formData.feats) {
+        const defaultState = this._getDefaultState();
+        const newState = ["feat_availableFromAsi", "feat_availableFromRace", "feat_availableFromBackground", 'feat_availableFromCustom'].mergeMap(val => ({
+          prop: defaultState[val]
         }));
-        this._proxyAssignSimple("state", _0xd28403);
+        this._proxyAssignSimple("state", newState);
         return;
       }
-      const _0x132ba3 = {};
-      Object.entries(_0x534748.feats).forEach(([_0x2f879a, _0x50bc00]) => {
-        const _0x57e759 = _0x50bc00.filter(Boolean).length;
-        switch (_0x2f879a) {
+      const newState = {};
+      Object.entries(formData.feats).forEach(([key, value]) => {
+        const num = value.filter(Boolean).length;
+        switch (key) {
           case "ability":
-            _0x132ba3.feat_availableFromAsi = _0x57e759 ? [{
-              'any': _0x57e759
-            }] : [];
+            newState.feat_availableFromAsi = num ? [{ any: num }] : [];
             break;
           case "race":
-            _0x132ba3.feat_availableFromRace = this._parent.compRace.getRace_()?.["feats"];
+            newState.feat_availableFromRace = this._parent.compRace.getRace_()?.["feats"];
             break;
           case "background":
-            _0x132ba3.feat_availableFromBackground = this._parent.compBackground.getBackground_()?.['feats'];
+            newState.feat_availableFromBackground = this._parent.compBackground.getBackground_()?.['feats'];
             break;
           case "custom":
-            _0x132ba3.feat_availableFromCustom = _0x57e759 ? [{
-              'any': _0x57e759
-            }] : [];
+            newState.feat_availableFromCustom = num ? [{ any: num }] : [];
             break;
           default:
-            throw new Error("Unhandled feat namespace \"" + _0x2f879a + "\"");
+            throw new Error("Unhandled feat namespace \"" + key + "\"");
         }
       });
-      this._parent.compFeat.proxyAssignSimple('state', _0x132ba3);
+      this._parent.compFeat.proxyAssignSimple('state', newState);
       try {
         this._isSuspendSyncToStatgen = true;
-        Object.entries(_0x534748.feats).forEach(([_0xefee79, _0x48661a]) => {
-          const _0x49dda2 = this._compAdditionalFeatsMetas[_0xefee79]?.['comp'];
-          if (!_0x49dda2) {
-            return;
-          }
-          _0x49dda2.setStateFromStatgenFeatList_(_0x48661a);
+        Object.entries(formData.feats).forEach(([key, value]) => {
+          const additional = this._compAdditionalFeatsMetas[key]?.['comp'];
+          if (!additional) { return; }
+          additional.setStateFromStatgenFeatList_(value);
         });
-      } finally {
-        this._isSuspendSyncToStatgen = false;
       }
+      finally { this._isSuspendSyncToStatgen = false; }
     }
     
     _feat_addFeatSection(wrpLeft, wrpRight, prop, namespace) {
@@ -14030,80 +13943,69 @@ class ActorCharactermancerFeat extends ActorCharactermancerBaseComponent {
       addFeatsSelect.renderTwoColumn({ $wrpLeft: colLeft, $wrpRight: colRight });
       return addFeatsSelect;
     }
-    ["_feat_renderAdditionalFeats_addStatgenHandling"]({
-      compAdditionalFeats: _0xaff143,
-      namespace: _0x498ee3
-    }) {
-      if (!ActorCharactermancerFeat._NAMESPACES_STATGEN.has(_0x498ee3)) {
-        return;
-      }
-      const _0x1693c1 = () => {
+    _feat_renderAdditionalFeats_addStatgenHandling({ compAdditionalFeats, namespace }) {
+      if (!ActorCharactermancerFeat._NAMESPACES_STATGEN.has(namespace)) { return; }
+      const hkFeats = () => {
         if (this._isSuspendSyncToStatgen) {
           return;
         }
-        const _0x452c82 = _0xaff143.getFormDataReduced();
-        const _0x10a56a = _0xaff143.ixSetAvailable;
-        if (["race", 'background'].includes(_0x498ee3)) {
-          this._parent.compAbility.compStatgen.setIxFeatSet(_0x498ee3, _0x10a56a);
-          const _0x5c8d24 = _0x452c82.data.filter(({
-            type: _0x1587bd
-          }) => _0x1587bd === "choose").map(({
-            ix: _0x350e80,
-            ixFeat: _0x5d5e1f
+        const formData = compAdditionalFeats.getFormDataReduced();
+        const avail = compAdditionalFeats.ixSetAvailable;
+        if (["race", 'background'].includes(namespace)) {
+          this._parent.compAbility.compStatgen.setIxFeatSet(namespace, avail);
+          const filtered = formData.data.filter(({ type: type }) => type === "choose").map(({
+            ix: ix,
+            ixFeat: ixFeat
           }) => ({
-            'ix': _0x350e80,
-            'ixFeat': _0x5d5e1f
+            ix: ix,
+            ixFeat: ixFeat
           }));
-          this._parent.compAbility.compStatgen.setIxFeatSetIxFeats(_0x498ee3, _0x5c8d24);
-        } else {
-          if (['ability'].includes(_0x498ee3)) {
-            let _0x4623a2 = -0x1;
-            let _0x59ccd9 = 0x0;
-            (_0x452c82.ixsStatgen || []).forEach(_0x210be2 => {
-              if (_0x210be2 > _0x4623a2 + _0x59ccd9 + 0x1) {
-                _0x59ccd9 += _0x210be2 - (_0x4623a2 + _0x59ccd9 + 0x1);
-              }
-              const _0x417c7e = _0x452c82.data.find(_0x261b70 => _0x261b70.ix + _0x59ccd9 === _0x210be2);
-              this._parent.compAbility.compStatgen.setIxFeat(_0x210be2, _0x498ee3, _0x417c7e?.["ixFeat"] ?? -0x1);
-              _0x4623a2++;
+          this._parent.compAbility.compStatgen.setIxFeatSetIxFeats(namespace, filtered);
+        }
+        else {
+          if (['ability'].includes(namespace)) {
+            let aa = -1;
+            let bb = 0;
+            (formData.ixsStatgen || []).forEach(ix => {
+              if (ix > aa + bb + 1) { bb += ix - (aa + bb + 1); }
+              const feat = formData.data.find(val => val.ix + bb === ix);
+              this._parent.compAbility.compStatgen.setIxFeat(ix, namespace, feat?.["ixFeat"] ?? -1);
+              aa++;
             });
-          } else if (['custom'].includes(_0x498ee3)) {
-            _0x452c82.data.forEach(_0x4bb19b => {
-              this._parent.compAbility.compStatgen.setIxFeat(_0x4bb19b.ix, _0x498ee3, _0x4bb19b.ixFeat);
+          }
+          else if (['custom'].includes(namespace)) {
+            formData.data.forEach(val => {
+              this._parent.compAbility.compStatgen.setIxFeat(val.ix, namespace, val.ixFeat);
             });
           }
         }
       };
-      _0xaff143.addHookPulseFeats(_0x1693c1);
-      _0x1693c1();
+      compAdditionalFeats.addHookPulseFeats(hkFeats);
+      hkFeats();
     }
-    async ["feat_pGetAdditionalFeatFormData"]() {
-      const _0x5c41dd = {
-        'ability': null,
-        'race': null,
-        'background': null,
-        'custom': null,
-        'isAnyData': false
+    async feat_pGetAdditionalFeatFormData() {
+      const out = {
+        ability: null,
+        race: null,
+        background: null,
+        custom: null,
+        isAnyData: false
       };
-      for (const _0x358dc0 of ["ability", "race", "background", "custom"]) {
-        if (!this._compAdditionalFeatsMetas[_0x358dc0]) {
-          continue;
-        }
-        const {
-          comp: _0x2a4200
-        } = this._compAdditionalFeatsMetas[_0x358dc0];
-        _0x5c41dd[_0x358dc0] = await _0x2a4200.pGetFormData();
-        _0x5c41dd.isAnyData = true;
+      for (const prop of ["ability", "race", "background", "custom"]) {
+        if (!this._compAdditionalFeatsMetas[prop]) { continue; }
+        const { comp } = this._compAdditionalFeatsMetas[prop];
+        out[prop] = await comp.pGetFormData();
+        out.isAnyData = true;
       }
-      return _0x5c41dd;
+      return out;
     }
-    ["_getDefaultState"]() {
+    _getDefaultState() {
       return {
-        'feat_availableFromAsi': [],
-        'feat_availableFromRace': null,
-        'feat_availableFromBackground': null,
-        'feat_availableFromCustom': [],
-        'feat_pulseChange': false
+        feat_availableFromAsi: [],
+        feat_availableFromRace: null,
+        feat_availableFromBackground: null,
+        feat_availableFromCustom: [],
+        feat_pulseChange: false
       };
     }
 }

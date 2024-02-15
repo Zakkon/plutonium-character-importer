@@ -1261,73 +1261,60 @@ class ModalFilterSources extends ModalFilter {
 class ActorCharactermancerSourceSelector extends AppSourceSelectorMulti {
     static _BREW_DIRS = ["class", 'subclass', "race", "subrace",
         "background", "item", 'baseitem', "magicvariant", "spell", "feat", "optionalfeature"];
-    static async ["api_pOpen"]({ actor: _0xeeb75e }) {
+    static async ["api_pOpen"]({ actor: actor }) {
       if (game.user.role < Config.get('charactermancer', 'minimumRole')) {
         throw new Error("You do not have sufficient permissions!");
       }
-      if (!_0xeeb75e) {
+      if (!actor) {
         throw new Error("\"actor\" option must be provided!");
       }
-      return this._pOpen({ actor: _0xeeb75e });
+      return this._pOpen({ actor: actor });
     }
     static prePreInit() { this._preInit_registerKeybinds(); }
     static _preInit_registerKeybinds() {
-      const _0x3c337a = () => {
-        const _0x5a25af = UtilKeybinding.getPlayerActor({
-          'minRole': Config.get("charactermancer", "minimumRole")
-        });
-        if (!_0x5a25af) {
-          return true;
-        }
-        this._pOpen({
-          'actor': _0x5a25af
-        });
+      const fnOpenPlayer = () => {
+        const playerActor = UtilKeybinding.getPlayerActor({ minRole: Config.get("charactermancer", "minimumRole") });
+        if (!playerActor) { return true; }
+        this._pOpen({ actor: playerActor });
         return true;
       };
-      const _0x513d8a = () => {
-        const _0x1b8f88 = UtilKeybinding.getCurrentImportableSheetDocumentMeta({
-          'isRequireActor': true,
-          'isRequireOwnership': true,
-          'minRole': Config.get("charactermancer", "minimumRole")
+      const fnOpenSheet = () => {
+        const meta = UtilKeybinding.getCurrentImportableSheetDocumentMeta({
+          isRequireActor: true,
+          isRequireOwnership: true,
+          minRole: Config.get("charactermancer", "minimumRole")
         });
-        if (!_0x1b8f88?.["actor"]) {
-          return true;
-        }
-        this._pOpen({
-          ..._0x1b8f88
-        });
+        if (!meta?.["actor"]) { return true; }
+        this._pOpen({ ...meta });
         return true;
       };
       game.keybindings.register(SharedConsts.MODULE_ID, "ActorCharactermancerSourceSelector__openForCharacter", {
-        'name': "Open Charactermancer Targeting Player Character",
-        'editable': [],
-        'onDown': () => _0x3c337a()
+        name: "Open Charactermancer Targeting Player Character",
+        editable: [],
+        onDown: () => fnOpenPlayer()
       });
       game.keybindings.register(SharedConsts.MODULE_ID, "ActorCharactermancerSourceSelector__openForCurrentSheet", {
-        'name': "Open Charactermancer Targeting Current Sheet",
-        'editable': [],
-        'onDown': () => _0x513d8a()
+        name: "Open Charactermancer Targeting Current Sheet",
+        editable: [],
+        onDown: () => fnOpenSheet()
       });
     }
-    static async pHandleButtonClick(_0x28a0ac, _0x4b5a20) {
-      /* if (!(await UtilPatreon.pGetShowLoginDialogue())?.["isPatron"]) {
-        return;
-      } */
-      return this._pOpen({actor: _0x4b5a20.actor});
+    static async pHandleButtonClick(e, opts) {
+      return this._pOpen({actor: opts.actor});
     }
-    static async _pOpen({ actor: _0x4eb02c }) {
-      const _0x5e36fe = await this._pGetSources({ 'actor': _0x4eb02c });
-      const _0x26bcef = new ActorCharactermancerSourceSelector({
-        'title': "Charactermancer (Actor \"" + _0x4eb02c.name + "\"): Select Sources",
-        'filterNamespace': 'ActorCharactermancerSourceSelector_filter',
-        'savedSelectionKey': "ActorCharactermancerSourceSelector_savedSelection",
-        'sourcesToDisplay': _0x5e36fe
+    static async _pOpen({ actor: actor }) {
+      const sources = await this._pGetSources({ actor: actor });
+      const selector = new ActorCharactermancerSourceSelector({
+        title: "Charactermancer (Actor \"" + actor.name + "\"): Select Sources",
+        filterNamespace: 'ActorCharactermancerSourceSelector_filter',
+        savedSelectionKey: "ActorCharactermancerSourceSelector_savedSelection",
+        sourcesToDisplay: sources
       });
-      const _0x48a940 = await _0x26bcef.pWaitForUserInput();
-      if (_0x48a940 == null) { return; }
-      const _0x36cd98 = this._postProcessAllSelectedData(_0x48a940);
-      const _0x672311 = new ActorCharactermancer({ 'actor': _0x4eb02c, 'data': _0x36cd98 });
-      _0x672311.render(true);
+      const hasConfirmed = await selector.pWaitForUserInput();
+      if (hasConfirmed == null) { return; }
+      const data = this._postProcessAllSelectedData(hasConfirmed);
+      const mancer = new ActorCharactermancer({ actor: actor, data: data });
+      mancer.render(true);
     }
     static _postProcessAllSelectedData(results) {
       results = ImportListClass.Utils.getDedupedData({ allContentMerged: results });
@@ -1337,94 +1324,72 @@ class ActorCharactermancerSourceSelector extends AppSourceSelectorMulti {
       Charactermancer_Class_Util.addFauxOptionalFeatureFeatures(results.class, results.optionalfeature);
       return results;
     }
-    static async _pGetSources({
-      actor: _0x2344b6
-    }) {
+    static async _pGetSources({ actor: actor }) {
       return [new UtilDataSource.DataSourceSpecial(Config.get('ui', 'isStreamerMode') ? "SRD" : "5etools", this._pLoadVetoolsSource.bind(this), {
         'cacheKey': '5etools-charactermancer',
         'filterTypes': [UtilDataSource.SOURCE_TYP_OFFICIAL_ALL],
         'isDefault': true,
         'pPostLoad': this._pPostLoad.bind(this, {
-          'actor': _0x2344b6
+          'actor': actor
         })
       }), ...UtilDataSource.getSourcesCustomUrl({
         'pPostLoad': this._pPostLoad.bind(this, {
           'isBrewOrPrerelease': true,
-          'actor': _0x2344b6
+          'actor': actor
         })
       }), ...UtilDataSource.getSourcesUploadFile({
         'pPostLoad': this._pPostLoad.bind(this, {
           'isBrewOrPrerelease': true,
-          'actor': _0x2344b6
+          'actor': actor
         })
       }), ...(await UtilDataSource.pGetSourcesPrerelease(ActorCharactermancerSourceSelector._BREW_DIRS, {
         'pPostLoad': this._pPostLoad.bind(this, {
           'isPrerelease': true,
-          'actor': _0x2344b6
+          'actor': actor
         })
       })), ...(await UtilDataSource.pGetSourcesBrew(ActorCharactermancerSourceSelector._BREW_DIRS, {
         'pPostLoad': this._pPostLoad.bind(this, {
           'isBrew': true,
-          'actor': _0x2344b6
+          'actor': actor
         })
-      }))].filter(_0x54f70d => !UtilWorldDataSourceSelector.isFiltered(_0x54f70d));
+      }))].filter(src => !UtilWorldDataSourceSelector.isFiltered(src));
     }
     static async _pLoadVetoolsSource() {
-      const _0x1c67cc = {};
-      const [_0x44e1d8, _0xb7e176, _0x453d15, _0x3cc2c0, _0x4768b0, _0x3f9c6d, _0x10d8c0] = await Promise.all([Vetools.pGetClasses(), Vetools.pGetRaces(), DataUtil.loadJSON(Vetools.DATA_URL_BACKGROUNDS), Vetools.pGetItems(), Vetools.pGetAllSpells(), DataUtil.loadJSON(Vetools.DATA_URL_FEATS), DataUtil.loadJSON(Vetools.DATA_URL_OPTIONALFEATURES)]);
-      Object.assign(_0x1c67cc, _0x44e1d8);
-      _0x1c67cc.race = _0xb7e176.race;
-      _0x1c67cc.background = _0x453d15.background;
-      _0x1c67cc.item = _0x3cc2c0.item;
-      _0x1c67cc.spell = _0x4768b0.spell;
-      _0x1c67cc.feat = _0x3f9c6d.feat;
-      _0x1c67cc.optionalfeature = _0x10d8c0.optionalfeature;
-      return _0x1c67cc;
+      const out = {};
+      const [replyClass, replyRace, replyBk, replyItem, replySpell, replyFeat, replyOptionalFeature] =
+      await Promise.all([Vetools.pGetClasses(), Vetools.pGetRaces(), DataUtil.loadJSON(Vetools.DATA_URL_BACKGROUNDS), Vetools.pGetItems(), Vetools.pGetAllSpells(), DataUtil.loadJSON(Vetools.DATA_URL_FEATS), DataUtil.loadJSON(Vetools.DATA_URL_OPTIONALFEATURES)]);
+      Object.assign(out, replyClass);
+      out.race = replyRace.race;
+      out.background = replyBk.background;
+      out.item = replyItem.item;
+      out.spell = replySpell.spell;
+      out.feat = replyFeat.feat;
+      out.optionalfeature = replyOptionalFeature.optionalfeature;
+      return out;
     }
-    static async _pPostLoad(_0x4e0586) {
+    static async _pPostLoad(opts) {
       if (isBrewOrPrerelease) {
-        const {
-          isPrerelease: _0xd968a5,
-          isBrew: _0xbba490
-        } = UtilDataSource.getSourceType(_0x4e0586, {
-          'isErrorOnMultiple': true
-        });
-        _0xd968a5;
-        isBrew = _0xbba490;
+        const { isPrerelease: isPrerelease, isBrew: isBrew } = UtilDataSource.getSourceType(opts, { 'isErrorOnMultiple': true });
+        isPrerelease;
+        isBrew = isBrew;
       }
-      _0x4e0586 = await UtilDataSource.pPostLoadGeneric({
-        'isBrew': isBrew,
-        'isPrerelease': _0xd968a5
-      }, _0x4e0586);
-      if (_0x4e0586["class"] || _0x4e0586.subclass) {
-        const {
-          DataConverterClassSubclassFeature: _0x1311c6
-        } = await Promise.resolve().then(function () {
-          return DataConverterClassSubclassFeature$1;
-        });
-        const _0x2f74ed = await _0x1311c6.pGetClassSubclassFeatureIgnoredLookup({
-          'data': _0x4e0586
-        });
-        const _0x15dc0a = await PageFilterClassesFoundry.pPostLoad({
-          'class': _0x4e0586["class"],
-          'subclass': _0x4e0586.subclass,
-          'classFeature': _0x4e0586.classFeature,
-          'subclassFeature': _0x4e0586.subclassFeature
+      opts = await UtilDataSource.pPostLoadGeneric({ isBrew: isBrew, isPrerelease: isPrerelease }, opts);
+      if (opts.class || opts.subclass) {
+        const isIgnoredLookup = await DataConverterClassSubclassFeature.pGetClassSubclassFeatureIgnoredLookup({ data: opts });
+        const postLoaded = await PageFilterClassesFoundry.pPostLoad({
+          'class': opts.class,
+          'subclass': opts.subclass,
+          'classFeature': opts.classFeature,
+          'subclassFeature': opts.subclassFeature
         }, {
-          'actor': _0x5d48db,
-          'isIgnoredLookup': _0x2f74ed
+          'actor': actor,
+          'isIgnoredLookup': isIgnoredLookup
         });
-        Object.assign(_0x4e0586, _0x15dc0a);
-        if (_0x4e0586["class"]) {
-          _0x4e0586["class"].forEach(_0x4b57f1 => PageFilterClasses.mutateForFilters(_0x4b57f1));
-        }
+        Object.assign(opts, postLoaded);
+        if (opts.class) { opts.class.forEach(cls => PageFilterClasses.mutateForFilters(cls)); }
       }
-      if (_0x4e0586.feat) {
-        _0x4e0586.feat = MiscUtil.copy(_0x4e0586.feat);
-      }
-      if (_0x4e0586.optionalfeature) {
-        _0x4e0586.optionalfeature = MiscUtil.copy(_0x4e0586.optionalfeature);
-      }
-      return _0x4e0586;
+      if (opts.feat) { opts.feat = MiscUtil.copy(opts.feat); }
+      if (opts.optionalfeature) { opts.optionalfeature = MiscUtil.copy(opts.optionalfeature); }
+      return opts;
     }
 }
