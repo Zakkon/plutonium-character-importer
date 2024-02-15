@@ -1,16 +1,45 @@
-import TestClass from './charactermancer/testclass.js';
-import Charactermancer_Util from './charactermancer/test_util.js'
+import Charactermancer_Util from './test_util.js'
+import {Config} from './veTools/config.js'
+import Vetools from './veTools/vetools.js'
+import UtilDataSource from './veTools/utilDataSource.js'
+import { DataConverterClassSubclassFeature, SideDataInterfaces } from './veTools/dataloader.js'
+import { PageFilterClassesFoundry } from './veTools/pagefilters.js'
+import ImportListClass from './veTools/importlist.js'
+import { Charactermancer_Class_Util, Charactermancer_Feature_Util } from './mancer/charactermancer.js'
 const NAME = "dnd5e-zakkons-helpers";
 
 //Runs on foundry init
 Hooks.on('init', function () {
-  console.log('Plutonium Character Builder is initialized.');
+
+  console.log("INIT OF STUFF PLUT");
+  handleInit().then(() => handleReady()); //.then(() => SourceManager._pOpen({actor:null})));
+
+  
 });
+async function handleInit(){
+  //UtilGameSettings.prePreInit();
+  //Vetools.doMonkeyPatchPreConfig();
+  Config.prePreInit(); //Important
+  Vetools.doMonkeyPatchPostConfig(); //Makes roll buttons work
+
+  //We need this to be true, since BrewUtil freaks out otherwise and tries to grab json from a url that is 404
+  Object.defineProperty(globalThis, "IS_DEPLOYED", {
+    get() { return true; },
+    set(val) {},
+  });
+  console.log('Plutonium Character Builder is initialized.');
+}
+async function handleReady(){
+  await Config.pInit(); //Important
+  await Vetools.pDoPreload(); //Important
+  SideDataInterfaces.init(); //Important
+  console.log('Plutonium Character Builder is ready.');
+}
 async function getActorHeaderButtons(sheet, buttons) {
 
-  if ( !sheet.object.canUserModify(game.user) ) return;
+  if (!sheet.object.canUserModify(game.user)) return;
 
-  console.log(Charactermancer_Util);
+  console.log("UTIL", Charactermancer_Util);
 
   // Push a new button to the front of the list
   buttons.unshift({
@@ -19,6 +48,7 @@ async function getActorHeaderButtons(sheet, buttons) {
       onclick: async(event) => {
         let importer = new CharacterImporter(sheet.actor, true, false, true);
         await importer.init();
+        await importer.loadSources();
         await importer.createData();
         importer.createState();
         importer.startImport();
@@ -45,6 +75,12 @@ class CharacterImporter{
   static DataUtil;
   static api;
 
+  /**
+   * @param {any} actor
+   * @param {boolean} doAbilities
+   * @param {boolean} doRace
+   * @param {boolean} doClass
+   */
   constructor(actor, doAbilities, doRace, doClass){
     this._actor = actor;
     this.doAbilities = doAbilities;
@@ -54,9 +90,13 @@ class CharacterImporter{
   }
 
   
+  /**
+   * Initialize the importer
+   */
   async init(){
     let pl = await game.modules.get("plutonium");
     if(!pl){console.error("Could not find Plutonium"); return;}
+    console.log("PLUTONIUM:", pl);
     CharacterImporter.AppTaskRunner = pl.api.util.apps.AppTaskRunner;
     CharacterImporter.TaskClosure = pl.api.util.apps.TaskClosure;
     CharacterImporter.Charactermancer_Class_ProficiencyImportModeSelect = pl.api.charactermancer.Charactermancer_Class_ProficiencyImportModeSelect;
@@ -64,6 +104,10 @@ class CharacterImporter{
     CharacterImporter.Charactermancer_Class_Util = pl.api.charactermancer.Charactermancer_Class_Util;
     CharacterImporter.DataUtil = pl.api.util.apps.DataUtil;
     CharacterImporter.api = pl.api;
+  }
+  async loadSources(){
+    //How do we load sources?
+    await SourceManager._pOpen(this._actor);
   }
   async createData(){
     let data = {class: [], subclass:[], classFeature:[], subclassFeature:[]};
@@ -100,7 +144,8 @@ class CharacterImporter{
       }
 
       //Now we need to flesh out some more data about the class features, using just the UID we can get a lot of such info.
-      await (cls.classFeatures || []).pSerialAwaitMap(cf => CharacterImporter.api.util.apps.PageFilterClassesRaw.pInitClassFeatureLoadeds({...opts, classFeature: cf, className: cls.name}));
+      await (cls.classFeatures || []).pSerialAwaitMap(cf =>
+        CharacterImporter.api.util.apps.PageFilterClassesRaw.pInitClassFeatureLoadeds({...opts, classFeature: cf, className: cls.name}));
 
       if (cls.classFeatures) {cls.classFeatures = cls.classFeatures.filter(it => !it.isIgnored);}
       this._data.class[j] = cls;
@@ -243,12 +288,12 @@ class CharacterImporter{
 
   async createTaskRunner(){
     await new CharacterImporter.AppTaskRunner({
-      'tasks': [
+      tasks: [
         //This task will set class stuff
         this._pHandleSaveClick_getClosure({ //This is called when the task is complete
-          'pFn': this._pHandleSaveClick_class.bind(this), //This is the main function of the task
-          'msgStart': "Setting class stuff...",
-          'msgComplete': "Class stuff set."
+          pFn: this._pHandleSaveClick_class.bind(this), //This is the main function of the task
+          msgStart: "Setting class stuff...",
+          msgComplete: "Class stuff set."
           }),
         ]
         .filter(Boolean),
@@ -295,48 +340,40 @@ class CharacterImporter{
   }
 
   async _pHandleSaveClick_class({taskRunner:myRunner}){ //_pHandleSaveClick_class function
-    const _0xaf846e_ourClasses=[]; //Array of objects, each obj contains full class and full subclass data, along with bool if primary
+    const myClasses=[]; //Array of objects, each obj contains full class and full subclass data, along with bool if primary
     //----Lets start populating this array----
 
     //for(let ix = 0; ix < this.ActorCharactermancerClass.state.class_ixMax + 1; ++ix) //state, not _state
     //Probably going through each class on the character
-    for(let ix1=0;ix1<this.//_compClass.state
-    _state['class_ixMax']+1;++ix1){
+    for(let ix1 = 0; ix1 < this._state['class_ixMax']+1; ++ix1){
       //propIxClass = class_0_ixClass
       //propIxSubclass = class_0_subclass_ixSubclass
-      const {propIxClass:_0x5c1be6_pixcls,propIxSubclass:_0x559ff6_pixsc}=//ActorCharactermancerBaseComponent['class_getProps'](ix1), //ActorCharactermancerBaseComponent.class_getProps(0)?
-        MancerBaseComponent.class_getProps(ix1),
-        _0x480164_fullCls=this.getClass_//['_compClass']['getClass_']
-        ({'propIxClass':_0x5c1be6_pixcls}); //= this._compClass.getClass_() (see bundle_copy.js for how this function looks)
-        //_compClass might be the page of the UI that handles class (looks like it is)
+      const {propIxClass, propIxSubclass} = MancerBaseComponent.class_getProps(ix1);
+      const myClass = this.getClass_({propIxClass:propIxClass});
+      console.log("CLASS IX", propIxClass, ix1);
+      console.log("data", this._data);
+      console.log(myClass);
+      for(let f of myClass.classFeatures){
+        if (typeof f !== "object") {console.error("class features not set up correctly");}
+      }
+      if(!myClass){continue;} //This should be an entire class object, all features and everything, up to lvl 20. its the same as the class json
 
-      console.log(_0x480164_fullCls);
-      for(let f of _0x480164_fullCls.classFeatures)
-        {
-          if (typeof f !== "object") {console.error("class features not set up correctly");}
-        }
-      if(!_0x480164_fullCls)continue; //This should be an entire class object, all features and everything, up to lvl 20. its the same as the class json
+      //Try to get the subclass obj
+      const mySubclass = this._getSubclass({cls:myClass, propIxSubclass:propIxSubclass});
 
-      const _0x13049d_chsnSc=this._getSubclass//['_compClass']['getSubclass_']
-      ({
-        'cls':_0x480164_fullCls,
-        'propIxSubclass':_0x559ff6_pixsc});
-
-      _0xaf846e_ourClasses.push({
-        'ix':ix1, //index of class (in relation to how many we have on us)
-        'cls':_0x480164_fullCls, //full class object
-        'sc':_0x13049d_chsnSc, //full subclass object (or null) (chosen subclass)
-        'isPrimary':this//['_compClass']['state']
-        ._state
-        ['class_ixPrimaryClass']===ix1 //says if this is primary true/false
+      myClasses.push({
+        ix:ix1, //index of class (in relation to how many we have on us)
+        cls:myClass, //full class object
+        sc:mySubclass, //full subclass object (or null) (chosen subclass)
+        isPrimary:this._state['class_ixPrimaryClass']===ix1 //says if this is primary true/false
       });
     }
      //----Array is now populated----
 
     //For the next part to continue, we need to have at least one class in the array
-    if(_0xaf846e_ourClasses['length']){
+    if(myClasses['length']){
       //Sort the classes (i guess primary goes first?)
-      _0xaf846e_ourClasses['sort']((_0x49bcf2,_0x2531e5)=>SortUtil['ascSort'](Number(_0x2531e5['isPrimary']),
+      myClasses['sort']((_0x49bcf2,_0x2531e5)=>SortUtil['ascSort'](Number(_0x2531e5['isPrimary']),
         Number(_0x49bcf2['isPrimary']))||SortUtil['ascSort'](_0x49bcf2[_0x3b80b4(0x151)][_0x3b80b4(0x1cc)],_0x2531e5[_0x3b80b4(0x151)]['name']));
 
       //Not sure what an imporlistclass is yet
@@ -364,11 +401,11 @@ class CharacterImporter{
       };
 
       //We are now going to create copies of the class and subclass objects
-      for(let ix2=0x0;ix2<_0xaf846e_ourClasses['length'];++ix2){ //standard for loop. go through all of them (_0xaf846e_ourClasses.length)
+      for(let ix2=0x0;ix2<myClasses['length'];++ix2){ //standard for loop. go through all of them (_0xaf846e_ourClasses.length)
 
         //Now we are looking at a single class, and perhaps a subclass attached to it. Lets copy them
         //grab the ix, cls, sc and isPrimary from the iterated object, but give them new names
-        const {ix:_0x3b89aa_ix,cls:_0xc6a512_cls,sc:_0x471f46_sc,isPrimary:_0x4f8858_isPrim}=_0xaf846e_ourClasses[ix2],
+        const {ix:_0x3b89aa_ix,cls:_0xc6a512_cls,sc:_0x471f46_sc,isPrimary:_0x4f8858_isPrim}=myClasses[ix2],
         _0x49f53d_cls_copy=MiscUtil['copy'](_0xc6a512_cls), //MiscUtil.copy(class object)
         _0x32e5ba_sc_copy=_0x471f46_sc?MiscUtil['copy'](_0x471f46_sc):null; //MiscUtil.copy(subclass object)
 
@@ -655,5 +692,302 @@ Array.prototype.pSerialAwaitMap || Object.defineProperty(Array.prototype, "pSeri
 		return out;
 	},
 });
+
+class SourceManager {
+  static _BREW_DIRS = ["class", 'subclass', "race", "subrace", "background",
+    "item", 'baseitem', "magicvariant", "spell", "feat", "optionalfeature"];
+  static _DATA_PROPS_EXPECTED = ['class', "subclass", 'classFeature', "subclassFeature",
+    "race", "background", "item", "spell", "feat", 'optionalfeature'];
+  static cacheKey = "sourceIds";
+  static _curWindow;
+
+  /**
+   * Starting function for the whole program. Loads source ids from local storage (or default ones as fallback),
+   * and creates a character builder window that can play around with those sources
+   * @param {any} actor Can just be left as null, not used at the moment
+   */
+  static async _pOpen({ actor: actor }) {
+
+    //Try to load source ids from localstorage
+    let sourceIds = null; //await this._loadSourceIdsFromStorage({actor});
+    //If that failed, load default source ids
+    if(!sourceIds){sourceIds = await this._getDefaultSourceIds({actor});}
+
+    const fileMetas = null;//JSON.parse(localStorage.getItem("uploadedFileMetas"));
+    const customUrls = null;//JSON.parse(localStorage.getItem("customUrls"));
+
+    //Cache which sources we chose, and let them process the source ids into ready data entries (classes, races, etc)
+    const data = await SourceManager._loadSources({sourceIds: sourceIds, uploadedFileMetas: fileMetas, customUrls: customUrls});
+
+    console.log("DATA", data, sourceIds);
+  }
+  /**
+   * Perform some post-processing on entities extracted from sources
+   * @param {{class:{}[], background:{}[], classFeature:{}[], race:{}[], monster:{}[], item:{}[]
+   * , spell:{}[], subclass:{}[], subclassFeature:{}[], feat:{}[], optionalFeature:{}[], foundryClass:{}[]}} data
+   * @returns {{class:{}[], background:{}[], classFeature:{}[], race:{}[], monster:{}[], item:{}[]
+   * , spell:{}[], subclassFeature:{}[], feat:{}[], optionalFeature:{}[], foundryClass:{}[]}}
+   */
+  static _postProcessAllSelectedData(data) {
+
+    data = ImportListClass.Utils.getDedupedData({allContentMerged: data});
+
+    data = ImportListClass.Utils.getBlocklistFilteredData({dedupedAllContentMerged: data});
+
+    delete data.subclass;
+    Charactermancer_Feature_Util.addFauxOptionalFeatureEntries(data, data.optionalfeature);
+
+    Charactermancer_Class_Util.addFauxOptionalFeatureFeatures(data.class, data.optionalfeature);
+    return data;
+  }
+
+  /**
+   * Get objects containing information about sources, such as urls, abbreviations and names. Doesn't include any game content itself
+   * @param {any} actor
+   * @returns {{name:string, isDefault:boolean, cacheKey:string}[]}
+   */
+  static async _pGetSources({ actor: actor }) {
+
+    const isStreamerMode = true;//Config.get('ui', 'isStreamerMode');
+
+    return [new UtilDataSource.DataSourceSpecial(isStreamerMode ? "SRD" : "5etools", SourceManager._pLoadVetoolsSource.bind(this), {
+      cacheKey: '5etools-charactermancer',
+      filterTypes: [UtilDataSource.SOURCE_TYP_OFFICIAL_ALL],
+      isDefault: true,
+      pPostLoad: SourceManager._pPostLoad.bind(this, {
+        actor: actor
+      })
+    }), ...UtilDataSource.getSourcesCustomUrl({
+      pPostLoad: SourceManager._pPostLoad.bind(this, {
+        isBrewOrPrerelease: true,
+        actor: actor
+      })
+    }), ...UtilDataSource.getSourcesUploadFile({
+      pPostLoad: SourceManager._pPostLoad.bind(this, {
+        isBrewOrPrerelease: true,
+        actor: actor
+      })
+    }), ...(await UtilDataSource.pGetSourcesPrerelease(ActorCharactermancerSourceSelector._BREW_DIRS, {
+      pPostLoad: SourceManager._pPostLoad.bind(this, { isPrerelease: true, actor: actor })
+    })), ...(await UtilDataSource.pGetSourcesBrew(ActorCharactermancerSourceSelector._BREW_DIRS, {
+      pPostLoad: SourceManager._pPostLoad.bind(this, { isBrew: true, actor: actor })
+    }))].filter(dataSource => !UtilWorldDataSourceSelector.isFiltered(dataSource));
+  }
+
+  
+  static async _getDefaultSourceIds({actor}){
+    const isStreamerMode = true;
+      //Create a source obj that contains all the official sources (PHB, XGE, TCE, etc)
+      //This object will have the 'isDefault' property set to true
+      const officialSources = new UtilDataSource.DataSourceSpecial(
+        isStreamerMode? "SRD" : "5etools", this._pLoadVetoolsSource.bind(this),
+        {
+          cacheKey: '5etools-charactermancer',
+          filterTypes: [UtilDataSource.SOURCE_TYP_OFFICIAL_ALL],
+          isDefault: true,
+          pPostLoad: this._pPostLoad.bind(this, { actor: actor })
+      });
+
+      const allBrews = await Vetools.pGetBrewSources(...SourceManager._BREW_DIRS);
+      console.log("Allbrews", allBrews);
+      const chosenBrew = allBrews[202];
+      console.log("Adding brew ", chosenBrew);
+
+      const chosenBrewSourceUrl = new UtilDataSource.DataSourceUrl(chosenBrew.name, chosenBrew.url,{
+        pPostLoad: this._pPostLoad.bind(this, { isBrew: true, actor: actor }),
+        filterTypes: [UtilDataSource.SOURCE_TYP_BREW],
+        abbreviations: chosenBrew.abbreviations,
+        brewUtil: BrewUtil2,
+      });
+
+      return [officialSources, chosenBrewSourceUrl];
+  }
+
+  /**
+   * Extracts entities such as classes, subclasses, races and backgrounds out of an array of sources
+   * @param {{name:string, isDefault:boolean, cacheKey:string}[]} sourceIds
+   * @param {any} uploadedFileMetas
+   * @param {any} customUrls
+   * @returns {{class:{}[], background:{}[], classFeature:{}[], race:{}[], monster:{}[], item:{}[]
+   * , spell:{}[], subclass:{}[], subclassFeature:{}[], feat:{}[], optionalFeature:{}[], foundryClass:{}[]}}
+   */
+  static async _getOutputEntities(sourceIds, uploadedFileMetas, customUrls, getDeduped=false) {
+
+    //Should contain all spells, classes, etc from every source we provide
+    const allContentMeta = await UtilDataSource.pGetAllContent({
+    sources: sourceIds,
+    uploadedFileMetas: uploadedFileMetas,
+    customUrls: customUrls,/*
+    isBackground,
+
+    page: this._page,
+
+    isDedupable: this._isDedupable,
+    fnGetDedupedData: this._fnGetDedupedData,
+
+    fnGetBlocklistFilteredData: this._fnGetBlocklistFilteredData,
+
+    isAutoSelectAll, */
+    });
+
+    const out = getDeduped? allContentMeta.dedupedAllContentMerged : allContentMeta;
+
+    //TEMPFIX
+    /*  Renderer.spell.populatePrereleaseLookup(await PrereleaseUtil.pGetBrewProcessed(), {isForce: true});
+Renderer.spell.populateBrewLookup(await BrewUtil2.pGetBrewProcessed(), {isForce: true});
+
+(out.spell || []).forEach(sp => { Renderer.spell.uninitBrewSources(sp); Renderer.spell.initBrewSources(sp); }); */
+
+    return out;
+  }
+  static async _pLoadVetoolsSource() {
+      const combinedSource = {};
+      const [classResult, raceResult, backgroundResult, itemResults, spellResults, featResults, optionalFeatureResults]
+      = await Promise.all([Vetools.pGetClasses(), Vetools.pGetRaces(), DataUtil.loadJSON(Vetools.DATA_URL_BACKGROUNDS),
+          Vetools.pGetItems(), Vetools.pGetAllSpells(), DataUtil.loadJSON(Vetools.DATA_URL_FEATS), DataUtil.loadJSON(Vetools.DATA_URL_OPTIONALFEATURES)]);
+      Object.assign(combinedSource, classResult);
+      combinedSource.race = raceResult.race;
+      combinedSource.background = backgroundResult.background;
+      combinedSource.item = itemResults.item;
+      combinedSource.spell = spellResults.spell;
+      combinedSource.feat = featResults.feat;
+      combinedSource.optionalfeature = optionalFeatureResults.optionalfeature;
+      return combinedSource;
+  }
+  /**
+   * Called when a source has been loaded
+   * @param {any} data
+   * @param {{actor:any, isBrewOrPrerelease:boolean}} opts
+   * @returns {any} data
+   */
+  static async _pPostLoad(opts, data) {
+    let isBrew = false; let isPrerelease = false;
+    const isBrewOrPrerelease = opts.isBrewOrPrerelease || false;
+    if (isBrewOrPrerelease) {
+      const { isPrerelease: _isPre, isBrew: _isBrew } =
+      UtilDataSource.getSourceType(data, { isErrorOnMultiple: true });
+      isPrerelease = _isPre;
+      isBrew = _isBrew;
+    }
+
+    //Load the actual content
+    data = await UtilDataSource.pPostLoadGeneric({ isBrew: isBrew, isPrerelease: isPrerelease }, data);
+
+
+    if (data.class || data.subclass) {
+      //TEMPFIX
+      /* const { DataConverterClassSubclassFeature: convSubclFeature  } = await Promise.resolve().then(function () {
+        return DataConverterClassSubclassFeature;
+      }); */
+
+      const isIgnoredLookup = await DataConverterClassSubclassFeature/*convSubclFeature*/.pGetClassSubclassFeatureIgnoredLookup({ data: data });
+      const postLoadedData = await PageFilterClassesFoundry.pPostLoad({
+        'class': data.class,
+        'subclass': data.subclass,
+        'classFeature': data.classFeature,
+        'subclassFeature': data.subclassFeature
+      }, {
+        //'actor': _0x5d48db,
+        'isIgnoredLookup': isIgnoredLookup
+      });
+      Object.assign(data, postLoadedData);
+      if (data.class) {
+        data.class.forEach(cls => PageFilterClasses.mutateForFilters(cls));
+      }
+    }
+    if (data.feat) { data.feat = MiscUtil.copy(data.feat); }
+    if (data.optionalfeature) {
+      data.optionalfeature = MiscUtil.copy(data.optionalfeature);
+    }
+    return data;
+  }
+
+  /**
+   * @param {any} sourceIds
+   */
+  static async _setUsedSourceIds(sourceIds){
+    SourceManager._testLoadedSources = sourceIds;
+  }
+  /**
+   * @param {{sourceIds:any[], uploadedFileMetas:any, customUrls:any}} sourceInfo
+   * @returns {{class:{}[], background:{}[], classFeature:{}[], race:{}[], monster:{}[], item:{}[]
+   * , spell:{}[], subclassFeature:{}[], feat:{}[], optionalFeature:{}[], foundryClass:{}[]}}
+   */
+  static async _loadSources(sourceInfo){
+    //Process and post-process the data
+    //Get entities such as classes, races, backgrounds using the source ids
+    const content = await SourceManager._getOutputEntities(sourceInfo.sourceIds, sourceInfo.uploadedFileMetas, sourceInfo.customUrls, true);
+    //Then perform some post processing
+    const postProcessedData = SourceManager._postProcessAllSelectedData(content);
+    const mergedData = postProcessedData;
+    //Make sure that the data always has an array for classes, races, feats, etc, even if none were provided by the sources
+    SourceManager._DATA_PROPS_EXPECTED.forEach(propExpected => mergedData[propExpected] = mergedData[propExpected] || []);
+    SourceManager._setUsedSourceIds(sourceInfo.sourceIds);
+    SourceManager._testUploadedFileMetas = sourceInfo.uploadedFileMetas;
+
+    return mergedData;
+  }
+  /**
+   * Apply new source IDs, and fetch entities from them. Completely reloads the entire character builder.
+   * @param {{sourceIds:any[], uploadedFileMetas:any, customUrls:any}} sourceInfo
+   */
+  static async onUserChangedSources(sourceInfo){
+    console.log("We are asked to change to these sources:", sourceInfo);
+    //Cache which sources we chose, and let them process the source ids into ready data entries (classes, races, etc)
+    const data = await SourceManager._loadSources(sourceInfo);
+    //Tear down the existing window
+    this._curWindow.teardown();
+    //Create a new window
+    const window = new CharacterBuilder(data);
+    this._curWindow = window;
+  }
+  static saveSourceIdsToStorage(sourceIds){
+    //First, we need to compress the sourceIds into the minimal used information
+    const min = sourceIds;//.map(s => {})
+    localStorage.setItem(SourceManager.cacheKey, JSON.stringify(min));
+  }
+  /**
+   * @param {any} {actor}
+   * @returns {{name:string, isDefault:boolean, cacheKey:string}[]}
+   */
+  static async _loadSourceIdsFromStorage({actor}){
+    //Try to load from localstorage safely
+    let sourceIdsMin = [];
+    try {
+      const str = localStorage.getItem(SourceManager.cacheKey);
+      if(!str){return null;}
+      const out = JSON.parse(str);
+      sourceIdsMin = out;
+    }
+    catch(e){
+      console.error("Failed to parse saved source ids!");
+      throw e;
+    }
+    //Assume something is wrong if no source id is in the array
+    //TODO: there is a strange but rare usecase where user wants it this way?
+    if(sourceIdsMin.length < 1){return null;}
+    //Get all sources. These contain more info than is in the minified version
+    const allSources = await this._pGetSources({actor});
+    console.log("LOADED SOURCE IDS", sourceIdsMin);
+
+    //Match the full sources to the minified sources we pulled from localstorage
+    //Then return the full sources that were matched
+    return allSources.filter(src => {
+      let match = false; //loop will stop when match is made
+      for(let i = 0; !match && i < sourceIdsMin.length; ++i){
+        match = sourceIdsMin[i].name == src.name; //Simple name match for now
+      }
+      return match;
+    });
+  }
+  static minifySourceId(sourceId){
+    let out = {name:sourceId.name};
+    if(!!sourceId.isDefault){out.isDefault = sourceId.isDefault;}
+    //if(!!s._isAutoDetectPrereleaseBrew){out._isAutoDetectPrereleaseBrew = s._isAutoDetectPrereleaseBrew;}
+    //if(!!s._isExistingPrereleaseBrew){out._isExistingPrereleaseBrew = s._isExistingPrereleaseBrew;}
+    //if(!!sourceId.cacheKey){out.cacheKey = sourceId.cacheKey;}
+    return out;
+  }
+}
 
 Hooks.on("getActorSheetHeaderButtons", getActorHeaderButtons);

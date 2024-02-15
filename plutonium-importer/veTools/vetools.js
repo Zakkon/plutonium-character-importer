@@ -1,3 +1,8 @@
+import JqueryExtension from "./jqueryutil.js";
+import { Config, Consts, SharedConsts } from "./config.js";
+import { UtilHooks, LGT } from "./utils.js";
+import SETTINGS from "./settings.js";
+
 globalThis.VeLock = function({name=null, isDbg=false}={}) {
     this._name = name;
     this._isDbg = isDbg;
@@ -53,8 +58,7 @@ globalThis.VeLock = function({name=null, isDbg=false}={}) {
         lockMeta.unlock();
     }
     ;
-}
-;
+};
 class Vetools {
     static PRERELEASE_INDEX__SOURCE = {};
     static PRERELEASE_INDEX__PROP = {};
@@ -161,8 +165,7 @@ class Vetools {
             }
 
             Renderer.get().setBaseMediaUrl("img", null);
-        }
-        ;
+        };
         hkSetRendererUrls();
 
         if(SETTINGS.USE_FVTT){UtilHooks.on(UtilHooks.HK_CONFIG_UPDATE, hkSetRendererUrls);}
@@ -961,13 +964,11 @@ class Vetools {
         const urlRoot = Config.get("dataSources", configKey);
 
         let paths;
-        if (dirs.includes("*")) {
-            paths = Object.values(indexProp).map(obj=>Object.keys(obj)).flat().unique();
-        } else {
-            paths = dirs.map(dir=>Object.keys(indexProp[brewUtil.getDirProp(dir)] || {})).flat().unique();
-        }
+        if (dirs.includes("*")) { paths = Object.values(indexProp).map(obj=>Object.keys(obj)).flat().unique();}
+        else { paths = dirs.map(dir=>Object.keys(indexProp[brewUtil.getDirProp(dir)] || {})).flat().unique(); }
 
         console.log("PATHS", dirs[0], indexProp, indexProp[brewUtil.getDirProp(dirs[0])]);
+
         return paths.map((path)=>{
             const metaName = UrlUtil.getFilename(path);
             //if(!urlRoot){console.error(`Failed to get urlRoot from 'dataSources' with key '${configKey}'. Is config uninitialized?`);}
@@ -1271,3 +1272,5 @@ Vetools._CACHED_MONSTER_DO_BIND_COMPACT_CONTENT_HANDLERS = null;
 Vetools._CACHED_RENDERER_HOVER_CACHE_AND_GET = null;
 Vetools._LOCK_DOWNLOAD_IMAGE = new VeLock();
 Vetools._VET_SOURCE_LOOKUP = {};
+
+export default Vetools;
