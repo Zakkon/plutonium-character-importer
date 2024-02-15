@@ -3226,8 +3226,7 @@ class Config {
     if (isLoaded) { //If we managed to load an existing config
       const isSaveRequired = this._populateMissingConfigValues(Config._CONFIG, { 'isPlayer': false });
       this._IS_INIT_SAVE_REQUIRED = this._IS_INIT_SAVE_REQUIRED || isSaveRequired;
-    }
-    //TEMPFIX some boring foundry stuff
+    }//TEMPFIX some boring foundry stuff
     /*  game.socket.on(this._SOCKET_ID, _0x11513f => {
       switch (_0x11513f.type) {
         case "config.update":
@@ -3270,37 +3269,34 @@ class Config {
     ConfigConsts.getDefaultConfigSortedFlat_().forEach(([propName, propValue]) => {
       Object.entries(propValue).forEach(([k, v]) => {
         if (!v.compatibilityModeValues) { return; }
-        Object.entries(v.compatibilityModeValues).find(([_0x25d591, _0x5ef870]) => {
-          const _0x540a72 = v.type === "enum" ? ConfigUtilsSettings.getEnumValueValue(_0x5ef870) : _0x5ef870;
-          const _0x2883d8 = v.type === "enum" ? _0x5ef870.name || _0x540a72 : _0x540a72;
-          if (!UtilCompat.isModuleActive(_0x25d591)) { return false; }
+        Object.entries(v.compatibilityModeValues).find(([key, val]) => {
+          const enumVal = v.type === "enum" ? ConfigUtilsSettings.getEnumValueValue(val) : val;
+          const enumName = v.type === "enum" ? val.name || enumVal : enumVal;
+          if (!UtilCompat.isModuleActive(key)) { return false; }
 
-          const _0x4a4aec = Config.get(propName, k);
-          const _0x486d1b = !CollectionUtil.deepEquals(_0x540a72, _0x4a4aec);
-          Config.setTemp(propName, k, _0x540a72, { 'isSkipPermissionCheck': true });
-          if (_0x486d1b) {
-            const {
-              displayGroup: _0x314d1c,
-              displayKey: _0x4cabc2
-            } = Config._getDisplayLabels(propName, k);
-            const _0x5d4132 = _0x4a4aec != null ? JSON.stringify(_0x4a4aec) : _0x4a4aec;
-            const _0x4fb80d = _0x2883d8 != null ? JSON.stringify(_0x2883d8) : _0x2883d8;
+          const configVal = Config.get(propName, k);
+          const isEquals = !CollectionUtil.deepEquals(enumVal, configVal);
+          Config.setTemp(propName, k, enumVal, { 'isSkipPermissionCheck': true });
+          if (isEquals) {
+            const { displayGroup, displayKey } = Config._getDisplayLabels(propName, k);
+            const jsonConfig = configVal != null ? JSON.stringify(configVal) : configVal;
+            const jsonEnum = enumName != null ? JSON.stringify(enumName) : enumName;
             this._COMPATIBILITY_TEMP_OVERRIDES = this._COMPATIBILITY_TEMP_OVERRIDES || {};
             MiscUtil.set(this._COMPATIBILITY_TEMP_OVERRIDES, propName, k, {
-              'value': _0x540a72,
-              'message': "\"" + _0x314d1c + " -&gt; " + _0x4cabc2 + "\" value `" + _0x5d4132 + "` has compatibility issues with module \"" + game.modules.get(_0x25d591).title + "\" (must be set to `" + _0x4fb80d + '`)'
+              value: enumVal,
+              message: "\"" + displayGroup + " -&gt; " + displayKey + "\" value `" + jsonConfig + "` has compatibility issues with module \"" + game.modules.get(key).title + "\" (must be set to `" + jsonEnum + '`)'
             });
-            console.warn(...LGT, game.modules.get(_0x25d591).title + " detected! Setting compatibility config: " 
-            + propName + '.' + k + " = " + _0x4fb80d + " (was " + _0x5d4132 + "). If you encounter unexpected issues, consider disabling either module.");
+            console.warn(...LGT, game.modules.get(key).title + " detected! Setting compatibility config: " 
+            + propName + '.' + k + " = " + jsonEnum + " (was " + jsonConfig + "). If you encounter unexpected issues, consider disabling either module.");
           }
         });
       });
     });
   }
-  static ["_hasCompatibilityWarnings"]() {
+  static _hasCompatibilityWarnings() {
     return this._COMPATIBILITY_TEMP_OVERRIDES != null;
   }
-  static ["_getCompatibilityWarnings"]() {
+  static _getCompatibilityWarnings() {
     if (!this._COMPATIBILITY_TEMP_OVERRIDES) {
       return '';
     }
