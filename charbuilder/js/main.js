@@ -23,6 +23,9 @@ async function handleReady(){
   //Prepare indexes of homebrew content
   await Vetools.pDoPreload();
   SideDataInterfaces.init(); //Important
+  //Hide rollbox ui
+  Renderer.dice._$minRoll.hideVe();
+  Renderer.dice._$wrpRoll.hideVe();
   console.log("Ready complete");
 }
 
@@ -420,7 +423,7 @@ class CharacterBuilder {
       this.pLoad()
       .then(() => this.renderComponents()) //Then render the components
       .then(() => testApplyDefaultSources()) //Use our test function to set only certain sources as active in the filter
-      .then(() => this.e_switchTab("sheet")); //Then switch to the tab we want to start off with
+      .then(() => this.e_switchTab("class")); //Then switch to the tab we want to start off with
     }
 
     createTabs(){
