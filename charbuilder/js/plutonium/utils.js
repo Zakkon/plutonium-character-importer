@@ -3458,7 +3458,6 @@ class ComponentUiUtil {
             const $ele = $(`<div class="ve-flex-v-center py-1 px-1 clickable ui-sel2__disp-option
                 ${v == null ? `italic` : ""} ${additionalStyleClasses ? additionalStyleClasses.join(" ") : ""}" tabindex="0">${display}</div>`)
             .click(()=>{ //When an option is clicked
-                console.log("BTN CLICKED");
                 if (opts.isDisabled){return;}
                 //here is where _state first gets set with the [propIxClass] thingy
                 //this should probably trigger an event (because _state is a proxy and can run events when something is setted)

@@ -1440,7 +1440,7 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
                 //Grab the subcomponent that we want to paste the state onto
                 const subComp = this._test_getFOSSubComponent(classIndex, subData.parentCompIx, subData.subCompProp, subData.subCompIx);
                 if(subComp==null){
-                    console.log("WOOPS", myComp, subData);
+                    console.error("Failed to load data to FOS subcomponent", myComp, subData);
                 }
                 //Paste the state onto the subcomponent
                 const subState = subData.state;
@@ -6014,7 +6014,6 @@ StatGenUi.CompAsi = class extends BaseComponent {
             const ix = this._parent.feats.findIndex(it=>it.name === selected.name && it.source === selected.values.sourceJson);
             if (!~ix)
                 throw new Error(`Could not find selected entity: ${JSON.stringify(selected)}`);
-            console.log(this._parent.constructor.name, propIxFeat);
             this._parent.state[propIxFeat] = ix;
 
             this._doPulseThrottled();
@@ -6992,7 +6991,6 @@ class ActorCharactermancerRace extends ActorCharactermancerBaseComponent {
 
         //Apply state info to subcomponents
         for(let subCompName of Object.keys(existingRace.stateInfo.subcomps)){
-            console.log("Applying states to ", subCompName, this);
             if(!this[subCompName]){continue;}
             const subComp = this[subCompName];
             for(let prop of Object.keys(existingRace.stateInfo[subCompName])){
@@ -7049,7 +7047,6 @@ class ActorCharactermancerRace extends ActorCharactermancerBaseComponent {
 
         //Apply state info to subcomponents
         for(let subCompName of Object.keys(data.stateInfo.subcomps)){
-            console.log("Applying states to ", subCompName, data.stateInfo.subcomps[subCompName], this[subCompName]);
             if(!this[subCompName]){continue;}
             const subComp = this[subCompName];
             for(let prop of Object.keys(data.stateInfo.subcomps[subCompName])){
@@ -9170,7 +9167,6 @@ Charactermancer_StartingEquipment.ComponentBase = class extends BaseComponent {
                 roll.toMessage(optsToMessage).then(null);
             }
             else{
-                console.log("Rolled", result, "gold!");
             }
         });
     }
@@ -9374,7 +9370,6 @@ Charactermancer_StartingEquipment.ComponentDefault = class extends Charactermanc
                                     this._state[propGroup] = ixChoice;
                                     //fire a pulse here too
                                     this._state["defaultItemPulse"] = !this._state["defaultItemPulse"];
-                                    console.log("PARENT: ", this._compCurrency);
                                 });
                                 sel.appendTo($listOptions);
 
@@ -12187,7 +12182,6 @@ class Charactermancer_Spell extends BaseComponent {
         this._subclassShortName = opts.subclassShortName;
         this._subclassSource = opts.subclassSource;
         this._parent = opts.parent;
-        console.log("PARENT", !!this._parent);
         //Create an array of new components to handle picking spells at each level
         this._compsLevel = [...new Array(opts.maxLevel != null ? (opts.maxLevel + 1) : 10)]
             .map((_,i)=>new Charactermancer_Spell_Level({
@@ -13553,7 +13547,6 @@ class Charactermancer_Spell_Level extends BaseComponent {
      * This function will reset(clear) any learned or prepared spells
      */
     _resetLevelSpells() {
-        if(this._spellLevel == 0){console.error("_resetLevelSpells");}
         let numDeLearned = 0;
         let numDePrepared = 0;
         //Create a new blank state
@@ -18884,7 +18877,6 @@ class Charactermancer_FeatureOptionsSelect extends BaseComponent {
         for (const loaded of optionsSet) {
             const {entity, type} = loaded;
 
-            console.log(loaded, type);
             const sideDataConverterMeta = this.constructor._ENTITY_TYPE_TO_SIDE_DATA_META[type];
 
             if (sideDataConverterMeta) {
