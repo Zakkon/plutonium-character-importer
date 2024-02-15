@@ -276,7 +276,6 @@ Renderer.spell.populateBrewLookup(await BrewUtil2.pGetBrewProcessed(), {isForce:
     if(sourceIdsMin.length < 1){return null;}
     //Get all sources. These contain more info than is in the minified version
     const allSources = await this._pGetSources({actor});
-    console.log("LOADED SOURCE IDS", sourceIdsMin);
 
     //Match the full sources to the minified sources we pulled from localstorage
     //Then return the full sources that were matched
@@ -302,9 +301,6 @@ Renderer.spell.populateBrewLookup(await BrewUtil2.pGetBrewProcessed(), {isForce:
       });
 
       const allBrews = await Vetools.pGetBrewSources(...SourceManager._BREW_DIRS);
-      console.log("Allbrews", allBrews);
-      const chosenBrew = allBrews[202];
-      console.log("Adding brew ", chosenBrew);
 
       const chosenBrewSourceUrl = new UtilDataSource.DataSourceUrl(chosenBrew.name, chosenBrew.url,{
         pPostLoad: this._pPostLoad.bind(this, { isBrew: true, actor: actor }),
@@ -380,7 +376,6 @@ class CharacterBuilder {
 
       let cachedStr = localStorage.getItem("lastCharacter");
       if(!!cachedStr){
-        console.log("cachedData", cachedStr);
         let json = JSON.parse(cachedStr);
         if(!!json){
           this.actor = json.character;
@@ -544,7 +539,6 @@ class CharacterBuilder {
       });
       const result = await sourceSelector.pWaitForUserInput();
       //if (result == null || result.sourceIds == null) { return; }
-      console.log("SOURCE RESULT: ", result);
       //Write the new sourceIds to localstorage, so next time website refreshes, they will be auto-enabled
       SourceManager.saveSourceIdsToStorage(result.sourceIds);
       //temp

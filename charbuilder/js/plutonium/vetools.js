@@ -966,7 +966,6 @@ class Vetools {
             paths = dirs.map(dir=>Object.keys(indexProp[brewUtil.getDirProp(dir)] || {})).flat().unique();
         }
 
-        console.log("PATHS", dirs[0], indexProp, indexProp[brewUtil.getDirProp(dirs[0])]);
         return paths.map((path)=>{
             const metaName = UrlUtil.getFilename(path);
             //if(!urlRoot){console.error(`Failed to get urlRoot from 'dataSources' with key '${configKey}'. Is config uninitialized?`);}

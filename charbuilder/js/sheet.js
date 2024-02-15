@@ -63,7 +63,6 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
       if (!tabSheet) { return; }
       const wrapper = $$`<div class="ve-flex-col w-100 h-100 px-1 pt-1 overflow-y-auto ve-grow veapp__bg-foundry"></div>`;
       //const noFeatsWarningLbl = $("<div><i class=\"ve-muted\">No feats are available for your current build.</i><hr class=\"hr-1\"></div>").appendTo(wrapper);
-      console.log("RENDER SHEET");
 
       const sheet = $$`<div></div>`.appendTo(wrapper);
 
@@ -314,12 +313,10 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
 
               const tryPrintFeature = (feature, text, bannedFeatureNames=[], bannedLoadedsNames=[]) => {
                 if(feature.level > d.targetLevel){return text;}
-                console.log("Feature:", feature);
                 let drawParentFeature = true;
                 for(let l of feature.loadeds){
                   if(l.type=="optionalfeature" && !l.isRequiredOption){continue;}
                   drawParentFeature = false;
-                  console.log("banned names", bannedLoadedsNames, l.entity.name);
                   if(bannedLoadedsNames.includes(l.entity.name)){continue;}
                   if(l.entity.level > d.targetLevel){continue;} //Must not be from a higher level than we are
                   text += `${text.length > 0? ", " : ""}${l.entity.name}`;
@@ -399,7 +396,6 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
             $$`<li><div><b>Feature: </b>${foundFeature}</div></li>`.appendTo(list);
           }
           list.appendTo($divBackgroundFeatures);
-          console.log("BK", curBackground);
           let characteristics = this.getBackgroundChoices();
           let bonds = [];
           let flaws = [];
@@ -593,7 +589,6 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
           const profBonus = this._getProfBonus(this._parent.compClass);
           //We now need to get the names of all skill proficiencies
           const proficientSkills = this._grabSkillProficiencies();
-          console.log("PROFSKILLS", proficientSkills);
           const allSkillNames = Parser.SKILL_TO_ATB_ABV;
           for(let skillName of Object.keys(allSkillNames)){
               //Get the modifier for the ability score
@@ -716,7 +711,7 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
           const printWeaponAttack = (it) => {
             const isMeleeWeapon = it.item._typeListText.includes("melee weapon");
             const isRangedWeapon = it.item._typeListText.includes("ranged weapon");
-            if(!isMeleeWeapon && !isRangedWeapon){console.log("weapon type not recognized:", it.item, it.item._typeListText);}
+            if(!isMeleeWeapon && !isRangedWeapon){console.error("weapon type not recognized:", it.item, it.item._typeListText);}
 
             if(isMeleeWeapon){
               const result = calcMeleeAttack(it, strMod, dexMod, weaponProfs);
@@ -838,7 +833,6 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
             $$`<label><b>Carried Gear: </b>${span}</label>`.appendTo($divEquipment);
 
             //Print carrying capacity info
-            console.log("WEIGHT", weightLbs, coinWeight);
             const USE_COIN_WEIGHT = true;
             const USE_VARIANT_ENCUMBERANCE = true;
             if(USE_COIN_WEIGHT){weightLbs += coinWeight;}
@@ -989,7 +983,6 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
     getBackgroundChoices(){
       let compBk = this._parent.compBackground;
       let form = compBk.compBackgroundCharacteristics.pGetFormData();
-      console.log("FORM", form);
       return form.data;
     }
 
@@ -998,19 +991,15 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
         const p = this._parent;
         //Grab class data
         const classNames = this.test_grabClassNames(p.compClass);
-        console.log("Classes: ", classNames);
 
         //Time to grab race data
         const raceName = this.test_grabRaceName(p.compRace);
-        console.log("Race: ", raceName);
 
          //Grab background name
          const bkName = this.test_grabBackgroundName(p.compBackground);
-         console.log("Background: ", bkName);
 
          //Grab Ability scores
          const abs = this.test_grabAbilityScoreTotals(p.compAbility);
-         console.log("Ability Scores: ", abs);
 
          //Grab spells
          const spells = this.test_grabSpells(p.compSpell);
@@ -1122,7 +1111,6 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
         customFeats.push({asiIx:i, ixFeat:ixFeat, feat:feat});
       }
 
-      console.log("FEAT INFO", asiData);
       return {asiFeats: asiFeats, raceFeats: raceFeats, backgroundFeats:bkFeats, customFeats:customFeats};
     }
 
@@ -1174,7 +1162,6 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
           const compEquipDefault = this._parent.compEquipment._compEquipmentStartingDefault;
           const form = await compEquipDefault.pGetFormData();
           const items = form.data.equipmentItemEntries;
-          console.log("STARTING EQ FORM:", form);
           for(let it of items){ startingItems.push(it); }
       }
 
@@ -1265,7 +1252,6 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
         this._pullProficienciesFromComponentForm(compRace.compRaceToolProficiencies, out, dataProp);
         this._pullProficienciesFromComponentForm(compBackground.compBackgroundToolProficiencies, out, dataProp);
 
-        console.log("GAINED TOOLS", out);
         return out;
     }
     
@@ -1485,7 +1471,6 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
             {
                 const comp2 = comp1._compsLevel[spellLevelIx];
                 const known = comp2.getSpellsKnown();
-                console.log("Known spells of level " + spellLevelIx, known);
                 for(let arrayEntry of known){
                     spellsKnown[spellLevelIx].push(arrayEntry.spell.name);
                 }
