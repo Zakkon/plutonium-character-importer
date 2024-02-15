@@ -300,16 +300,16 @@ Renderer.spell.populateBrewLookup(await BrewUtil2.pGetBrewProcessed(), {isForce:
           pPostLoad: this._pPostLoad.bind(this, { actor: actor })
       });
 
-      const allBrews = await Vetools.pGetBrewSources(...SourceManager._BREW_DIRS);
+      /* const allBrews = await Vetools.pGetBrewSources(...SourceManager._BREW_DIRS);
 
       const chosenBrewSourceUrl = new UtilDataSource.DataSourceUrl(chosenBrew.name, chosenBrew.url,{
         pPostLoad: this._pPostLoad.bind(this, { isBrew: true, actor: actor }),
         filterTypes: [UtilDataSource.SOURCE_TYP_BREW],
         abbreviations: chosenBrew.abbreviations,
         brewUtil: BrewUtil2,
-      });
+      }); */
 
-      return [officialSources, chosenBrewSourceUrl];
+      return [officialSources];
   }
   static minifySourceId(sourceId){
     let out = {name:sourceId.name};
