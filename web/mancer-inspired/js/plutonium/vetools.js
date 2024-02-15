@@ -70,7 +70,6 @@ class Vetools {
             return;
         }
 
-        //TEMPFIX adding await here
         await Vetools._pGetPrereleaseBrewIndices().then(({propPrerelease, sourcePrerelease, metaPrerelease, sourceBrew, propBrew, metaBrew})=>{
             Vetools.PRERELEASE_INDEX__PROP = propPrerelease;
             Vetools.PRERELEASE_INDEX__SOURCE = sourcePrerelease;
@@ -93,9 +92,7 @@ class Vetools {
 
             //ui.notifications
             console.error(`Failed to load prerelease/homebrew indexes! ${VeCt.STR_SEE_CONSOLE}`);
-            setTimeout(()=>{
-                throw e;
-            });
+            setTimeout(()=>{ throw e; });
         });
     }
 
@@ -908,8 +905,13 @@ class Vetools {
 
         try {
             const [sourceIndexPrerelease,propIndexPrerelease,metaIndexPrerelease,
-            sourceIndexBrew,propIndexBrew,metaIndexBrew,] = await Promise.all([DataUtil.prerelease.pLoadSourceIndex(Config.get("dataSources", "basePrereleaseUrl")), DataUtil.prerelease.pLoadPropIndex(Config.get("dataSources", "basePrereleaseUrl")), DataUtil.prerelease.pLoadMetaIndex(Config.get("dataSources", "basePrereleaseUrl")),
-            DataUtil.brew.pLoadSourceIndex(Config.get("dataSources", "baseBrewUrl")), DataUtil.brew.pLoadPropIndex(Config.get("dataSources", "baseBrewUrl")), DataUtil.brew.pLoadMetaIndex(Config.get("dataSources", "baseBrewUrl")), ]);
+            sourceIndexBrew,propIndexBrew,metaIndexBrew,] = await Promise.all([
+                DataUtil.prerelease.pLoadSourceIndex(Config.get("dataSources", "basePrereleaseUrl")),
+                DataUtil.prerelease.pLoadPropIndex(Config.get("dataSources", "basePrereleaseUrl")),
+                DataUtil.prerelease.pLoadMetaIndex(Config.get("dataSources", "basePrereleaseUrl")),
+                DataUtil.brew.pLoadSourceIndex(Config.get("dataSources", "baseBrewUrl")),
+                DataUtil.brew.pLoadPropIndex(Config.get("dataSources", "baseBrewUrl")),
+                DataUtil.brew.pLoadMetaIndex(Config.get("dataSources", "baseBrewUrl")), ]);
 
             out.sourcePrerelease = sourceIndexPrerelease;
             out.propPrerelease = propIndexPrerelease;
@@ -920,10 +922,7 @@ class Vetools {
             out.metaBrew = metaIndexBrew;
         } catch (e) {
             ui.notifications.error(`Failed to load prerelease/homebrew index! ${VeCt.STR_SEE_CONSOLE}`);
-            setTimeout(()=>{
-                throw e;
-            }
-            );
+            setTimeout(()=>{ throw e; } );
         }
 
         return out;

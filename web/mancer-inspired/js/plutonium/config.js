@@ -3491,32 +3491,29 @@ class Config {
     game.socket.emit(Config._SOCKET_ID, _0x473106);
   }
   static ["_saveConfigDebounced"] = MiscUtil.throttle(Config._pSaveConfig, 0x64);
-  static get(_0x1f916e, _0x501497, {isIgnorePlayer = false} = {}) {
-    if (Config._CONFIG_TEMP[_0x1f916e]?.[_0x501497] !== undefined) {
-      return Config._CONFIG_TEMP[_0x1f916e][_0x501497];
+  
+  static get(namespace, prop, {isIgnorePlayer = false} = {}) {
+    if (Config._CONFIG_TEMP[namespace]?.[prop] !== undefined) {
+      return Config._CONFIG_TEMP[namespace][prop];
     }
-    if (!UtilPrePreInit.isGM() && ConfigUtilsSettings.isPlayerEditable(_0x1f916e, _0x501497) && !isIgnorePlayer) {
-      const _0x15b827 = (Config._CONFIG_PLAYER[_0x1f916e] || {})[_0x501497];
-      if (ConfigUtilsSettings.isNullable(_0x1f916e, _0x501497) && _0x15b827 === null || _0x15b827 != null) {
-        return this._get_getValidValue(_0x1f916e, _0x501497, _0x15b827);
+    if (!UtilPrePreInit.isGM() && ConfigUtilsSettings.isPlayerEditable(namespace, prop) && !isIgnorePlayer) {
+      const val = (Config._CONFIG_PLAYER[namespace] || {})[prop];
+      if (ConfigUtilsSettings.isNullable(namespace, prop) && val === null || val != null) {
+        return this._get_getValidValue(namespace, prop, val);
       }
     }
-    const _0x470979 = (Config._CONFIG[_0x1f916e] || {})[_0x501497];
-    return this._get_getValidValue(_0x1f916e, _0x501497, _0x470979);
+    const out = (Config._CONFIG[namespace] || {})[prop];
+    return this._get_getValidValue(namespace, prop, out);
   }
-  static ["_get_getValidValue"](_0x2319bc, _0x734aa3, _0x56c713) {
-    const _0x14e622 = ConfigConsts.getDefaultConfigSortedFlat_().find(([_0x35aa58]) => _0x35aa58 === _0x2319bc)[0x1][_0x734aa3];
-    if (_0x14e622.type !== "enum") {
-      return _0x56c713;
+  static _get_getValidValue(namespace, prop, val) {
+    const match = ConfigConsts.getDefaultConfigSortedFlat_().find(([ns]) => ns === namespace)[1][prop];
+    if (match.type !== "enum") { return val; }
+    if (match.isNullable && val == null) { return val; }
+    const enumValues = ConfigUtilsSettings.getEnumValues(match);
+    if (val == null || !enumValues.some(enumVal => (enumVal.value ?? enumVal) === val)) {
+      return match["default"] ?? enumValues[0].value ?? enumValues[0];
     }
-    if (_0x14e622.isNullable && _0x56c713 == null) {
-      return _0x56c713;
-    }
-    const _0x4bd728 = ConfigUtilsSettings.getEnumValues(_0x14e622);
-    if (_0x56c713 == null || !_0x4bd728.some(_0x472e97 => (_0x472e97.value ?? _0x472e97) === _0x56c713)) {
-      return _0x14e622["default"] ?? _0x4bd728[0x0].value ?? _0x4bd728[0x0];
-    }
-    return _0x56c713;
+    return val;
   }
   static ["_getDisplayLabels"](_0x288279, _0xf85c74) {
     const _0x6262b3 = ConfigConsts.getDefaultConfig_();

@@ -19,7 +19,8 @@ async function handleInit(){
 }
 async function handleReady(){
   await Config.pInit(); //Important
-  await Vetools.pDoPreload(); //Important
+  //Prepare indexes of homebrew content
+  await Vetools.pDoPreload();
   SideDataInterfaces.init(); //Important
 }
 
