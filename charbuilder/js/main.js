@@ -405,6 +405,8 @@ class CharacterBuilder {
       });
       const sourcesBtn = $("#btn_sources");
       sourcesBtn.click(async() => { await this.e_changeSourcesDialog(); });
+      const exportfvttBtn = $("#btn_exportfvtt");
+      exportfvttBtn.click(async() => { CharacterExportFvtt.exportCharacterFvtt(this); });
       
       //This is a test to only have certain sources selected as active in the filter
       //Note that this does not delete the sources, and they can still be toggled on again via the filter

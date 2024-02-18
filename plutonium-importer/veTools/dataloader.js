@@ -7042,4 +7042,4 @@ DataConverterClassSubclassFeature._UNARMORED_DEFENSE_MONK = new Set(["dex", "wis
 //#endregion
 
 
-export {SideDataInterfaces, DataConverterClassSubclassFeature};
+export {SideDataInterfaces, SideDataInterfaceClass, DataConverterClassSubclassFeature};

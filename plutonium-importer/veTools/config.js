@@ -3873,4 +3873,4 @@ class ConfigUtilsSettings {
 
 //#endregion
 
-export {Config, Consts, SharedConsts};
+export {Config, Consts, SharedConsts, ConfigConsts};

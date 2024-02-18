@@ -97,7 +97,7 @@ class CharacterExportFvtt{
             //Add background to character output
             _char.background = background;
             //Create some meta information (so we know where the background came from)
-            metaDataStack.push({uid: background.name+"|"+background.source,
+            metaDataStack.push({uid: CharacterExportFvtt.entityToUID(background),
             name:background.name,
             source:background.source,
             type:"background",
@@ -213,6 +213,209 @@ class CharacterExportFvtt{
 
         localStorage.setItem("lastCharacter", importStr);
     }
+    /**
+     * @param {CharacterBuilder} builder
+     */
+    static async exportCharacterFvtt(builder){
+
+        const deletePropIfNull = (obj, prop) => {
+            if(obj[prop] == null){delete obj[prop];}
+        }
+        const grabFormsFromComponents = async (components, toObj, toObjProp) => {
+            let forms = [];
+            if(components == null){toObj[toObjProp] = forms; return;}
+            if(!(components.constructor === Array)){components = [components];}
+            for(let comp of components){
+                if(!comp){continue;}
+                const form = await comp.pGetFormData();
+                forms.push(form);
+            }
+            toObj[toObjProp] = forms;
+        }
+        let output = {};
+
+        //#region ABILITY SCORES
+        let outAbi = {};
+        const totals = builder.compAbility.getTotals();
+        outAbi.totals = totals;
+        output.abilities = outAbi;
+        //#endregion
+        //#region CLASSES
+        let classes = [];
+        const primaryClassIndex = builder.compClass._state['class_ixPrimaryClass'] || 0;
+        for (let ix = 0; ix < builder.compClass.state['class_ixMax'] + 1; ++ix) {
+            let out = {};
+            const { propIxClass: propIxClass, propIxSubclass: propIxSubclass, propCurLevel:propCurLevel, propTargetLevel: propTargetLevel } = ActorCharactermancerBaseComponent.class_getProps(ix);
+            const cls = builder.compClass.getClass_({ propIxClass: propIxClass });
+            if (!cls) { continue; }
+            out.classUid = cls.name + "|" + cls.source;
+            out.targetLevel = builder.compClass.state[propTargetLevel];
+            out.isPrimary = ix == primaryClassIndex;
+            const sc = builder.compClass.getSubclass_({ cls: cls, propIxSubclass: propIxSubclass });
+            if(sc){
+                out.subclassUid = sc.name + "|" + sc.source;
+            }
+            //HITPOINTS
+            const {mode, customFormula} = (await builder.compClass.compsClassHpIncreaseMode[ix].pGetFormData()).data;
+            out.hpMode = mode;
+            out.hpCustomFormula = customFormula;
+            //FEATURE OPTIONS SELECT
+            let featureOptionsSelectForms = [];
+            for(let fosComp of builder.compClass.compsClassFeatureOptionsSelect[ix]){
+                if(!fosComp){continue;}
+                const form = await fosComp.pGetFormData();
+                featureOptionsSelectForms.push(form);
+            }
+            out.featureOptSel = featureOptionsSelectForms;
+            //CLASS SKILL PROFICIENCIES
+            let skillProfForms = [];
+            for(let comp of builder.compClass.compsClassSkillProficiencies){
+                if(!comp){continue;}
+                const form = await comp.pGetFormData();
+                skillProfForms.push(form);
+            }
+            out.skillProfs = skillProfForms;
+            //CLASS TOOL PROFICIENCIES
+            let toolProfForms = [];
+            for(let comp of builder.compClass.compsClassToolProficiencies){
+                if(!comp){continue;}
+                const form = await comp.pGetFormData();
+                toolProfForms.push(form);
+            }
+            out.toolProfs = toolProfForms;
+            //SPELL SLOT LEVEL SELECT
+            const slotLevelSelectComp = builder.compSpell.compsSpellSpellSlotLevelSelect[ix];
+            out.spellSlotLevelSelection = slotLevelSelectComp?.isAnyChoice()? slotLevelSelectComp.getFlagsChoicesState() : null;
+            classes.push(out);
+        }
+        output.classes = classes;
+        //#endregion
+        //#region RACE
+        let outRace = {};
+        outRace.race = builder.compRace.getRace_();
+        if(builder.compRace.compRaceSize){
+            outRace.size = [(await builder.compRace.compRaceSize.pGetFormData().data) || Parser.SZ_VARIES];
+        }
+        //RACE SKILL PROFICIENCIES
+        await grabFormsFromComponents([...(builder.compRace.compRaceSkillProficiencies || []),
+            ...(builder.compRace.compRaceSkillToolLanguageProficiencies || [])], outRace, "skillProfs");
+        //RACE TOOL PROFICIENCIES
+        await grabFormsFromComponents([...(builder.compRace.compRaceToolProficiencies || []),
+            ...(builder.compRace.compRaceSkillToolLanguageProficiencies || [])], outRace, "toolProfs");
+        //RACE LANGUAGE PROFICIENCIES
+        await grabFormsFromComponents(builder.compClass.compRaceLanguageProficiencies, outRace, "langProfs");
+        //RACE EXPERTISE
+        await grabFormsFromComponents(builder.compClass.compRaceExpertise, outRace, "expertises");
+        //RACE ARMOR PROFICIENCIES
+        await grabFormsFromComponents(builder.compClass.compRaceArmorProficiencies, outRace, "armorProfs");
+        //RACE WEAPON PROFICIENCIES
+        await grabFormsFromComponents(builder.compClass.compRaceWeaponProficiencies, outRace, "weaponProfs");
+        //RACE DAMAGE IMMUNITIES
+        await grabFormsFromComponents(builder.compClass.compRaceDamageImmunity, outRace, "dmgImmunities");
+        //RACE DAMAGE RESISTANCE
+        await grabFormsFromComponents(builder.compClass.compRaceDamageResistance, outRace, "dmgResistances");
+        //RACE DAMAGE VULNERABILITY
+        await grabFormsFromComponents(builder.compClass.compRaceDamageVulnerability, outRace, "dmgVulnerabilities");
+        //RACE CONDITION IMMUNITIES
+        await grabFormsFromComponents(builder.compClass.compRaceConditionImmunity, outRace, "conImmunities");
+        output.race = outRace;
+        //#endregion
+        //#region BACKGROUND
+        let outBk = {};
+        const bkInfo = builder.compBackground.getFeatureCustomizedBackground_({isAllowStub:false});
+        outBk.backgroundUid = CharacterExportFvtt.entityToUID(bkInfo);
+        if(bkInfo){
+            await grabFormsFromComponents(builder.compBackground.compBackgroundFeatures, outBk, "features");
+            //BACKGROUND SKILL PROFICIENCIES
+            await grabFormsFromComponents(builder.compBackground.compBackgroundSkillProficiencies, outBk, "skillProfs");
+            //BACKGROUND TOOL PROFICIENCIES
+            await grabFormsFromComponents(builder.compBackground.isCustomizeLanguagesTools? 
+                builder.compBackground.compBackgroundLanguageToolProficiencies : builder.compBackground.compBackgroundToolProficiencies, outBk, "toolProfs");
+            //BACKGROUND LANGUAGE PROFICIENCIES
+            await grabFormsFromComponents(builder.compBackground.isCustomizeLanguagesTools ?
+                builder.compBackground.compBackgroundLanguageToolProficiencies : builder.compBackground.compBackgroundLanguageProficiencies, outBk, "langProfs");
+            //BACKGROUND EXPERTISE
+            await grabFormsFromComponents(builder.compBackground.compBackgroundExpertise, outBk, "expertises");
+            //BACKGROUND ARMOR PROFICIENCIES
+            await grabFormsFromComponents(builder.compBackground.compBackgroundArmorProficiencies, outBk, "armorProfs");
+            //BACKGROUND WEAPON PROFICIENCIES
+            await grabFormsFromComponents(builder.compBackground.compBackgroundWeaponProficiencies, outBk, "weaponProfs");
+            //BACKGROUND DAMAGE IMMUNITIES
+            await grabFormsFromComponents(builder.compBackground.compBackgroundDamageImmunity, outBk, "dmgImmunities");
+            //BACKGROUND DAMAGE RESISTANCE
+            await grabFormsFromComponents(builder.compBackground.compBackgroundDamageResistance, outBk, "dmgResistances");
+            //BACKGROUND DAMAGE VULNERABILITY
+            await grabFormsFromComponents(builder.compBackground.compBackgroundDamageVulnerability, outBk, "dmgVulnerabilities");
+            //BACKGROUND CONDITION IMMUNITIES
+            await grabFormsFromComponents(builder.compBackground.compBackgroundConditionImmunity, outBk, "conImmunities");
+            if(builder.compBackground.compBackgroundCharacteristics){
+                await grabFormsFromComponents(builder.compBackground.compBackgroundCharacteristics, outBk, "characteristics");
+            }
+        }
+        output.background = outBk;
+        //#endregion
+        //#region FEATS
+        let outFeats = {};
+        const additionalFeatFormData = await builder.compFeat.feat_pGetAdditionalFeatFormData();
+        if(additionalFeatFormData.isAnyData){
+            outFeats.additionalFeats = additionalFeatFormData;
+            const asi = builder.compAbility.compStatgen.getFormDataAsi();
+            outFeats.asi = asi;
+        }
+        output.feats = outFeats;
+        //#endregion
+        //#region SPELLS
+        const simplifySpellForm = (formData) => {
+            for(let i = 0; i < formData.data.spells.length; ++i){
+                let name = formData.data.spells[i].spell.name;
+                let source = formData.data.spells[i].spell.source;
+                delete formData.data.spells[i].spell;
+                formData.data.spells[i].spellId = `${name}|${source}`;
+                deletePropIfNull(formData.data.spells[i], "usesMax");
+                deletePropIfNull(formData.data.spells[i], "usesPer");
+                deletePropIfNull(formData.data.spells[i], "usesValue");
+                deletePropIfNull(formData.data.spells[i], "existingItemId");
+            }
+            return formData;
+        }
+        const filterValues = builder.compSpell.filterValuesSpellsCache || builder.compSpell.filterBoxSpells.getValues();
+        let spellsBySource = [];
+        for (let ix = 0; ix < builder.compClass.state['class_ixMax'] + 1; ++ix) {
+            let out = {};
+            const { propIxClass: propIxClass, propIxSubclass: propIxSubclass } = ActorCharactermancerBaseComponent.class_getProps(ix);
+            const cls = builder.compClass.getClass_({ propIxClass: propIxClass });
+            if (!cls) { continue; }
+            const sc = builder.compClass.getSubclass_({ cls: cls, propIxSubclass: propIxSubclass });
+            if (builder.compSpell.compsSpellSpells[ix]) {
+                let formData = await builder.compSpell.compsSpellSpells[ix].pGetFormData(filterValues);
+                out.spells = simplifySpellForm(formData);
+            }
+            if (builder.compSpell.compsSpellAdditionalSpellClass[ix]) {
+                const formData = await builder.compSpell.compsSpellAdditionalSpellClass[ix].pGetFormData();
+                out.additionalSpells = formData;
+            }
+            if (!sc) { spellsBySource.push(out); continue; }
+            if (builder.compSpell.compsSpellAdditionalSpellSubclass[ix]) {
+                const formData = await builder.compSpell.compsSpellAdditionalSpellSubclass[ix].pGetFormData();
+                out.additionalSpellsSubclass = formData;
+            }
+            spellsBySource.push(out);
+        }
+        output.spells = {spellsBySource:spellsBySource};
+        //#endregion
+        //#region EQUIPMENT
+        let outEqu = {};
+        outEqu.currency = await builder.compEquipment.compEquipmentCurrency.pGetFormData();
+        outEqu.starting = await builder.compEquipment.compEquipmentStartingDefault.pGetFormData();
+        outEqu.shop = await builder.compEquipment.compEquipmentShopGold.pGetFormData();
+        output.equipment = outEqu;
+        //#endregion
+        console.log(output);
+        const str = JSON.stringify(output);
+        console.log(str);
+        navigator.clipboard.writeText(str); //Write to browser clipboard
+    }
+    
 
     //#region Pull Info From Builder
     /**
@@ -473,12 +676,14 @@ class CharacterExportFvtt{
     static getAllSpells(compSpell){
 
         let spellsBySource = [];
+        let forms = [];
         for(let j = 0; j < compSpell.compsSpellSpells.length; ++j){
             //Assume this component handles spells for a certain class
             let comp = compSpell.compsSpellSpells[j];
             if(!comp){continue;}
             let className = comp._className;
             let classSource = comp._classSource;
+            forms.push(compSpell.compsSpellSpells[j].pGetFormData());
             let spellsByLvl = compSpell.compsSpellSpells[j]._test_getKnownSpells().map(arr => arr.map(
                 spell => {return {name: spell.spell.name, source:spell.spell.source,
                     isLearned:spell.isLearned, isPrepared:spell.isPrepared, spell:spell.spell};}
@@ -486,6 +691,9 @@ class CharacterExportFvtt{
             spellsBySource.push({className: className, classSource:classSource, spellsByLvl: spellsByLvl});
         }
         console.log("OUTPUT", spellsBySource);
+
+        console.log("SPELLS FORMS", forms);
+
         return spellsBySource;
     }
     /**
@@ -500,15 +708,27 @@ class CharacterExportFvtt{
         const bkName = bk.name;
         const isCompletelyCustom = bk.name == "Custom Background";
 
-        let out = {name:bkName, source:bkSource};
+        let out = { name: bkName, source: bkSource};
         //Skill proficiencies
         out.isCustomizeSkills = !!compBackground.__state.background_isCustomizeSkills;
         out.stateSkillProficiencies = compBackground.compBackgroundSkillProficiencies?.__state;
         //Languages & tools
         out.isCustomizeLanguagesTools = !!compBackground.__state.background_isCustomizeLanguagesTools;
         out.stateLanguageToolProficiencies = compBackground.compBackgroundLanguageToolProficiencies?.__state;
+        out.stateToolProficiencies = compBackground.compBackgroundToolProficiencies?.__state;
+        out.stateLanguageProficiencies = compBackground.compBackgroundLanguageProficiencies?.__state;
+        //Others
+        out.stateArmorProficiencies = compBackground.compBackgroundArmorProficiencies?.__state;
+        out.stateWeaponProficiencies = compBackground.compBackgroundWeaponProficiencies?.__state;
+        out.stateImmunity = compBackground.compBackgroundDamageImmunity?.__state;
+        out.stateResistance = compBackground.compBackgroundDamageResistance?.__state;
+        out.stateVulnerability = compBackground.compBackgroundDamageVulnerability?.__state;
+        out.stateExpertises = compBackground.compBackgroundExpertise?.__state;
+        out.stateConditionImmunities = compBackground.compBackgroundConditionImmunity?.__state;
         //Characteristics
         out.stateCharacteristics = compBackground.compBackgroundCharacteristics.__state;
+        //features
+        out.stateFeatures = compBackground.compBackgroundFeatures.__state;
 
         //Delete all properties that are null
         out = Object.fromEntries(Object.entries(out).filter(([_, v]) => v != null));
@@ -774,6 +994,14 @@ class CharacterExportFvtt{
         const str = JSON.stringify(exportJson);
         console.log(str);
         return str;
+    }
+    /**
+     * Creates an UID for the entity. Example: "Ranger|PHB"
+     * @param {{name:string, source:string}} entity
+     * @returns {string}
+     */
+    static entityToUID(entity){
+        return entity.name + "|" + entity.source;
     }
     
     /**

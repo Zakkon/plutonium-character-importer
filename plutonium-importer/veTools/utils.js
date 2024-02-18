@@ -332,4 +332,4 @@ class UtilPrePreInit {
 }
 //#endregion
 
-export {UtilGameSettings, UtilCompat, UtilPrePreInit, UtilHooks, LGT};
+export {Util, UtilGameSettings, UtilCompat, UtilPrePreInit, UtilHooks, LGT};

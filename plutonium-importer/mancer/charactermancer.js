@@ -1,5 +1,6 @@
 import { PageFilterClassesFoundry } from "../veTools/pagefilters.js";
 import { Consts } from "../veTools/config.js";
+import { UtilActors } from "./utilactors.js";
 
 class Charactermancer_Class_Util {
     /**return all features from a class (UID string format, except for gainSubclass features, which are objects with properties)*/

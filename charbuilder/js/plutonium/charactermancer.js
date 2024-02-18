@@ -7444,10 +7444,10 @@ class ActorCharactermancerBackground extends ActorCharactermancerBaseComponent {
         //Go through our data and try to match to the background
         const matches = this._data.background.filter((b, ix) => {if(b.name == data.name && b.source == data.source){
             return {ix:ix, match:b};
-        }else{return null;}});
+        }
+        else{return null;}});
         if(matches.length > 1){}
         else if(matches.length < 1){
-
         }
         else{
             //Get the index of the match
@@ -7455,6 +7455,9 @@ class ActorCharactermancerBackground extends ActorCharactermancerBaseComponent {
             //Set it to state
             this._state.background_ixBackground = ixOf;
             //Then set other values
+            if(data.stateFeatures){
+                printToState(data.stateFeatures, this.compBackgroundFeatures._state);
+            }
             if(data.isCustomizeSkills){this._state.background_isCustomizeSkills = true;}
             if(data.isCustomizeLanguagesTools){this._state.background_isCustomizeLanguagesTools = true;}
             if(data.stateSkillProficiencies){
@@ -7462,6 +7465,33 @@ class ActorCharactermancerBackground extends ActorCharactermancerBaseComponent {
             }
             if(data.stateLanguageToolProficiencies){
                 printToState(data.stateLanguageToolProficiencies, this.compBackgroundLanguageToolProficiencies._state);
+            }
+            if(data.stateToolProficiencies){
+                printToState(data.stateToolProficiencies, this.compBackgroundToolProficiencies._state);
+            }
+            if(data.stateLanguageProficiencies){
+                printToState(data.stateLanguageProficiencies, this.compBackgroundLanguageProficiencies._state);
+            }
+            if(data.stateArmorProficiencies){
+                printToState(data.stateArmorProficiencies, this.compBackgroundArmorProficiencies._state);
+            }
+            if(data.stateWeaponProficiencies){
+                printToState(data.stateWeaponProficiencies, this.compBackgroundWeaponProficiencies._state);
+            }
+            if(data.stateExpertises){
+                printToState(data.stateExpertises, this.compBackgroundExpertise._state);
+            }
+            if(data.stateImmunity){
+                printToState(data.stateImmunity, this.compBackgroundDamageImmunity._state);
+            }
+            if(data.stateResistance){
+                printToState(data.stateResistance, this.compBackgroundDamageResistance._state);
+            }
+            if(data.stateVulnerability){
+                printToState(data.stateVulnerability, this.compBackgroundDamageVulnerability._state);
+            }
+            if(data.stateConditionImmunities){
+                printToState(data.stateConditionImmunities, this.compBackgroundConditionImmunity._state);
             }
             printToState(data.stateCharacteristics, this.compBackgroundCharacteristics._state);
         }
@@ -7471,7 +7501,7 @@ class ActorCharactermancerBackground extends ActorCharactermancerBaseComponent {
       return this._modalFilterBackgrounds;
     }
     get compBackgroundFeatures() {
-      return this._metaCompBackgroundFeatures?.["comp"];
+      return this._metaCompBackgroundFeatures?.comp;
     }
     get compBackgroundSkillProficiencies() {
       return this._compBackgroundSkillProficiencies;
@@ -7553,7 +7583,7 @@ class ActorCharactermancerBackground extends ActorCharactermancerBaseComponent {
           'modalFilter': this._modalFilterBackgrounds
         });
         this._metaCompBackgroundFeatures = {
-          'comp': component, 'ixBackground': this._state.background_ixBackground
+          comp: component, ixBackground: this._state.background_ixBackground
         };
         component.render(parentDiv);
         component.addHookPulseFeatures(() => {
@@ -12150,6 +12180,18 @@ class Charactermancer_Spell_SlotLevelSelect extends BaseComponent {
 }
 
 class Charactermancer_Spell_SpellMeta {
+    /**
+     * @param {number} ix
+     * @param {{name:string, source:string, level:number}} spell
+     * @param {boolean} isPrepared
+     * @param {boolean} isLearned
+     * @param {boolean} isUpdateOnly
+     * @param {any} existingItemId
+     * @param {string} preparationMode
+     * @param {number} usesValue
+     * @param {number} usesMax
+     * @param {string} usesPer
+     */
     constructor({ix, spell, isPrepared, isLearned, isUpdateOnly, existingItemId, preparationMode, usesValue, usesMax, usesPer}) {
         this.ix = ix;
         this.spell = spell;
@@ -12168,6 +12210,9 @@ class Charactermancer_Spell_SpellMeta {
 
 class Charactermancer_Spell extends BaseComponent {
     
+    /**
+     * @param {{spellDatas:{name:string, source:string, level:number}}} opts
+     */
     constructor(opts) {
         opts = opts || {};
         super();
@@ -12695,6 +12740,10 @@ class Charactermancer_Spell extends BaseComponent {
         this._compsLevel.forEach(it=>it.handleSearch(searchTerm));
     }
 
+    /**
+     * @param {{name:string, source:string, level:number}} spell
+     * @returns {{isPrepared:boolean, item:{id:any}}}
+     */
     getExistingSpellMeta_(spell) {
         if (!this._existingCasterMeta || !this._existingSpellLookup){return null;}
         const lookupName = spell.name.toLowerCase();
@@ -13040,7 +13089,7 @@ class Charactermancer_Spell_Modal extends Charactermancer_Spell {
  */
 class Charactermancer_Spell_Level extends BaseComponent {
     /**
-     * @param {{parent:Charactermancer_Spell}} opts
+     * @param {{parent:Charactermancer_Spell, spellLevel:number, spellDatas:{name:string, source:string, level:number}[]}} opts
      */
     constructor(opts) {
         super();
@@ -13633,6 +13682,10 @@ class Charactermancer_Spell_Level extends BaseComponent {
         return out;
     }
 
+    /**
+     * @param {any} filterValues
+     * @returns {Charactermancer_Spell_SpellMeta[]}
+     */
     getFormSubData(filterValues) {
         if (!this._isWithinLevelRange()){return [];}
         const out = [];
@@ -13653,7 +13706,7 @@ class Charactermancer_Spell_Level extends BaseComponent {
             if (this._state[ixAlwaysPrepared] || this._state[ixAlwaysKnownSpell])
                 continue;
 
-            const isLearned = this._state[ixLearned];
+            const isLearned = !!this._state[ixLearned];
             const isPrepared = this._state[ixPrepared] || (this._spellLevel === 0 && isLearned);
 
             if (this._spellLevel === 0 && !isLearned)
