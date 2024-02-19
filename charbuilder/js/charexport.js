@@ -212,6 +212,8 @@ class CharacterExportFvtt{
         let importStr = this.test_printExportJsonAsString(output);
 
         localStorage.setItem("lastCharacter", importStr);
+
+        CookieManager.saveNewCharacter(output);
     }
     /**
      * @param {CharacterBuilder} builder

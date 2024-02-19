@@ -3,7 +3,10 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 window.addEventListener('load', function () {
    
-    handleInit().then(() => handleReady().then(() => SourceManager.defaultStart({actor:null})));
+    handleInit().then(() => handleReady().then(() => 
+    //SourceManager.defaultStart({actor:null})
+    {const charSelect = new CharacterSelectScreen(); charSelect.render();}
+    ));
 });
 async function handleInit(){
   //UtilGameSettings.prePreInit();
@@ -42,7 +45,7 @@ class SourceManager {
    * and creates a character builder window that can play around with those sources
    * @param {any} actor Can just be left as null, not used at the moment
    */
-  static async defaultStart({ actor: actor }) {
+  static async defaultStart({ actor: actor, cookieIx }) {
 
     //Try to load source ids from localstorage
     let sourceIds = await this._loadSourceIdsFromStorage({actor});
@@ -56,7 +59,7 @@ class SourceManager {
     const data = await SourceManager._loadSources({sourceIds: sourceIds, uploadedFileMetas: fileMetas, customUrls: customUrls});
 
     //Create the character builder UI for the first time
-    const window = new CharacterBuilder(data);
+    const window = new CharacterBuilder(data, cookieIx);
     this._curWindow = window;
   }
   
@@ -369,7 +372,7 @@ class CharacterBuilder {
    * , spell:{}[], subclassFeature:{}[], feat:{}[], optionalFeature:{}[], foundryClass:{}[]}} data
      * @returns {CharacterBuilder}
      */
-    constructor(data){
+    constructor(data, cookieIx){
 
       this.parent = this;
       this.createTabs(); //Create the small tab buttons
@@ -377,7 +380,8 @@ class CharacterBuilder {
 
       this._data = data;
 
-      let cachedStr = localStorage.getItem("lastCharacter");
+      
+      let cachedStr = cookieIx? CookieManager.getCharacterInfo(cookieIx).data : null;
       if(!!cachedStr){
         let json = JSON.parse(cachedStr);
         if(!!json){
@@ -584,4 +588,82 @@ class CharacterBuilderPanel {
         this.$wrpTab = parentDiv;
     }
     
+}
+class CookieManager {
+  static getNumCharacters(){
+    const registry = this.getCharacterRegistry();
+    return registry?.uids?.length || 0;
+  }
+  static getState(){
+    const foundState = localStorage.getItem("lastState"); //may be null
+    return foundState;
+  }
+  static getCharacterInfo(uid){
+    const character = localStorage.getItem(`"char_"${uid}`);
+    return {data: character, uid:uid};
+  }
+  static getAllCharacterInfos(){
+    const registry = this.getCharacterRegistry();
+    if(!registry || !registry.uids){return [];}
+    let output = [];
+    for(let i = 0; i < registry.uids.length; ++i){
+      output.push(this.getCharacterInfo(registry.uids[i]));
+    }
+    return output;
+  }
+
+  static setState(state){
+    localStorage.setItem("lastState", state);
+  }
+  static saveCharacterInfo(character, uid){
+    const str = JSON.stringify(character);
+    localStorage.setItem(`"char_"${uid}`, str);
+  }
+  static saveNewCharacter(character){
+    const uid = this.createUid();
+    this.addCharacterToRegistry(uid);
+    this.saveCharacterInfo(character, uid);
+  }
+  static addCharacterToRegistry(uid){
+    const existingRegistry = this.getCharacterRegistry();
+    if(!existingRegistry){
+      const newRegistry = {uids:[uid]};
+      this.setCharacterRegistry(newRegistry);
+      return;
+    }
+    existingRegistry.uids.push(uid);
+    this.setCharacterRegistry(existingRegistry);
+  }
+  static setCharacterRegistry(registry){
+    const str = JSON.stringify(registry);
+    localStorage.setItem("character_registry", str);
+  }
+  static getCharacterRegistry(){
+    const str = localStorage.getItem("character_registry");
+    if(!str){return null;}
+    return JSON.parse(str);
+  }
+  static createUid(){
+    const generateUid = () => {
+      return "id" + Math.random().toString(16).slice(2);
+    }
+    const registry = this.getCharacterRegistry();
+    if(!registry || !registry.uids.length){
+      return generateUid();
+    }
+    const MAX_ATTEMPTS = 256;
+    for(let i = 0; i < MAX_ATTEMPTS; ++i){
+      const id = generateUid();
+      if(!registry.uids.includes(id)){return id;}
+    }
+    throw new Error("Failed to generate a unique ID for character!");
+  }
+  static deleteCharacter(uid){
+    const existingRegistry = this.getCharacterRegistry();
+    if(existingRegistry){
+      const ix = existingRegistry.uids.indexOf(uid);
+      existingRegistry.uids.splice(ix, 1);
+    }
+    localStorage.removeItem(`"char_"${uid}`);
+  }
 }
