@@ -719,7 +719,6 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
           for(let d of classData){;
             if(d?.cls?.spellcastingAbility){
               let score = this._getAbilityModifier(d.cls.spellcastingAbility);
-              console.log("CLASS DATA", d.cls.name, d.cls.spellcastingAbility, score)
               if(score > bestAbilityScore){bestAbilityScore = score; bestAbilityAbv = d.cls.spellcastingAbility;}
             }
           }
