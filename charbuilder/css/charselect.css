@@ -5,16 +5,15 @@
     align-items: center;
 }
 .character-screen-header > h1{
-
     margin: 0px;
-  font-family: Tiamat Condensed SC;
-  font-weight: 400;
-  font-style: normal;
-  font-stretch: normal;
-  letter-spacing: 1px;
-  font-size: 40px;
-  line-height: 1.4;
-  flex: 1 1 0%;
+    font-family: Tiamat Condensed SC;
+    font-weight: 400;
+    font-style: normal;
+    font-stretch: normal;
+    letter-spacing: 1px;
+    font-size: 40px;
+    line-height: 1.4;
+    flex: 1 1 0%;
 }
 .character-screen-header > button{
     display: inline-flex;
@@ -56,11 +55,17 @@
     list-style-image: none;
 }
 .character-listing {
+    display: flex;
+    flex-wrap: wrap;
     justify-content: flex-start;
 }
 .character-card-wrapper
 {
     width: 33.3333333333%;
+    padding: 10px;
+}
+.character-card{
+    border: 1px solid rgb(209, 205, 202);
 }
 .character-card-header {
     padding: 30px 20px;
@@ -151,7 +156,7 @@
     appearance: none;
     text-decoration: none;
     font-family: "Roboto", "Helvetica", "Arial", sans-serif;
-    font-weight: 500;
+    font-weight: bold;
     text-transform: uppercase;
     min-width: 64px;
     padding: 4px 5px;

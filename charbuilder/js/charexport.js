@@ -149,6 +149,11 @@ class CharacterExportFvtt{
 
         //optional feature stuff?
 
+        //Character description
+        _char.about = {
+            name: ActorCharactermancerSheet.characterName,
+        };
+
         //Build meta
         let brewSourcesUsed = [];
         let fileSourcesUsed = [];
@@ -213,7 +218,9 @@ class CharacterExportFvtt{
 
         localStorage.setItem("lastCharacter", importStr);
 
-        CookieManager.saveNewCharacter(output);
+        const currentUid = CharacterBuilder.currentUid;
+        CookieManager.saveCharacterInfo(output, CharacterExportFvtt.getLoadedSources(), currentUid);
+        
     }
     /**
      * @param {CharacterBuilder} builder
@@ -815,7 +822,7 @@ class CharacterExportFvtt{
      * abbreviations:string[] _isAutoDetectPrereleaseBrew:boolean, _isExistingPrereleaseBrew:boolean}[]}
      */
     static getLoadedSources(){
-        return SourceManager._testLoadedSources;
+        return SourceManager.cachedSourceIds;
     }
     static getBrewSourceIds(){
         //Only return non-default sources for now
@@ -1017,30 +1024,4 @@ class CharacterExportFvtt{
      * ---skillsTools
      * ---
     */
-}
-
-class CharacterImportFvtt {
-
-
-    static test_string = `{"character":{"race":{"name":"Dragonborn","source":"PHB","hash":"dragonborn_phb","srd":true,"isSubRace":true,"raceName":"Dragonborn","raceSource":"PHB","isBaseSrd":true},"classes":null,"spellsBySource":[]},"_meta":{"isOfficialContentUsed":true,"brewSourcesUsed":[]}}`;
-    //Useful for loading a savefile
-    static importAsJsonString(jsonString){
-
-        let data = {};
-        for(let clData of data._char.classes){
-            let clsState = this.loadClassState(clData);
-        }
-    }
-
-    /**
-     * @param {{name:string, source:string, srd:boolean, level:number, isPrimary:boolean,
-     * subclass:{name:string, source:string}}} data
-     * @returns {any}
-     */
-    static loadClassState(data){
-        //Assume we have already loaded the needed soures into memory
-        //Now we have to use the class name and the class source to create an UID so we can get the needed object
-
-
-    }    
 }

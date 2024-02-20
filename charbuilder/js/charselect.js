@@ -10,7 +10,7 @@ class CharacterSelectScreen {
 
         const content = $$`<div></div>`;
 
-        const btnNew = $$`<button>Create A Character</button>`;
+        const btnNew = $$`<button>Create New Character</button>`;
         btnNew.click(() => {
             this.createNewCharacter();
         });
@@ -40,6 +40,7 @@ class CharacterSelectScreen {
         console.log("INFOS", infos)
         for(let ix = 0; ix < infos.length; ++ix){
             const result = infos[ix];
+            if(!result){continue;}
             const card = this.createCharacterElement(this, result.uid);
             card.appendTo(list);
         }
@@ -47,18 +48,43 @@ class CharacterSelectScreen {
 
 
 
-    createCharacterElement(parent, charIx){
+    createCharacterElement(parent, charUid){
         const defaultIconUrl = `charbuilder/img/default_img.jpg`;
         const url = `url(${defaultIconUrl})`;
 
+        const btnView = $$`<button class="character-card-footer-links-button">View</button>`;
+        btnView.click(() => {
+            parent.openCharacter(charUid, true);
+        });
         const btnEdit = $$`<button class="character-card-footer-links-button">Edit</button>`;
         btnEdit.click(() => {
-            parent.openCharacter(charIx, false);
+            parent.openCharacter(charUid, false);
         });
-        const btnDelete = $$`<button class="character-card-footer-links-button btn-dangerous">Remove</button>`;
+        const btnDelete = $$`<button class="character-card-footer-links-button btn-dangerous">Delete</button>`;
         btnDelete.click(() => {
-            parent.deleteCharacter(ix);
+            parent.deleteCharacter(charUid);
+            this.close();
+            this.render();
         });
+
+        //Get the character data
+        const charData = CookieManager.getCharacterInfo(charUid).result.character;
+        console.log(charData);
+        let classString = "";
+        let totalLevels = 0;
+        for(let ix = 0; ix < charData?.classes?.length || 0; ++ix){
+            const d = charData.classes[ix];
+            totalLevels += d.level;
+            classString += `${d.name}${d.subclass? `/${d.subclass.name}` : ""}`;
+        }
+        if(classString == ""){classString = "No class";}
+        let nameString = charData.about?.name || "Unnamed Character";
+        let raceString = charData.race?.race?.name || "";
+        let infoString = "";
+        const addToInfoString = (str) => {if(str.length>0){infoString += (infoString.length>0?" | ":"") + str;}}
+        addToInfoString(`Level ${totalLevels}`);
+        addToInfoString(raceString);
+        addToInfoString(classString);
 
         let div = $$`
         <li class="character-card-wrapper">
@@ -71,21 +97,18 @@ class CharacterSelectScreen {
                             <div class="user-selected-avatar image" style="background-image: ${url}"></div>
                         </div>
                         <div class="character-card-header-upper-info">
-                            <h2 class="character-card-header-upper-info-header">Name goes here</h2>
-                            <div class="character-card-header-upper-info-secondary">Level 1 | Wood Elf | Ranger</div>
+                            <h2 class="character-card-header-upper-info-header">${nameString}</h2>
+                            <div class="character-card-header-upper-info-secondary">${infoString}</div>
                         </div>
                     </div>
                 </div>
                 <div class="character-card-footer">
                     <div class="character-card-footer-links">
-                        <button class="character-card-footer-links-button">View</button>
+                        ${btnView}
                         ${btnEdit}
-                        <button class="character-card-footer-links-button btn-dangerous">Delete</button>
+                        ${btnDelete}
                     </div>
                 </div>
-            </div>
-            </div>
-            <div class="character-card-header"></div>
             </div>
         </li>`;
         return div;
@@ -101,8 +124,9 @@ class CharacterSelectScreen {
     deleteCharacter(uid){
         CookieManager.deleteCharacter(uid);
     }
-    openCharacter(uid, toSheet){
+    openCharacter(uid, viewMode=false){
+        console.log("Open character", uid);
         this.close();
-        SourceManager.defaultStart({actor:null, cookieIx:uid});
+        SourceManager.defaultStart({actor:null, cookieUid:uid, viewMode:viewMode});
     }
 }

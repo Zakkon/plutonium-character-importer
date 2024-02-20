@@ -58,7 +58,10 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
         this._tabSheet = parentInfo.tabSheet;
   
     }
-    render(){
+    render({charInfo}){
+      console.log("charinfo", charInfo);
+      ActorCharactermancerSheet.characterName = null;
+      if(!!charInfo?.character?.about?.name?.length){ActorCharactermancerSheet.characterName = charInfo.character.about.name;}
       const tabSheet = this._tabSheet?.$wrpTab;
       if (!tabSheet) { return; }
       const wrapper = $$`<div class="ve-flex-col w-100 h-100 px-1 pt-1 overflow-y-auto ve-grow veapp__bg-foundry"></div>`;
@@ -70,10 +73,11 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
       const $lblClass = $$`<label class="lblResult"></label>`;
       const $lblRace = $$`<label class="lblResult"/></label>`;
       const $lblBackground = $$`<label class="lblResult"/></label>`;
+      const $inputName = $$`<input type="text" name="charname" value="${ActorCharactermancerSheet.characterName || ""}" placeholder="Thoradin Fireforge"></input>`;
       
 
       const headerSection = $$`<header><section class="charname">
-        <label for="charname">Character Name</label><input name="charname" placeholder="Thoradin Fireforge" />
+        <label for="charname">Character Name</label>${$inputName}
       </section>
       <section class="misc">
         <ul>
@@ -257,7 +261,6 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
           for(let i = 0; i < classData.length; ++i){
               const d = classData[i];
               textOut += `${textOut.length > 0? " / " : ""}${d.cls.name} ${d.targetLevel}${d.sc? ` (${d.sc.name})` : ""}`;
-
               //Try to get features from class
               let classFeaturesText = "";
 
@@ -706,6 +709,25 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
             }
             return spellsStr;
           };
+
+          //Show spellcasting modifier (prof bonus + ability modifier (differs between classes))
+          //Look through each class
+          let classData = ActorCharactermancerSheet.getClassData(this._parent.compClass);
+          let bestAbilityAbv = "";
+          let bestAbilityScore = -100;
+          const profBonus = this._getProfBonus();
+          for(let d of classData){;
+            if(d?.cls?.spellcastingAbility){
+              let score = this._getAbilityModifier(d.cls.spellcastingAbility);
+              console.log("CLASS DATA", d.cls.name, d.cls.spellcastingAbility, score)
+              if(score > bestAbilityScore){bestAbilityScore = score; bestAbilityAbv = d.cls.spellcastingAbility;}
+            }
+          }
+          bestAbilityScore += profBonus;
+          $$`<div><b>Spell Attack Modifier: ${(bestAbilityScore>=0?"+":"")}${bestAbilityScore}</b></div>`.appendTo($divSpells);
+          //Show spell save DC
+          bestAbilityScore += 8;
+          $$`<div class="mb10"><b>Spell Save DC ${bestAbilityScore}</b></div>`.appendTo($divSpells);
           
           const spellsKnownByLvl = ActorCharactermancerSheet.getAllSpellsKnown(this._parent.compSpell);
           //List cantrips known (these never change)
@@ -740,6 +762,14 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
       this._parent.compSpell.addHookBase("pulseAlwaysPrepared", hkSpells);
       this._parent.compSpell.addHookBase("pulseAlwaysKnown", hkSpells);
       this._parent.compSpell.addHookBase("pulseExpandedSpells", hkSpells); //Not sure if this one is needed
+      this._parent.compAbility.compStatgen.addHookBase("common_export_str", hkSpells);
+      this._parent.compAbility.compStatgen.addHookBase("common_export_dex", hkSpells);
+      this._parent.compAbility.compStatgen.addHookBase("common_export_con", hkSpells);
+      this._parent.compAbility.compStatgen.addHookBase("common_export_int", hkSpells);
+      this._parent.compAbility.compStatgen.addHookBase("common_export_wis", hkSpells);
+      this._parent.compAbility.compStatgen.addHookBase("common_export_cha", hkSpells);
+      this._parent.compAbility.compStatgen.addHookBase("common_pulseAsi", hkSpells);
+      this._parent.compClass.addHookBase("class_totalLevels", hkSpells);
       hkSpells();
       //#endregion
 
@@ -860,17 +890,14 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
       this._parent.compClass.addHookBase("class_pulseChange", hkFeats); //This also senses when subclass is changed
       this._parent.compAbility.compStatgen.addHookBase("common_pulseAsi", hkFeats); //This gets fired like all the time feats get added/removed/altered
       //#endregion
-      wrapper.appendTo(tabSheet);
-
       
-      /*  this.setAdditionalFeatStateFromStatgen_();
-      const onBackgroundPulse = () => this._state.feat_availableFromBackground =
-          this._parent.compBackground.getFeatureCustomizedBackground_({'isAllowStub': false })?.["feats"];
-      this._parent.compBackground.addHookBase("background_pulseBackground", onBackgroundPulse);
+      //#region Character Description
+      $inputName.change(() => {
+        ActorCharactermancerSheet.characterName = $inputName.val();
+      });
+      //#endregion
 
-      this._state.feat_availableFromBackground = this._parent.compBackground.getFeatureCustomizedBackground_({
-        'isAllowStub': false
-      })?.["feats"]; */
+      wrapper.appendTo(tabSheet);
     }
 
     getRace_() { return this._parent.compRace.getRace_(); }
@@ -1509,7 +1536,4 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
       }
       return total;
     }
-
-
-
 }

@@ -44,11 +44,12 @@ class SourceManager {
    * Starting function for the whole program. Loads source ids from local storage (or default ones as fallback),
    * and creates a character builder window that can play around with those sources
    * @param {any} actor Can just be left as null, not used at the moment
+   * @param {string} cookieUid
    */
-  static async defaultStart({ actor: actor, cookieIx }) {
+  static async defaultStart({ actor: actor, cookieUid, viewMode }) {
 
     //Try to load source ids from localstorage
-    let sourceIds = await this._loadSourceIdsFromStorage({actor});
+    let sourceIds = await this._loadSourceIdsFromSave({actor, cookieUid});
     //If that failed, load default source ids
     if(!sourceIds){sourceIds = await this._getDefaultSourceIds({actor});}
 
@@ -59,7 +60,7 @@ class SourceManager {
     const data = await SourceManager._loadSources({sourceIds: sourceIds, uploadedFileMetas: fileMetas, customUrls: customUrls});
 
     //Create the character builder UI for the first time
-    const window = new CharacterBuilder(data, cookieIx);
+    const window = new CharacterBuilder(data, cookieUid, viewMode);
     this._curWindow = window;
   }
   
@@ -253,7 +254,7 @@ Renderer.spell.populateBrewLookup(await BrewUtil2.pGetBrewProcessed(), {isForce:
    * @param {any} sourceIds
    */
   static async _setUsedSourceIds(sourceIds){
-    SourceManager._testLoadedSources = sourceIds;
+    SourceManager.cachedSourceIds = sourceIds;
   }
   static saveSourceIdsToStorage(sourceIds){
     //First, we need to compress the sourceIds into the minimal used information
@@ -264,14 +265,13 @@ Renderer.spell.populateBrewLookup(await BrewUtil2.pGetBrewProcessed(), {isForce:
    * @param {any} {actor}
    * @returns {{name:string, isDefault:boolean, cacheKey:string}[]}
    */
-  static async _loadSourceIdsFromStorage({actor}){
+  static async _loadSourceIdsFromSave({actor, cookieUid}){
     //Try to load from localstorage safely
     let sourceIdsMin = [];
     try {
-      const str = localStorage.getItem(SourceManager.cacheKey);
-      if(!str){return null;}
-      const out = JSON.parse(str);
-      sourceIdsMin = out;
+      const info = CookieManager.getCharacterInfo(cookieUid);
+      if(!info?.result?._sourceIds?.length){return null;}
+      sourceIdsMin = info.result._sourceIds;
     }
     catch(e){
       console.error("Failed to parse saved source ids!");
@@ -370,23 +370,31 @@ class CharacterBuilder {
     /**
      * @param {{class:{}[], background:{}[], classFeature:{}[], race:{}[], monster:{}[], item:{}[]
    * , spell:{}[], subclassFeature:{}[], feat:{}[], optionalFeature:{}[], foundryClass:{}[]}} data
+   * @param {string} existingUid
      * @returns {CharacterBuilder}
      */
-    constructor(data, cookieIx){
+    constructor(data, existingUid, viewMode){
 
+      CharacterBuilder.currentUid = null;
       this.parent = this;
-      this.createTabs(); //Create the small tab buttons
-      this.createPanels(); //Create the panels that hold components
-
       this._data = data;
 
+      const _root = $("#window-root");
+
+      //Create header
+      this.createHeader(_root);
+
+      this.createTabs(_root); //Create the small tab buttons
+      this.createPanels(_root); //Create the panels that hold components
       
-      let cachedStr = cookieIx? CookieManager.getCharacterInfo(cookieIx).data : null;
-      if(!!cachedStr){
-        let json = JSON.parse(cachedStr);
-        if(!!json){
-          this.actor = json.character;
-        }
+      let charInfo = existingUid? CookieManager.getCharacterInfo(existingUid).result : null;
+      console.log("CACHED STR", charInfo);
+      if(!!charInfo){
+        this.actor = charInfo.character;
+        CharacterBuilder.currentUid = existingUid;
+      }
+      else{
+        CharacterBuilder.currentUid = CookieManager.createUid();
       }
 
       //Create a feature source tracker (this one gets used alot by the components)
@@ -402,15 +410,7 @@ class CharacterBuilder {
       this.compFeat = new ActorCharactermancerFeat(this);
       this.compSheet = new ActorCharactermancerSheet(this);
 
-      //Configure the export button
-      const exportBtn = $("#btn_export");
-      exportBtn.click(() => {
-          CharacterExportFvtt.exportCharacter(this);
-      });
-      const sourcesBtn = $("#btn_sources");
-      sourcesBtn.click(async() => { await this.e_changeSourcesDialog(); });
-      const exportfvttBtn = $("#btn_exportfvtt");
-      exportfvttBtn.click(async() => { CharacterExportFvtt.exportCharacterFvtt(this); });
+
       
       //This is a test to only have certain sources selected as active in the filter
       //Note that this does not delete the sources, and they can still be toggled on again via the filter
@@ -427,16 +427,18 @@ class CharacterBuilder {
       
       //Call this to let the components load some content before we start using them
       this.pLoad()
-      .then(() => this.renderComponents()) //Then render the components
+      .then(() => this.renderComponents({charInfo})) //Then render the components
       .then(() => testApplyDefaultSources()) //Use our test function to set only certain sources as active in the filter
-      .then(() => this.e_switchTab("class")); //Then switch to the tab we want to start off with
+      .then(() => this.e_switchTab(viewMode? "sheet" : "class")); //Then switch to the tab we want to start off with
     }
 
-    createTabs(){
-        const _root = $("#window-root");
-        const tabHolder = $$`<div class="w-100 no-shrink ui-tab__wrp-tab-heads--border tab_button_holder"></div>`.appendTo(_root);
+    createTabs($wrp){
+        const tabHolder = $$`<div class="w-100 no-shrink ui-tab__wrp-tab-heads--border tab_button_holder"></div>`.appendTo($wrp);
         const createTabBtn = (label) => {
             return $$`<button class="btn btn-default ui-tab__btn-tab-head btn-sm">${label}</button>`.appendTo(tabHolder);
+        }
+        const createRightSideBtn = (label) => {
+          return $$`<button class="hugRight">${label}</button>`.appendTo(tabHolder);
         }
 
         //Create the tabs
@@ -450,12 +452,20 @@ class CharacterBuilder {
         createTabBtn("Feats").click(()=>{ this.e_switchTab("feats"); });
         createTabBtn("Sheet").click(()=>{ this.e_switchTab("sheet"); });
         
+        createRightSideBtn("Export to FVTT").click(()=>{
+          CharacterExportFvtt.exportCharacterFvtt(this);
+        });
+        createRightSideBtn("Configure Sources").click(async()=>{
+          await this.e_changeSourcesDialog();
+        });
+        createRightSideBtn("Save").click(()=>{
+          CharacterExportFvtt.exportCharacter(this);
+        });
+
         this.tabButtonParent = tabHolder;
     }
-    createPanels(){
-
-        const _root = $("#window-root");
-        const newPanel = () => {return new CharacterBuilderPanel($(`<div class="ui-tab__wrp-tab-body ve-flex-col ui-tab__wrp-tab-body--border"></div>`).appendTo(_root)); }
+    createPanels($wrp){
+        const newPanel = () => {return new CharacterBuilderPanel($(`<div class="ui-tab__wrp-tab-body ve-flex-col ui-tab__wrp-tab-body--border"></div>`).appendTo($wrp)); }
 
         this.tabClass = newPanel();
         this.tabRace = newPanel();
@@ -477,7 +487,7 @@ class CharacterBuilder {
         await this.compSpell.pLoad();
         await this.compFeat.pLoad();
     }
-    renderComponents(){
+    renderComponents(opts){
         //this.compClass.render(); //Goes on for quite long, and will trigger hooks for many ms after
         const doLoad = SETTINGS.USE_EXISTING_WEB && !!this.actor;
 
@@ -500,7 +510,23 @@ class CharacterBuilder {
 
           if(doLoad){this.compAbility.setStateFromSaveFile(this.actor);}
           if(doLoad){this.compBackground.setStateFromSaveFile(this.actor);}
-      }).then(()=> {this.compSheet.render();});
+      }).then(()=> {this.compSheet.render({charInfo: opts?.charInfo});});
+    }
+
+    createHeader($wrp){
+
+      const btnBackToSelect = $$`<button>Return To Select</button>`;
+      btnBackToSelect.click(() => {
+        this.returnToCharSelect();
+      });
+
+      const header = $$`
+      <div class="character-builder-header">
+          <h1>5e Character Builder</h1>
+          ${btnBackToSelect}
+      </div>`;
+
+      header.appendTo($wrp);
     }
 
     //#region Events
@@ -538,7 +564,7 @@ class CharacterBuilder {
       //Get all available sources
       const allSources = await SourceManager._pGetSources({actor: this.actor});
       //Get the names of the sources we already have set as enabled
-      const preEnabledSources = SourceManager._testLoadedSources;
+      const preEnabledSources = SourceManager.cachedSourceIds;
       const sourceSelector = new ActorCharactermancerSourceSelector({
         title: "Select Sources",
         filterNamespace: 'ActorCharactermancerSourceSelector_filter',
@@ -571,6 +597,12 @@ class CharacterBuilder {
     }
     //#endregion
     
+    returnToCharSelect(){
+      this.teardown();
+      const charSelect = new CharacterSelectScreen();
+      charSelect.render();
+    }
+
     setActive($tab, active){
         const hi = "ve-hidden";
         if(!$tab){return;}
@@ -578,6 +610,7 @@ class CharacterBuilder {
         else if(!active && !$tab.hasClass(hi)){$tab.addClass(hi);}
     }
     teardown(){
+      CharacterBuilder.currentUid = null;
       $(`#window-root`).empty();
     }
 }
@@ -590,6 +623,9 @@ class CharacterBuilderPanel {
     
 }
 class CookieManager {
+  /**
+   * @returns {number}
+   */
   static getNumCharacters(){
     const registry = this.getCharacterRegistry();
     return registry?.uids?.length || 0;
@@ -598,10 +634,30 @@ class CookieManager {
     const foundState = localStorage.getItem("lastState"); //may be null
     return foundState;
   }
-  static getCharacterInfo(uid){
-    const character = localStorage.getItem(`"char_"${uid}`);
-    return {data: character, uid:uid};
+  /**
+   * @param {string} uid
+   * @returns {boolean}
+   */
+  static getCharacterExists(uid){
+    const character = this.getCharacterInfo(uid);
+    return !!character;
   }
+  /**
+   * @param {string} uid
+   * @returns {{result:{_meta:any, character:any, _sourceIds:any[]}, uid:string}}
+   */
+  static getCharacterInfo(uid){
+    const str = localStorage.getItem(`"char_"${uid}`);
+    if(!str){
+      console.error("Failed to load character with uid ", uid);
+      return null;
+    }
+    const character = JSON.parse(str);
+    return {result: character, uid:uid};
+  }
+  /**
+   * @returns {{result:{_meta:any, character:any, _sourceIds:any[]}, uid:string}[]}
+   */
   static getAllCharacterInfos(){
     const registry = this.getCharacterRegistry();
     if(!registry || !registry.uids){return [];}
@@ -615,34 +671,74 @@ class CookieManager {
   static setState(state){
     localStorage.setItem("lastState", state);
   }
-  static saveCharacterInfo(character, uid){
+  /**
+   * @param {any} character
+   * @param {string} uid
+   */
+  static saveCharacterInfo(character, sourceIds, uid){
+    this.setCharacterToRegistry(uid);
+    character._sourceIds = sourceIds;
     const str = JSON.stringify(character);
     localStorage.setItem(`"char_"${uid}`, str);
   }
-  static saveNewCharacter(character){
+  /**
+   * @param {any} character
+   */
+  static saveNewCharacter(character, sourceIds){
     const uid = this.createUid();
-    this.addCharacterToRegistry(uid);
-    this.saveCharacterInfo(character, uid);
+    this.saveCharacterInfo(character, sourceIds, uid);
   }
-  static addCharacterToRegistry(uid){
+  /**
+   * @param {string} uid
+   */
+  static setCharacterToRegistry(uid){
     const existingRegistry = this.getCharacterRegistry();
     if(!existingRegistry){
       const newRegistry = {uids:[uid]};
       this.setCharacterRegistry(newRegistry);
       return;
     }
-    existingRegistry.uids.push(uid);
+    
+    if(!existingRegistry.uids.includes(uid)){
+      existingRegistry.uids.push(uid);
+    }
+    else{
+      existingRegistry.uids[existingRegistry.uids.indexOf(uid)] = uid;
+    }
+
+    
     this.setCharacterRegistry(existingRegistry);
   }
+  /**
+   * @param {string} uid
+   * @returns {boolean}
+   */
+  static getCharacterExistsInRegistry(uid){
+    const existingRegistry = this.getCharacterRegistry();
+    if(!existingRegistry){
+      return false;
+    }
+    
+    return existingRegistry.includes(uid);
+  }
+  /**
+   * @param {{uids:string[]}} registry
+   */
   static setCharacterRegistry(registry){
     const str = JSON.stringify(registry);
     localStorage.setItem("character_registry", str);
   }
+  /**
+   * @returns {{uids:string[]}}
+   */
   static getCharacterRegistry(){
     const str = localStorage.getItem("character_registry");
     if(!str){return null;}
     return JSON.parse(str);
   }
+  /**
+   * @returns {string}
+   */
   static createUid(){
     const generateUid = () => {
       return "id" + Math.random().toString(16).slice(2);
@@ -658,12 +754,16 @@ class CookieManager {
     }
     throw new Error("Failed to generate a unique ID for character!");
   }
+  /**
+   * @param {string} uid
+   */
   static deleteCharacter(uid){
-    const existingRegistry = this.getCharacterRegistry();
+    let existingRegistry = this.getCharacterRegistry();
     if(existingRegistry){
       const ix = existingRegistry.uids.indexOf(uid);
       existingRegistry.uids.splice(ix, 1);
     }
+    this.setCharacterRegistry(existingRegistry);
     localStorage.removeItem(`"char_"${uid}`);
   }
 }

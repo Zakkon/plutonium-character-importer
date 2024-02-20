@@ -223,8 +223,11 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
             fnUpdateHidden(classes, false);
         };
 
+        /**
+         * Apply the filter on which subclasses can be picked from the dropdown menu
+         */
         const applySubclassFilter = () => {
-            const cls = this.getClass_({'propIxClass': propIxClass});
+            const cls = this.getClass_({propIxClass: propIxClass});
             if (!cls || !this._metaHksClassStgSubclass[ix]) { return; }
             const filteredValues = this._modalFilterClasses.pageFilter.filterBox.getValues();
             const displayableSubclasses = cls.subclasses.map(val => !this._modalFilterClasses.pageFilter.toDisplay(filteredValues, val));
@@ -363,35 +366,37 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
             [key]: null
             }));
             this._proxyAssignSimple("state", toObj);
-            const cls = this.getClass_({ 'propIxClass': propIxClass });
-            const subcls = this.getSubclass_({ 'cls': cls, 'propIxSubclass': propIxSubclass });
+            const cls = this.getClass_({ propIxClass: propIxClass });
+            const subcls = this.getSubclass_({ cls: cls, propIxSubclass: propIxSubclass });
+            console.error("RENDER_SUBCLASSCOMPS", subcls);
             const filteredFeatures = this._class_getFilteredFeatures(cls, subcls);
             if (this._compsClassLevelSelect[ix]) { this._compsClassLevelSelect[ix].setFeatures(filteredFeatures); }
 
             //Re-render feature options select, since we changed subclass
             await this._class_pRenderFeatureOptionsSelects({
-                'ix': ix,
-                'propCntAsi': propCntAsi,
-                'filteredFeatures': filteredFeatures,
-                '$stgFeatureOptions': holder_featureOptions,
-                'lockRenderFeatureOptionsSelects': lockRenderFeatureOptionsSelects
+                ix: ix,
+                propCntAsi: propCntAsi,
+                filteredFeatures: filteredFeatures,
+                $stgFeatureOptions: holder_featureOptions,
+                lockRenderFeatureOptionsSelects: lockRenderFeatureOptionsSelects
             });
             if(SETTINGS.FILTERS){this._modalFilterClasses.pageFilter.filterBox.on(filter_evnt_valchange_subclass, () => applySubclassFilter());}
             applySubclassFilter();
+            //Render the text for the subclass on the right-side panel
             await this._class_renderClass_pDispSubclass({
-                'ix': ix,
-                '$dispSubclass': disp_subclass,
-                'cls': cls,
-                'sc': subcls
+                ix: ix,
+                $dispSubclass: disp_subclass,
+                cls: cls,
+                sc: subcls
             });
         };
         const renderSubclass_safe = async () => {
             try {
-                await this._pLock(lockChangeSubclass);
+                await this._pLock(lockChangeClass); //Use the same lock as for change class, otherwise they can run on top of eachother and cause chaos
                 await renderSubclassComponents();
             }
             finally {
-                this._unlock(lockChangeSubclass);
+                await this._unlock(lockChangeClass);
             }
         };
         this._addHookBase(propIxSubclass, renderSubclass_safe);
@@ -1365,6 +1370,9 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
         //Unregister and delete previousComponents
         this._class_unregisterFeatureSourceTrackingFeatureComps(ix);
 
+        
+        console.error("Render FOS", groupedByOptionsSet);
+
         let asiCount = 0;
         for (const grp of groupedByOptionsSet) {
             const { topLevelFeature: topLevelFeature, optionsSets: optionsSets} = grp;
@@ -1372,12 +1380,13 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
             if ((topLevelFeature.level < lvlMin && !SETTINGS.GET_FEATOPTSEL_UP_TO_CURLEVEL) || topLevelFeature.level > lvlMax) {continue; }
             const featureName = topLevelFeature.name.toLowerCase();
             if (featureName === "ability score improvement") { asiCount++; continue; }
+            console.log("FEATURE NAME:", featureName, optionsSets.length, optionsSets);
             for (const set of optionsSets) {
                 //Create the new FeatureOptionsSelect for this optionset
                 const component = new Charactermancer_FeatureOptionsSelect({
                     featureSourceTracker: this._parent.featureSourceTracker_,
-                    //TEMPFIX //'existingFeatureChecker': existingFeatureChecker,
-                    //TEMPFIX //'actor': this._actor,
+                    existingFeatureChecker: existingFeatureChecker,
+                    //TEMPFIX 'actor': this._actor,
                     optionsSet: set,
                     level: topLevelFeature.level,
                     modalFilterSpells: this._parent.compSpell.modalFilterSpells
