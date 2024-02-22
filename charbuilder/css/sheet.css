@@ -194,6 +194,7 @@
     background-color: #bbb;
     border-radius: 10px;
     padding-bottom: 5px;
+    min-height: 550px;
   }
   form.charsheet main > section section.attributes div.scores label.ablName {
     font-size: 8px;
@@ -245,19 +246,6 @@
   form.charsheet main > section section.attributes div.attr-applications{
     width: 100%;
     padding-left: 10px;
-  }
-  form.charsheet main > section section.attributes div.attr-applications div.inspiration {
-    display: flex;
-    flex-direction: row-reverse;
-    justify-content: flex-end;
-  }
-  form.charsheet main > section section.attributes div.attr-applications div.inspiration input {
-    -webkit-appearance: none;
-       -moz-appearance: none;
-            appearance: none;
-    border: 1px solid black;
-    padding: 15px;
-    border-radius: 10px;
   }
   form.charsheet main > section section.attributes div.attr-applications div.proficiencybonus {
     display: flex;

@@ -128,12 +128,6 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
       <section class="attributes">
         ${$sectionAttributeScores}
         <div class="attr-applications">
-          <div class="inspiration box">
-            <div class="label-container">
-              <label for="inspiration">Inspiration</label>
-            </div>
-            <input name="inspiration" type="checkbox" />
-          </div>
           <div class="proficiencybonus box">
             <div class="label-container">
               <label class="upperCase">Proficiency Bonus</label>
