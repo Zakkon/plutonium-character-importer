@@ -4,9 +4,19 @@ document.addEventListener('DOMContentLoaded', function () {
 window.addEventListener('load', function () {
    
     handleInit().then(() => handleReady().then(() => 
-    //SourceManager.defaultStart({actor:null})
-    {const charSelect = new CharacterSelectScreen(); charSelect.render();}
-    ));
+    //
+    {
+      //Try to get a state cookie
+      const cookie = CookieManager.getState();
+      if(!cookie || !cookie.page || cookie.page == "select"){
+        const charSelect = new CharacterSelectScreen();
+        charSelect.render();
+        CookieManager.setState(CharacterBuilder.createStateCookie("select", null));
+      }
+      else{
+        SourceManager.defaultStart({actor:null, cookieUid: cookie.uid, page:cookie.page});
+      }
+    }));
 });
 async function handleInit(){
   //UtilGameSettings.prePreInit();
@@ -46,7 +56,7 @@ class SourceManager {
    * @param {any} actor Can just be left as null, not used at the moment
    * @param {string} cookieUid
    */
-  static async defaultStart({ actor: actor, cookieUid, viewMode }) {
+  static async defaultStart({ actor: actor, cookieUid, page }) {
 
     //Try to load source ids from localstorage
     let sourceIds = await this._loadSourceIdsFromSave({actor, cookieUid});
@@ -60,7 +70,7 @@ class SourceManager {
     const data = await SourceManager._loadSources({sourceIds: sourceIds, uploadedFileMetas: fileMetas, customUrls: customUrls});
 
     //Create the character builder UI for the first time
-    const window = new CharacterBuilder(data, cookieUid, viewMode);
+    const window = new CharacterBuilder(data, cookieUid, page);
     this._curWindow = window;
   }
   
@@ -373,7 +383,7 @@ class CharacterBuilder {
    * @param {string} existingUid
      * @returns {CharacterBuilder}
      */
-    constructor(data, existingUid, viewMode){
+    constructor(data, existingUid, page){
 
       CharacterBuilder.currentUid = null;
       this.parent = this;
@@ -429,7 +439,7 @@ class CharacterBuilder {
       this.pLoad()
       .then(() => this.renderComponents({charInfo})) //Then render the components
       .then(() => testApplyDefaultSources()) //Use our test function to set only certain sources as active in the filter
-      .then(() => this.e_switchTab(viewMode? "sheet" : "description")); //Then switch to the tab we want to start off with
+      .then(() => this.e_switchTab(page)); //Then switch to the tab we want to start off with
     }
 
     createTabs($wrp){
@@ -565,6 +575,10 @@ class CharacterBuilder {
         const pressedBtn = this.tabButtonParent.children().eq(tabIx);
         pressedBtn.addClass("active");
         this.setActive(newActivePanel.$wrpTab, true);
+
+        //Write to localstorage that we are on this tab now, so if browser refreshes, we go back to it
+        const cookie = CharacterBuilder.createStateCookie(tabName, CharacterBuilder.currentUid);
+        CookieManager.setState(cookie);
     }
     async e_changeSourcesDialog(){
       //Get all available sources
@@ -607,6 +621,9 @@ class CharacterBuilder {
       this.teardown();
       const charSelect = new CharacterSelectScreen();
       charSelect.render();
+
+      const cookie = CharacterBuilder.createStateCookie("select", null);
+      CookieManager.setState(cookie);
     }
 
     setActive($tab, active){
@@ -618,6 +635,12 @@ class CharacterBuilder {
     teardown(){
       CharacterBuilder.currentUid = null;
       $(`#window-root`).empty();
+    }
+    static createStateCookie(tabName, charUid){
+      return {
+        page: tabName,
+        uid: charUid
+      };
     }
 }
 /**A wrapper for a div that contains components. Only used by CharacterBuilder */
@@ -638,7 +661,8 @@ class CookieManager {
   }
   static getState(){
     const foundState = localStorage.getItem("lastState"); //may be null
-    return foundState;
+    if(!foundState){return null;}
+    return JSON.parse(foundState);
   }
   /**
    * @param {string} uid
@@ -675,7 +699,7 @@ class CookieManager {
   }
 
   static setState(state){
-    localStorage.setItem("lastState", state);
+    localStorage.setItem("lastState", JSON.stringify(state));
   }
   /**
    * @param {any} character
