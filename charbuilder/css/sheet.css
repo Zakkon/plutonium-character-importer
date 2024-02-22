@@ -113,11 +113,19 @@
     margin: 5px;
     border: 0;
   }
+  form.charsheet header section.charname .lblResultName {
+    padding-left: 1em;
+    border-bottom: 1px solid #ddd;
+    background-color: #fff;
+    font-size: 16px;
+    min-height: 19px;
+  }
   form.charsheet header section.charname label {
     padding-left: 1em;
   }
   form.charsheet header .lblResult {
     font-size: 12px;
+    min-height: 15px;
   }
   form.charsheet header section.misc {
     width: 70%;
@@ -132,7 +140,7 @@
     flex-wrap: wrap;
   }
   form.charsheet header section.misc ul li {
-    width: 33.33333%;
+    width: 50%;
     display: flex;
     flex-direction: column-reverse;
   }

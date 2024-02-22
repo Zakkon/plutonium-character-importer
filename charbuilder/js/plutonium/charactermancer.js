@@ -368,7 +368,6 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
             this._proxyAssignSimple("state", toObj);
             const cls = this.getClass_({ propIxClass: propIxClass });
             const subcls = this.getSubclass_({ cls: cls, propIxSubclass: propIxSubclass });
-            console.error("RENDER_SUBCLASSCOMPS", subcls);
             const filteredFeatures = this._class_getFilteredFeatures(cls, subcls);
             if (this._compsClassLevelSelect[ix]) { this._compsClassLevelSelect[ix].setFeatures(filteredFeatures); }
 
@@ -1371,7 +1370,6 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
         this._class_unregisterFeatureSourceTrackingFeatureComps(ix);
 
         
-        console.error("Render FOS", groupedByOptionsSet);
 
         let asiCount = 0;
         for (const grp of groupedByOptionsSet) {
@@ -1380,7 +1378,6 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
             if ((topLevelFeature.level < lvlMin && !SETTINGS.GET_FEATOPTSEL_UP_TO_CURLEVEL) || topLevelFeature.level > lvlMax) {continue; }
             const featureName = topLevelFeature.name.toLowerCase();
             if (featureName === "ability score improvement") { asiCount++; continue; }
-            console.log("FEATURE NAME:", featureName, optionsSets.length, optionsSets);
             for (const set of optionsSets) {
                 //Create the new FeatureOptionsSelect for this optionset
                 const component = new Charactermancer_FeatureOptionsSelect({
@@ -14913,6 +14910,202 @@ Charactermancer_FeatureSourceTracker._VALID_HOOK_PROPS = new Set(["pulseSkillPro
 
 //#endregion
 
+//#region Charactermancer Description
+class ActorCharactermancerDescription extends ActorCharactermancerBaseComponent {
+    constructor(parentInfo) {
+        parentInfo = parentInfo || {};
+        super();
+        this._actor = parentInfo.actor;
+        //this._data = parentInfo.data;
+        this._parent = parentInfo.parent;
+        this._tabDescription = parentInfo.tabDescription;
+    }
+    render() {
+        const parentDiv = this._tabDescription?.["$wrpTab"];
+        if (!parentDiv) { return; }
+
+        const $inputName = $$`<input type="text"></input>`;
+        $inputName.change(() => {
+            this._state["description_name"] = $inputName.val();
+        });
+
+        const $inputAlignment = $$`<select></select>`;
+        $$`<option value=""></option>`.appendTo($inputAlignment);
+        for(let i = 0; i < ActorCharactermancerDescription.ALIGNMENTS.length; ++i){
+            const n = ActorCharactermancerDescription.ALIGNMENTS[i];
+            $$`<option value="${n}">${n}</option>`.appendTo($inputAlignment);
+        }
+        $inputAlignment.change(() => {
+            this._state["description_alignment"] = $inputAlignment.val();
+        });
+        
+
+        const $inputHair = $$`<input type="text"></input>`;
+        $inputHair.change(() => {
+            this._state["description_hair"] = $inputHair.val();
+        });
+        const $inputSkin = $$`<input type="text"></input>`;
+        $inputSkin.change(() => {
+            this._state["description_skin"] = $inputSkin.val();
+        });
+        const $inputEyes = $$`<input type="text"></input>`;
+        $inputEyes.change(() => {
+            this._state["description_eyes"] = $inputEyes.val();
+        });
+        const $inputWeight = $$`<input type="text"></input>`;
+        $inputWeight.change(() => {
+            this._state["description_weight"] = $inputWeight.val();
+        });
+        const $inputHeight = $$`<input type="text"></input>`;
+        $inputHeight.change(() => {
+            this._state["description_height"] = $inputHeight.val();
+        });
+        const $inputFaith = $$`<input type="text"></input>`;
+        $inputFaith.change(() => {
+            this._state["description_faith"] = $inputFaith.val();
+        });
+        
+        const startHeight = "300px";
+        const $inputDescription = $$`<textarea class="form-control input-xs form-control--minimal resize-vertical" style="height: ${startHeight}"></textarea>`;
+
+        const ui = $$`<section class="character-builder-description">
+        <ul class="inputul">
+          <li>
+            <label>Character Name </label>${$inputName}
+          </li>
+          <li>
+            <label>Alignment </label>${$inputAlignment}
+          </li>
+          <li>
+            <label>Height </label>${$inputHeight}
+          </li>
+          <li>
+            <label>Weight </label>${$inputWeight}
+          </li>
+          <li>
+            <label>Hair </label>${$inputHair}
+          </li>
+          <li>
+            <label>Skin </label>${$inputSkin}
+          </li>
+          <li>
+            <label>Eyes </label>${$inputEyes}
+          </li>
+          <li>
+          <label>Eyes </label>${$inputFaith}
+        </li>
+        <ul>
+        </section>`;
+        const ui2 = $$`<div class="character-builder-description"><ul class="inputtext"><li><label>Description </label>${$inputDescription}</li></ul></div>`;
+
+        $$`<div class="ve-flex w-100 h-100">
+        <div class="ve-flex-col w-100 h-100 px-1 pt-1 overflow-y-auto ve-grow veapp__bg-foundry">
+            ${ui}
+            ${ui2}
+        </div>
+        </div>`.appendTo(parentDiv);
+    }
+
+    /**
+     * Sets the state of the component and subcomponents based on a save file. This should be called just after first render.
+     * @param {{background:{name:string, source:string, isFullyCustom:boolean, stateSkillProficiencies:any, stateLanguageToolProficiencies:any,
+     * stateCharacteristics:any, isCustomizeSkills:boolean, isCustomizeLanguagesTools:boolean}} actor
+     */
+    setStateFromSaveFile(actor){
+        const data = actor.background;
+        if(!data || !data.name || !data.source){return;}
+
+        const printToState = (input, state) => {
+            for(let prop of Object.keys(input)){
+                let val = input[prop];
+                state[prop] = val;
+            }
+        }
+
+        //Go through our data and try to match to the background
+        const matches = this._data.background.filter((b, ix) => {if(b.name == data.name && b.source == data.source){
+            return {ix:ix, match:b};
+        }
+        else{return null;}});
+        if(matches.length > 1){}
+        else if(matches.length < 1){
+        }
+        else{
+            //Get the index of the match
+            const ixOf = this._data.background.indexOf(matches[0]);
+            //Set it to state
+            this._state.background_ixBackground = ixOf;
+            //Then set other values
+            if(data.stateFeatures){
+                printToState(data.stateFeatures, this.compBackgroundFeatures._state);
+            }
+            if(data.isCustomizeSkills){this._state.background_isCustomizeSkills = true;}
+            if(data.isCustomizeLanguagesTools){this._state.background_isCustomizeLanguagesTools = true;}
+            if(data.stateSkillProficiencies){
+                printToState(data.stateSkillProficiencies, this.compBackgroundSkillProficiencies._state);
+            }
+            if(data.stateLanguageToolProficiencies){
+                printToState(data.stateLanguageToolProficiencies, this.compBackgroundLanguageToolProficiencies._state);
+            }
+            if(data.stateToolProficiencies){
+                printToState(data.stateToolProficiencies, this.compBackgroundToolProficiencies._state);
+            }
+            if(data.stateLanguageProficiencies){
+                printToState(data.stateLanguageProficiencies, this.compBackgroundLanguageProficiencies._state);
+            }
+            if(data.stateArmorProficiencies){
+                printToState(data.stateArmorProficiencies, this.compBackgroundArmorProficiencies._state);
+            }
+            if(data.stateWeaponProficiencies){
+                printToState(data.stateWeaponProficiencies, this.compBackgroundWeaponProficiencies._state);
+            }
+            if(data.stateExpertises){
+                printToState(data.stateExpertises, this.compBackgroundExpertise._state);
+            }
+            if(data.stateImmunity){
+                printToState(data.stateImmunity, this.compBackgroundDamageImmunity._state);
+            }
+            if(data.stateResistance){
+                printToState(data.stateResistance, this.compBackgroundDamageResistance._state);
+            }
+            if(data.stateVulnerability){
+                printToState(data.stateVulnerability, this.compBackgroundDamageVulnerability._state);
+            }
+            if(data.stateConditionImmunities){
+                printToState(data.stateConditionImmunities, this.compBackgroundConditionImmunity._state);
+            }
+            printToState(data.stateCharacteristics, this.compBackgroundCharacteristics._state);
+        }
+    }
+    async pLoad() {
+
+    }
+    _getDefaultState() {
+      return {
+        'description_name': "",
+        'description_alignment': "",
+        'description_height': "",
+        'description_weight': "",
+        'description_hair': "",
+        'description_skin': "",
+        'description_eyes': "",
+        'description_faith': "",
+      };
+    }
+
+    static ALIGNMENTS = [
+        "Lawful Good",
+        "Lawful Neutral",
+        "Lawful Evil",
+        "Neutral Good",
+        "Neutral",
+        "Neutral Evil",
+        "Chaotic Good",
+        "Chaotic Neutral",
+        "Chaotic Evil"
+    ]
+}
+//#endregion
 
 //#region CHARACTERMANCER UTILS
 class Charactermancer_Util {

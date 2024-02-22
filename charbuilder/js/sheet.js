@@ -59,7 +59,6 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
   
     }
     render({charInfo}){
-      console.log("charinfo", charInfo);
       ActorCharactermancerSheet.characterName = null;
       if(!!charInfo?.character?.about?.name?.length){ActorCharactermancerSheet.characterName = charInfo.character.about.name;}
       const tabSheet = this._tabSheet?.$wrpTab;
@@ -73,7 +72,8 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
       const $lblClass = $$`<label class="lblResult"></label>`;
       const $lblRace = $$`<label class="lblResult"/></label>`;
       const $lblBackground = $$`<label class="lblResult"/></label>`;
-      const $inputName = $$`<input type="text" name="charname" value="${ActorCharactermancerSheet.characterName || ""}" placeholder="Thoradin Fireforge"></input>`;
+      const $inputName = $$`<label class="lblResultName"></label>`;
+      const $inputAlignment = $$`<label class="lblResult"></label>`;
       
 
       const headerSection = $$`<header><section class="charname">
@@ -88,16 +88,10 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
             <label  class="lblTitle">Background</label>${$lblBackground}
           </li>
           <li>
-            <label  class="lblTitle">Player Name</label><input class="lblResult" name="playername" placeholder="Player McPlayerface">
-          </li>
-          <li>
             <label  class="lblTitle">Race</label>${$lblRace}
           </li>
           <li>
-            <label  class="lblTitle">Alignment</label><input class="lblResult" name="alignment" placeholder="Lawful Good" />
-          </li>
-          <li>
-            <label  class="lblTitle">Experience Points</label><input class="lblResult" name="experiencepoints" placeholder="3240" />
+            <label class="lblTitle">Alignment</label>${$inputAlignment}
           </li>
         </ul>
       </section>
@@ -891,9 +885,20 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
       //#endregion
       
       //#region Character Description
-      $inputName.change(() => {
-        ActorCharactermancerSheet.characterName = $inputName.val();
-      });
+      const hkName = () => {
+        let name = this._parent.compDescription.__state["description_name"] || " ";
+        if(name.length < 1){name = " ";} //Make this at least a blankspace so the label isnt empty (and dissaspears)
+        $inputName.text(name);
+      }
+      this._parent.compDescription.addHookBase("description_name", hkName);
+      hkName();
+      const hkAlignment = () => {
+        let al = this._parent.compDescription.__state["description_alignment"] || "";
+        if(al.length === 0){al = "None";} //Make this at least a blankspace so the label isnt empty (and dissaspears)
+        $inputAlignment.text(al);
+      }
+      this._parent.compDescription.addHookBase("description_alignment", hkAlignment);
+      hkAlignment();
       //#endregion
 
       wrapper.appendTo(tabSheet);

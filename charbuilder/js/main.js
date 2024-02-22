@@ -388,7 +388,6 @@ class CharacterBuilder {
       this.createPanels(_root); //Create the panels that hold components
       
       let charInfo = existingUid? CookieManager.getCharacterInfo(existingUid).result : null;
-      console.log("CACHED STR", charInfo);
       if(!!charInfo){
         this.actor = charInfo.character;
         CharacterBuilder.currentUid = existingUid;
@@ -408,6 +407,7 @@ class CharacterBuilder {
       this.compEquipment = new ActorCharactermancerEquipment(this);
       this.compSpell = new ActorCharactermancerSpell(this);
       this.compFeat = new ActorCharactermancerFeat(this);
+      this.compDescription = new ActorCharactermancerDescription(this);
       this.compSheet = new ActorCharactermancerSheet(this);
 
 
@@ -429,7 +429,7 @@ class CharacterBuilder {
       this.pLoad()
       .then(() => this.renderComponents({charInfo})) //Then render the components
       .then(() => testApplyDefaultSources()) //Use our test function to set only certain sources as active in the filter
-      .then(() => this.e_switchTab(viewMode? "sheet" : "class")); //Then switch to the tab we want to start off with
+      .then(() => this.e_switchTab(viewMode? "sheet" : "description")); //Then switch to the tab we want to start off with
     }
 
     createTabs($wrp){
@@ -450,6 +450,7 @@ class CharacterBuilder {
         createTabBtn("Equipment Shop").click(()=>{ this.e_switchTab("shop"); });
         createTabBtn("Spells").click(()=>{ this.e_switchTab("spells"); });
         createTabBtn("Feats").click(()=>{ this.e_switchTab("feats"); });
+        createTabBtn("Description").click(()=>{ this.e_switchTab("description"); });
         createTabBtn("Sheet").click(()=>{ this.e_switchTab("sheet"); });
         
         createRightSideBtn("Export to FVTT").click(()=>{
@@ -475,6 +476,7 @@ class CharacterBuilder {
         this.tabShop = newPanel();
         this.tabSpells = newPanel();
         this.tabFeats = newPanel();
+        this.tabDescription = newPanel();
         this.tabSheet = newPanel();
     }
     async pLoad(){
@@ -507,6 +509,7 @@ class CharacterBuilder {
           this.compSpell.pRender().then(() => {if(doLoad){this.compSpell.setStateFromSaveFile(this.actor);}});
           this.compFeat.render();
         
+          this.compDescription.render();
 
           if(doLoad){this.compAbility.setStateFromSaveFile(this.actor);}
           if(doLoad){this.compBackground.setStateFromSaveFile(this.actor);}
@@ -543,6 +546,7 @@ class CharacterBuilder {
         this.setActive(this.tabShop.$wrpTab, false);
         this.setActive(this.tabSpells.$wrpTab, false);
         this.setActive(this.tabFeats.$wrpTab, false);
+        this.setActive(this.tabDescription.$wrpTab, false);
         this.setActive(this.tabSheet.$wrpTab, false);
 
         switch(tabName){
@@ -554,7 +558,8 @@ class CharacterBuilder {
             case "shop": newActivePanel = this.tabShop; tabIx = 5; break;
             case "spells": newActivePanel = this.tabSpells; tabIx = 6; break;
             case "feats": newActivePanel = this.tabFeats; tabIx = 7; break;
-            case "sheet": newActivePanel = this.tabSheet; tabIx = 8; break;
+            case "description": newActivePanel = this.tabDescription; tabIx = 8; break;
+            case "sheet": newActivePanel = this.tabSheet; tabIx = 9; break;
         }
         const pressedBtn = this.tabButtonParent.children().eq(tabIx);
         pressedBtn.addClass("active");

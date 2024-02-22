@@ -37,7 +37,6 @@ class CharacterSelectScreen {
         this.myContent = content;
 
         const infos = CookieManager.getAllCharacterInfos();
-        console.log("INFOS", infos)
         for(let ix = 0; ix < infos.length; ++ix){
             const result = infos[ix];
             if(!result){continue;}
@@ -45,8 +44,6 @@ class CharacterSelectScreen {
             card.appendTo(list);
         }
     }
-
-
 
     createCharacterElement(parent, charUid){
         const defaultIconUrl = `charbuilder/img/default_img.jpg`;
@@ -69,7 +66,6 @@ class CharacterSelectScreen {
 
         //Get the character data
         const charData = CookieManager.getCharacterInfo(charUid).result.character;
-        console.log(charData);
         let classString = "";
         let totalLevels = 0;
         for(let ix = 0; ix < charData?.classes?.length || 0; ++ix){
