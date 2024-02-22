@@ -151,7 +151,15 @@ class CharacterExportFvtt{
 
         //Character description
         _char.about = {
-            name: ActorCharactermancerSheet.characterName,
+            name: builder.compDescription.__state["description_name"],
+            alignment: builder.compDescription.__state["description_alignment"],
+            height: builder.compDescription.__state["description_height"],
+            weight: builder.compDescription.__state["description_weight"],
+            hair: builder.compDescription.__state["description_hair"],
+            skin: builder.compDescription.__state["description_skin"],
+            eyes: builder.compDescription.__state["description_eyes"],
+            faith: builder.compDescription.__state["description_faith"],
+            text: builder.compDescription.__state["description_text"],
         };
 
         //Build meta
