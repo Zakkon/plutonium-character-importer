@@ -113,7 +113,9 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
       const $divFeatures = $$`<div class ="featureTextArea textbox"></div>`;
       const $divClassFeatures = $$`<div></div>`;
       const $divSubclassFeatures = $$`<div></div>`;
-      const $divSpells = $$`<div></div>`;
+      const $divSpellAttackMod = $$`<div></div>`;
+      const $divSpellDC = $$`<div class="mb10"></div>`;
+      const $divSpells = $$`<div>${$divSpellAttackMod}${$divSpellDC}</div>`;
       const $divFeatFeatures = $$`<div></div>`;
       const $divBackgroundFeatures = $$`<div class="bkFeatures"></div>`;
       const $divEquipment = $$`<div class ="equipmentTextArea textbox"></div>`;
@@ -678,9 +680,11 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
       //#endregion
 
       //#region Spells
-      const $colSpells = $$`<div></div>`.appendTo($wrpDisplay);
+
       const hkSpells = () => {
           $divSpells.empty();
+          $divSpells.append($divSpellAttackMod);
+          $divSpells.append($divSpellDC);
           
           const spellsListStr = (spells) => {
             let spellsStr = "";
@@ -691,23 +695,7 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
             return spellsStr;
           };
 
-          //Show spellcasting modifier (prof bonus + ability modifier (differs between classes))
-          //Look through each class
-          let classData = ActorCharactermancerSheet.getClassData(this._parent.compClass);
-          let bestAbilityAbv = "";
-          let bestAbilityScore = -100;
-          const profBonus = this._getProfBonus();
-          for(let d of classData){;
-            if(d?.cls?.spellcastingAbility){
-              let score = this._getAbilityModifier(d.cls.spellcastingAbility);
-              if(score > bestAbilityScore){bestAbilityScore = score; bestAbilityAbv = d.cls.spellcastingAbility;}
-            }
-          }
-          bestAbilityScore += profBonus;
-          $$`<div><b>Spell Attack Modifier: ${(bestAbilityScore>=0?"+":"")}${bestAbilityScore}</b></div>`.appendTo($divSpells);
-          //Show spell save DC
-          bestAbilityScore += 8;
-          $$`<div class="mb10"><b>Spell Save DC ${bestAbilityScore}</b></div>`.appendTo($divSpells);
+          
           
           const spellsKnownByLvl = ActorCharactermancerSheet.getAllSpellsKnown(this._parent.compSpell);
           //List cantrips known (these never change)
@@ -742,15 +730,36 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
       this._parent.compSpell.addHookBase("pulseAlwaysPrepared", hkSpells);
       this._parent.compSpell.addHookBase("pulseAlwaysKnown", hkSpells);
       this._parent.compSpell.addHookBase("pulseExpandedSpells", hkSpells); //Not sure if this one is needed
-      this._parent.compAbility.compStatgen.addHookBase("common_export_str", hkSpells);
-      this._parent.compAbility.compStatgen.addHookBase("common_export_dex", hkSpells);
-      this._parent.compAbility.compStatgen.addHookBase("common_export_con", hkSpells);
-      this._parent.compAbility.compStatgen.addHookBase("common_export_int", hkSpells);
-      this._parent.compAbility.compStatgen.addHookBase("common_export_wis", hkSpells);
-      this._parent.compAbility.compStatgen.addHookBase("common_export_cha", hkSpells);
-      this._parent.compAbility.compStatgen.addHookBase("common_pulseAsi", hkSpells);
-      this._parent.compClass.addHookBase("class_totalLevels", hkSpells);
       hkSpells();
+
+      const hkSpellDC = () => {
+        //Show spellcasting modifier (prof bonus + ability modifier (differs between classes))
+        //Look through each class
+        let classData = ActorCharactermancerSheet.getClassData(this._parent.compClass);
+        let bestAbilityAbv = "";
+        let bestAbilityScore = -100;
+        const profBonus = this._getProfBonus();
+        for(let d of classData){;
+          if(d?.cls?.spellcastingAbility){
+            let score = this._getAbilityModifier(d.cls.spellcastingAbility);
+            if(score > bestAbilityScore){bestAbilityScore = score; bestAbilityAbv = d.cls.spellcastingAbility;}
+          }
+        }
+        if(bestAbilityAbv.length<1){bestAbilityScore = 0;}
+        bestAbilityScore += profBonus;
+        $$`<b>Spell Attack Modifier: ${(bestAbilityScore>=0?"+":"")}${bestAbilityScore}</b>`.appendTo($divSpellAttackMod);
+        //Show spell save DC
+        bestAbilityScore += 8;
+        $$`<div class="mb10"><b>Spell Save DC ${bestAbilityScore}</b>`.appendTo($divSpellDC);
+      }
+      this._parent.compAbility.compStatgen.addHookBase("common_export_str", hkSpellDC);
+      this._parent.compAbility.compStatgen.addHookBase("common_export_dex", hkSpellDC);
+      this._parent.compAbility.compStatgen.addHookBase("common_export_con", hkSpellDC);
+      this._parent.compAbility.compStatgen.addHookBase("common_export_int", hkSpellDC);
+      this._parent.compAbility.compStatgen.addHookBase("common_export_wis", hkSpellDC);
+      this._parent.compAbility.compStatgen.addHookBase("common_export_cha", hkSpellDC);
+      this._parent.compAbility.compStatgen.addHookBase("common_pulseAsi", hkSpellDC);
+      this._parent.compClass.addHookBase("class_totalLevels", hkSpellDC);
       //#endregion
 
       //#region Equipment

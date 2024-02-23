@@ -1,5 +1,5 @@
 BUGS:
-     
+    - Looks like cleric's innate spells create a bug when trying to save (lvl 1 life cleric)
 WEB:
     - Use mirror2's utils-dataloader.js instead (free sidedatainterface to another file)
 
@@ -17,3 +17,6 @@ SHEET:
 CLASS:
     - Make subclass dropdown be locked until high enough level
     - Button for removing a class
+
+EXPORT:
+    - 

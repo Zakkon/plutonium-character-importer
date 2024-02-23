@@ -8,8 +8,9 @@ window.addEventListener('load', function () {
   {
     //Try to get a state cookie (telling us which page the user last visited, and which character)
     const cookie = CookieManager.getState();
+    const charExists = (cookie && cookie.uid) && !!CookieManager.getCharacterInfo(cookie.uid)?.result;
     //Fallback: go to character select screen
-    if(!cookie || !cookie.page || cookie.page == "select"){
+    if(!charExists || cookie.page == "select"){
       const charSelect = new CharacterSelectScreen();
       charSelect.render();
       //Write a new cookie saying we are at char select screen
@@ -62,7 +63,8 @@ class SourceManager {
   static async defaultStart({ cookieUid, page }) {
 
     //Try to load source ids from localstorage by referring to a character saved in localstorage under 'cookieUid'
-    let {sourceIds, uploadedFileMetas, customUrls} = await this._loadSourceIdsFromSave(cookieUid);
+    const attemptedLoad = await this._loadSourceIdsFromSave(cookieUid);
+    let {sourceIds, uploadedFileMetas, customUrls} = attemptedLoad || {sourceIds: null, uploadedFileMetas:null, customUrls:null};
     //If that failed, just load default source ids
     if(!sourceIds){sourceIds = await this._getDefaultSourceIds(); uploadedFileMetas = []; customUrls = []; }
 
@@ -457,8 +459,9 @@ class CharacterBuilder {
         createTabBtn("Description").click(()=>{ this.e_switchTab("description"); });
         createTabBtn("Sheet").click(()=>{ this.e_switchTab("sheet"); });
         
-        createRightSideBtn("Export to FVTT").click(()=>{
-          CharacterExportFvtt.exportCharacterFvtt(this);
+        createRightSideBtn("Export to FVTT").click(async ()=>{
+          const json = await CharacterExportFvtt.exportCharacterFvtt(this);
+
         });
         createRightSideBtn("Configure Sources").click(async()=>{
           await this.e_changeSourcesDialog();
@@ -518,7 +521,9 @@ class CharacterBuilder {
 
           if(doLoad){this.compAbility.setStateFromSaveFile(this.actor);}
           if(doLoad){this.compBackground.setStateFromSaveFile(this.actor);}
-      }).then(()=> {this.compSheet.render({charInfo: opts?.charInfo});});
+      }).then(()=> {
+        this.compSheet.render({charInfo: opts?.charInfo});
+      });
     }
 
     _createHeader($wrp){
@@ -554,7 +559,6 @@ class CharacterBuilder {
         this._setActive(this.tabSheet.$wrpTab, false);
 
         switch(tabName){
-            case "class": newActivePanel = this.tabClass; tabIx = 0; break;
             case "race": newActivePanel = this.tabRace; tabIx = 1; break;
             case "abilities": newActivePanel = this.tabAbilities; tabIx = 2; break;
             case "background": newActivePanel = this.tabBackground; tabIx = 3; break;
@@ -564,6 +568,7 @@ class CharacterBuilder {
             case "feats": newActivePanel = this.tabFeats; tabIx = 7; break;
             case "description": newActivePanel = this.tabDescription; tabIx = 8; break;
             case "sheet": newActivePanel = this.tabSheet; tabIx = 9; break;
+            default: newActivePanel = this.tabClass; tabIx = 0; break;
         }
         const pressedBtn = this.tabButtonParent.children().eq(tabIx);
         pressedBtn.addClass("active");

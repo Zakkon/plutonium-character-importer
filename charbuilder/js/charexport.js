@@ -215,12 +215,16 @@ class CharacterExportFvtt{
             const { propIxClass: propIxClass, propIxSubclass: propIxSubclass, propCurLevel:propCurLevel, propTargetLevel: propTargetLevel } = ActorCharactermancerBaseComponent.class_getProps(ix);
             const cls = builder.compClass.getClass_({ propIxClass: propIxClass });
             if (!cls) { continue; }
-            out.classUid = cls.name + "|" + cls.source;
+            //out.classUid = cls.name + "|" + cls.source;
+            //We will send the entire class entity, instead of a UID
+            out.classEntity = cls;
             out.targetLevel = builder.compClass.state[propTargetLevel];
             out.isPrimary = ix == primaryClassIndex;
             const sc = builder.compClass.getSubclass_({ cls: cls, propIxSubclass: propIxSubclass });
             if(sc){
-                out.subclassUid = sc.name + "|" + sc.source;
+                //out.subclassUid = sc.name + "|" + sc.source;
+                //We will send the entire subclass entity, instead of a UID
+                out.subclassEntity = sc;
             }
             //HITPOINTS
             const {mode, customFormula} = (await builder.compClass.compsClassHpIncreaseMode[ix].pGetFormData()).data;
@@ -255,43 +259,49 @@ class CharacterExportFvtt{
             out.spellSlotLevelSelection = slotLevelSelectComp?.isAnyChoice()? slotLevelSelectComp.getFlagsChoicesState() : null;
             classes.push(out);
         }
-        output.classes = classes;
+        if(classes.length > 0){output.classes = classes;}
         //#endregion
         //#region RACE
         let outRace = {};
-        outRace.race = builder.compRace.getRace_();
-        if(builder.compRace.compRaceSize){
-            outRace.size = [(await builder.compRace.compRaceSize.pGetFormData().data) || Parser.SZ_VARIES];
-        }
-        //RACE SKILL PROFICIENCIES
-        await grabFormsFromComponents([...(builder.compRace.compRaceSkillProficiencies || []),
+        const curRace = builder.compRace.getRace_();
+        if(curRace){
+            //We need to include the entire race entity into the exported json
+            outRace.raceEntity = curRace;
+            if(builder.compRace.compRaceSize){
+                outRace.size = [(await builder.compRace.compRaceSize.pGetFormData().data) || Parser.SZ_VARIES];
+            }
+            //RACE SKILL PROFICIENCIES
+            await grabFormsFromComponents([...(builder.compRace.compRaceSkillProficiencies || []),
             ...(builder.compRace.compRaceSkillToolLanguageProficiencies || [])], outRace, "skillProfs");
-        //RACE TOOL PROFICIENCIES
-        await grabFormsFromComponents([...(builder.compRace.compRaceToolProficiencies || []),
-            ...(builder.compRace.compRaceSkillToolLanguageProficiencies || [])], outRace, "toolProfs");
-        //RACE LANGUAGE PROFICIENCIES
-        await grabFormsFromComponents(builder.compClass.compRaceLanguageProficiencies, outRace, "langProfs");
-        //RACE EXPERTISE
-        await grabFormsFromComponents(builder.compClass.compRaceExpertise, outRace, "expertises");
-        //RACE ARMOR PROFICIENCIES
-        await grabFormsFromComponents(builder.compClass.compRaceArmorProficiencies, outRace, "armorProfs");
-        //RACE WEAPON PROFICIENCIES
-        await grabFormsFromComponents(builder.compClass.compRaceWeaponProficiencies, outRace, "weaponProfs");
-        //RACE DAMAGE IMMUNITIES
-        await grabFormsFromComponents(builder.compClass.compRaceDamageImmunity, outRace, "dmgImmunities");
-        //RACE DAMAGE RESISTANCE
-        await grabFormsFromComponents(builder.compClass.compRaceDamageResistance, outRace, "dmgResistances");
-        //RACE DAMAGE VULNERABILITY
-        await grabFormsFromComponents(builder.compClass.compRaceDamageVulnerability, outRace, "dmgVulnerabilities");
-        //RACE CONDITION IMMUNITIES
-        await grabFormsFromComponents(builder.compClass.compRaceConditionImmunity, outRace, "conImmunities");
-        output.race = outRace;
+            //RACE TOOL PROFICIENCIES
+            await grabFormsFromComponents([...(builder.compRace.compRaceToolProficiencies || []),
+                ...(builder.compRace.compRaceSkillToolLanguageProficiencies || [])], outRace, "toolProfs");
+            //RACE LANGUAGE PROFICIENCIES
+            await grabFormsFromComponents(builder.compClass.compRaceLanguageProficiencies, outRace, "langProfs");
+            //RACE EXPERTISE
+            await grabFormsFromComponents(builder.compClass.compRaceExpertise, outRace, "expertises");
+            //RACE ARMOR PROFICIENCIES
+            await grabFormsFromComponents(builder.compClass.compRaceArmorProficiencies, outRace, "armorProfs");
+            //RACE WEAPON PROFICIENCIES
+            await grabFormsFromComponents(builder.compClass.compRaceWeaponProficiencies, outRace, "weaponProfs");
+            //RACE DAMAGE IMMUNITIES
+            await grabFormsFromComponents(builder.compClass.compRaceDamageImmunity, outRace, "dmgImmunities");
+            //RACE DAMAGE RESISTANCE
+            await grabFormsFromComponents(builder.compClass.compRaceDamageResistance, outRace, "dmgResistances");
+            //RACE DAMAGE VULNERABILITY
+            await grabFormsFromComponents(builder.compClass.compRaceDamageVulnerability, outRace, "dmgVulnerabilities");
+            //RACE CONDITION IMMUNITIES
+            await grabFormsFromComponents(builder.compClass.compRaceConditionImmunity, outRace, "conImmunities");
+            output.race = outRace;
+        }
         //#endregion
         //#region BACKGROUND
         let outBk = {};
         const bkInfo = builder.compBackground.getFeatureCustomizedBackground_({isAllowStub:false});
-        outBk.backgroundUid = CharacterExportFvtt.entityToUID(bkInfo);
         if(bkInfo){
+            //outBk.backgroundUid = CharacterExportFvtt.entityToUID(bkInfo);
+            //We will include the entire background entity instead
+            bkInfo.backgroundEntity = builder.compBackground.getBackground_();
             await grabFormsFromComponents(builder.compBackground.compBackgroundFeatures, outBk, "features");
             //BACKGROUND SKILL PROFICIENCIES
             await grabFormsFromComponents(builder.compBackground.compBackgroundSkillProficiencies, outBk, "skillProfs");
@@ -318,8 +328,8 @@ class CharacterExportFvtt{
             if(builder.compBackground.compBackgroundCharacteristics){
                 await grabFormsFromComponents(builder.compBackground.compBackgroundCharacteristics, outBk, "characteristics");
             }
+            output.background = outBk;
         }
-        output.background = outBk;
         //#endregion
         //#region FEATS
         let outFeats = {};
@@ -336,8 +346,9 @@ class CharacterExportFvtt{
             for(let i = 0; i < formData.data.spells.length; ++i){
                 let name = formData.data.spells[i].spell.name;
                 let source = formData.data.spells[i].spell.source;
+                formData.data.spells[i].spellEntity = formData.data.spells[i].spell;
                 delete formData.data.spells[i].spell;
-                formData.data.spells[i].spellId = `${name}|${source}`;
+                //formData.data.spells[i].spellId = `${name}|${source}`;
                 deletePropIfNull(formData.data.spells[i], "usesMax");
                 deletePropIfNull(formData.data.spells[i], "usesPer");
                 deletePropIfNull(formData.data.spells[i], "usesValue");
@@ -381,6 +392,7 @@ class CharacterExportFvtt{
         const str = JSON.stringify(output);
         console.log(str);
         navigator.clipboard.writeText(str); //Write to browser clipboard
+        return str;
     }
     
 

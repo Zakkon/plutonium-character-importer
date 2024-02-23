@@ -4,5 +4,6 @@
   "description": "Imports characters into FoundryVTT via Plutonium",
   "version": "0.1.0",
   "author": "Zakkon",
-  "esmodules": ["plutonium-importer/main.js"]
+  "esmodules": ["plutonium-importer/testmodule.js"],
+  "styles": ["charbuilder/style.css"]
 }
