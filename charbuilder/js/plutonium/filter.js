@@ -8280,10 +8280,9 @@ class ModalFilter {
             isHeight100: true,
             isWidth100: true,
             title: `Filter/Search for ${this._modalTitle}`,
-            cbClose: (isDataEntered)=>{
+            cbClose: (isDataEntered)=>{ //isDataEntered is a boolean which tells us if the user entered any data or not
                 if(this._filterCache){this._filterCache.$wrpModalInner.detach();}
-                if (!isDataEntered)
-                    resolve([]);
+                if (!isDataEntered){resolve([]);}
             },
             isUncappedHeight: true,
         });
@@ -8585,7 +8584,6 @@ class ModalFilterClasses extends ModalFilter {
         //Get the values from the filterbox
         const f = pageFilter.filterBox.getValues();
         if(!f.Source?._combineBlue){console.error("Combine blue is not set!");
-        console.log(pageFilter.filterBox);
         if(!pageFilter.filterBox._filters[0].__meta.combineBlue){
             console.error("Source filter does not have combineBlue!");
         }

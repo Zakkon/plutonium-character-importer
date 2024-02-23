@@ -12,7 +12,6 @@ class CharacterExportFvtt{
 
         //Ids of brew sources that are fully loaded into memory
         const brewSourceIds = CharacterExportFvtt.getBrewSourceIds();
-        console.log("BREW SOURCE IDS", brewSourceIds);
 
         const _meta = {};
         const _char = {race:null, classes:null};
@@ -117,7 +116,6 @@ class CharacterExportFvtt{
         //Add equipment to character output
         _char.equipment = equipment;
         for(let it of equipment.boughtItems){
-            console.log("BOUGHT ITEM", it);
             let uid = it.uid; //plate_armor|phb
             //TODO: get the full source of the item (assuming its not a PHB item or something)
         }
@@ -167,20 +165,19 @@ class CharacterExportFvtt{
         //Optionally, instead of tracking each and every item, race, subclass, etc that we incorporated on our character,
         //we can just check which sources were enabled at the time of the exporting of the character
         //This does of course include bloat, but it's more accurate than what we have going right now
-        _meta.sourceIds = SourceManager.cachedSourceIds;
+        _meta.sourceIds = SourceManager.cachedSourceIds.map(id => SourceManager.minifySourceId(id));
         _meta.uploadedFileMetas = SourceManager.cachedUploadedFileMetas;
         _meta.customUrls = SourceManager.cachedUploadedCustomUrls;
 
         const output = {character: _char, _meta:_meta};
 
         console.log("Export Character", output);
-        console.log("MetaData", metaDataStack);
         let importStr = this.test_printExportJsonAsString(output);
 
         localStorage.setItem("lastCharacter", importStr);
 
         const currentUid = CharacterBuilder.currentUid;
-        CookieManager.saveCharacterInfo(output, CharacterExportFvtt.getLoadedSources(), currentUid);
+        CookieManager.saveCharacterInfo(output, currentUid);
         
     }
     /**
@@ -470,7 +467,7 @@ class CharacterExportFvtt{
             
         }
         else{
-            console.log("Race is null");
+            console.error("Race is null");
         }
         return out;
     }
@@ -660,10 +657,6 @@ class CharacterExportFvtt{
             ));
             spellsBySource.push({className: className, classSource:classSource, spellsByLvl: spellsByLvl});
         }
-        console.log("OUTPUT", spellsBySource);
-
-        console.log("SPELLS FORMS", forms);
-
         return spellsBySource;
     }
     /**
@@ -703,7 +696,6 @@ class CharacterExportFvtt{
         //Delete all properties that are null
         out = Object.fromEntries(Object.entries(out).filter(([_, v]) => v != null));
 
-        //console.log("BACKCOMP", compBackground);
         return out;
     }
     //#endregion
@@ -719,7 +711,6 @@ class CharacterExportFvtt{
         //Let's get all enabled sources first (one of them might Be 'Upload File')
         const enabledSources = CharacterExportFvtt.getBrewSourceIds();
         const brew = await BrewUtil2.pGetBrew();
-        console.log("ENABLED SOURCES", enabledSources, "BREW", brew, entity);
         let matchedSources = [];
         for(let source of brew){
             //Even an uploaded file can appear here
@@ -770,9 +761,7 @@ class CharacterExportFvtt{
             return {isOfficialContent:true};
         }
         else {
-            console.log("ITEM META", item, brewSourceIds);
             const match = this.matchToBrewSourceID(item, brewSourceIds);
-            console.log("MATCH", match);
             if(!match){throw new Error(`Failed to get brew source for ${item.name}|${item.source}`);}
             return {isOfficialContent:false, brewSource:match};
         }
@@ -802,7 +791,6 @@ class CharacterExportFvtt{
         if(sourceId.isFile){return false;}
         if(sourceId.isDefault){return false;}
 
-        console.log("ITEM.SOURCE", item.source, "SOURCE ID", sourceId);
         const itemAbbreviation = item.source.toLowerCase();
         const srcUsedAbbreviations = sourceId.abbreviations.map(a => a.toLowerCase());
         //Match abbreviations. If brewer made a typo on the abbreviation somewhere, this will fail
@@ -813,8 +801,6 @@ class CharacterExportFvtt{
 
         const src = BrewUtil2.sourceJsonToSource(item.source);
         const srcs = BrewUtil2.getSources();
-        console.log("FOUND BREW SRC", src, srcs);
-        console.log("BREW METAS", sourceId._brewUtil._cache_brews);
 
         //let brewMetas = BrewUtil2._getBrewMetas();
         //first, 
@@ -824,7 +810,6 @@ class CharacterExportFvtt{
         //Since we can't rely on the itemAbbreviation alone to find us the correct source, we need to be more rough
         //We probably need to use the sourceId to load a source, then check if it mentions this item
         //const src = BrewUtil2.sourceJsonToSource(item.source);
-        //console.log("SRC", src);
         
         //Lets get the full name of the source. We expect the name to be split like this: "AUTHOR; BREW_NAME"
         let sourceFullName = "";
@@ -839,13 +824,11 @@ class CharacterExportFvtt{
             return inputString.replace(/[^a-zA-Z0-9]/gi, '');
         }
 
-        console.log("SOURCEID", sourceId);
 
         //If the brewer made a typo between any two (of the numerous places) where you define the source's full name, this will fail and return null
 
         sourceFullName = removeNonAlphanumericCharacters(sourceFullName).toLowerCase();
         itemSourceFull = removeNonAlphanumericCharacters(itemSourceFull).toLowerCase();
-        console.log(sourceFullName, itemSourceFull);
 
         return sourceFullName == itemSourceFull;
     }
@@ -858,7 +841,6 @@ class CharacterExportFvtt{
 
         //test
         let itemSourceFull = Parser.sourceJsonToFull(item.source); //Ok so we cant rely on this to get the correct source name from an abbreviation
-        console.log("BREWUTIL2 THOGUHT IT WAS", itemSourceFull);
 
         if(item.source == fileSourceId.abbreviation){return true;}
         //Fallback - not sure if this will ever work, but perhaps the sourceId has 'abbreviations' (a string array)
@@ -880,7 +862,6 @@ class CharacterExportFvtt{
         const uploadedFileSources = brewSourceIds.filter(srcId => srcId.isFile);
         if(uploadedFileSources.length > 0){
             const fileMetas = SourceManager._testUploadedFileMetas;
-            console.log("FILE METAS", fileMetas);
             for(let file of fileMetas){
                 if(!file.contents?._meta){continue;}
                 for(let src of file.contents._meta.sources){
@@ -953,16 +934,13 @@ class CharacterExportFvtt{
 
 
         const brewSources = CharacterExportFvtt.getBrewSourceIds();
-        console.log("BREW SOURCES", brewSources);
 
         const matchedBrewSources = brewSources.filter(src => this.doesMatchToBrewSource(item, src));
         if(matchedBrewSources.length<1){}
-        console.log("Matched? ", matchedBrewSources.length==1);
     }
 
     static test_printExportJsonAsString(exportJson){
         const str = JSON.stringify(exportJson);
-        console.log(str);
         return str;
     }
     /**

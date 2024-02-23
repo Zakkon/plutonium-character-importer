@@ -5,7 +5,6 @@ class PageFilterSourcesRaw extends AppSourceSelectorAppFilter {
 }
 class AppSourceSelectorMulti extends ModalFilter {
     /**
-     * Description
      * @param {{title:string, sourcesToDisplay:any[], savedSelectionKey:string, filterNamespace:string, isRadio:boolean}} opts
      * @returns {any}
      */
@@ -316,8 +315,6 @@ class AppSourceSelectorMulti extends ModalFilter {
         if (this.isForceSelectAllSources()) {
             return new Set(this._sourcesToDisplay.map(it=>it.identifier));
         }
-
-        console.log("ASBSDFSADF", this._sourcesToDisplay);
         
         //return new Set((await StorageUtil.pGet(this._savedSelectionKey)) || []);
 
@@ -646,7 +643,6 @@ class AppSourceSelectorMulti extends ModalFilter {
             if ($ovrLoading){$ovrLoading.showVe();}
 
             const sources = await this.pGetSelectedSources();
-            console.log("Selected sources", sources);
             if (!isSilent && !sources.length) {
                 if ($ovrLoading){$ovrLoading.hideVe();}
                 //return ui.notifications.error(`No sources selected!`);
@@ -687,7 +683,7 @@ class AppSourceSelectorMulti extends ModalFilter {
 
 
             //We don't want to return entities, we just want to return metadata about sources
-            const out = {sourceIds:sources, uploadedFileMetas:this.uploadedFileMetas, customUrls:this.getCustomUrls()};
+            const out = {sourceIds: sources, uploadedFileMetas: this.uploadedFileMetas, customUrls: this.getCustomUrls()};
 
             fnResolve(out); //Calls for this window to return a solution to whoever has been waiting
             this.close(fnClose);
@@ -751,22 +747,13 @@ class AppSourceSelectorMulti extends ModalFilter {
             this._pageFilter.teardown();
     }
 
-    /* async close(...args) {
-        this.handlePreClose();
-        //await super.close(...args);
-        this.handlePostClose();
-    } */
     async close(fnClose) {
         this.handlePreClose();
         fnClose();
         this.handlePostClose();
     }
 
-    async renderStuff(){
-        /* (async()=>{
-            
-        }
-        )(); */
+    async _render(){
 
         return new Promise(async resolve => {
             const {$modalInner, doClose} = await this._pGetShowModal(resolve);
@@ -777,11 +764,11 @@ class AppSourceSelectorMulti extends ModalFilter {
             const {$iptSearch} = await this.pGetElements($wrpList);
 
             $iptSearch.keydown(evt=>{
-                if (evt.key === "Enter")$btnAccept.click();}
+                if (evt.key === "Enter"){$btnAccept.click();}}
             );
 
             const $btnAccept = $(`<button class="mt-auto btn btn-5et">Confirm</button>`).click(()=>this._pAcceptAndResolveSelection({
-                $ovrLoading, fnClose:doClose, fnResolve:resolve
+                $ovrLoading, fnClose: doClose, fnResolve: resolve
             }));
 
             $$($modalInner)`
@@ -805,11 +792,10 @@ class AppSourceSelectorMulti extends ModalFilter {
         const isSelectAll = this.isForceSelectAllSources();
 
         if (!isSelectAll && isRenderApp){
-            return this.renderStuff();
-            //this.render(true); //old
+            return this._render(); //Return this promise instead
         }
 
-        this._pUserInput = new Promise((resolve,reject)=>{
+        this._pUserInput = new Promise((resolve, reject)=>{
             this._resolve = resolve; //Call this later when this modal has resolved the choices
             this._reject = reject; //Call this later if this modal has rejected the choices
         });
@@ -875,7 +861,6 @@ class ModalFilterSources extends ModalFilter {
 
 
     /**
-     * Description
      * @param {{className: String, classSource:String, subclassName:String, subclassSource:string}} classSubclassMeta
      * @returns {{class:Object, subclass:Object}}
      */
@@ -928,7 +913,6 @@ class ModalFilterSources extends ModalFilter {
             this._ixPrevSelectedClass = selectedClass != null ? this._filterCache.allData.findIndex(it=>it.name === selectedClass.name && it.source === selectedClass.source) : null;
             this._isClassDisabled = isClassDisabled;
             this._isSubclassDisabled = isSubclassDisabled;
-            console.log("FILTER CACHE LIST", this._filterCache.list.items);
             this._filterCache.list.items.forEach(li=>{
                 let isClassDisabled = false;
                 //li.data.cbSel.classList.toggle("disabled", this._isClassDisabled);
@@ -1015,7 +999,6 @@ class ModalFilterSources extends ModalFilter {
             //get some sources
             const allSources = await CharacterBuilder._pGetSources({actor: null});
             const existingSources = this._preEnabledSources;
-            console.log("NUM SOURCES", allSources);
             allSources.forEach((it,i)=>{
                 let isDefaultContent = it.isDefault;
                 let isCustomUserContent = it.filterTypes?.includes("Custom/User");
@@ -1031,7 +1014,6 @@ class ModalFilterSources extends ModalFilter {
             });
 
             const filterListItems = this._getListItems(pageFilter, allData[0], 0);
-            console.log("CLASS ELEMENT", filterListItems);
 
             //Class data
             /* allData.forEach((it,i)=>{
@@ -1089,7 +1071,6 @@ class ModalFilterSources extends ModalFilter {
         //Get the values from the filterbox
         const f = pageFilter.filterBox.getValues();
         if(!f.Source?._combineBlue){console.error("Combine blue is not set!");
-        console.log(pageFilter.filterBox);
         if(!pageFilter.filterBox._filters[0].__meta.combineBlue){
             console.error("Source filter does not have combineBlue!");
         }

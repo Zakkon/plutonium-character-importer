@@ -251,7 +251,7 @@ Renderer.spell.populateBrewLookup(await BrewUtil2.pGetBrewProcessed(), {isForce:
    * Apply new source IDs, and fetch entities from them. Completely reloads the entire character builder.
    * @param {{sourceIds:any[], uploadedFileMetas:any, customUrls:any}} sourceInfo
    */
-  static async onUserChangedSources(sourceInfo){
+  static async changeSources(sourceInfo){
     //Cache which sources we chose, and let them process the source ids into ready data entries (classes, races, etc)
     const data = await SourceManager._loadSources(sourceInfo);
     //Get a cookie explaining the existing character shown, and what page
@@ -274,21 +274,16 @@ Renderer.spell.populateBrewLookup(await BrewUtil2.pGetBrewProcessed(), {isForce:
     SourceManager.cachedUploadedFileMetas = opts.uploadedFileMetas;
     SourceManager.cachedCustomUrls = opts.customUrls;
   }
-  static saveSourceIdsToStorage(sourceIds){
-    //First, we need to compress the sourceIds into the minimal used information
-    const min = sourceIds;//.map(s => {})
-    localStorage.setItem(SourceManager.cacheKey, JSON.stringify(min));
-  }
   /**
    * @param {string} cookieUid 
    * @returns {{name:string, isDefault:boolean, cacheKey:string}[]}
    */
   static async _loadSourceIdsFromSave(cookieUid){
-    //Try to load from localstorage safely
     let ids = [];
     let metas = [];
     let customUrls = [];
     try {
+      //Load a character from localstorage using the cookie ID, that character contains info about the sources
       const info = CookieManager.getCharacterInfo(cookieUid);
       if(!info?.result?._meta?.sourceIds?.length){return null;}
       ids = info?.result._meta?.sourceIds;
@@ -300,7 +295,6 @@ Renderer.spell.populateBrewLookup(await BrewUtil2.pGetBrewProcessed(), {isForce:
       throw e;
     }
     //Assume something is wrong if no source id is in the array
-    //TODO: there is a strange but rare usecase where user wants it this way?
     if(ids.length < 1){return null;}
     //Get all sources. These contain more info than is in the minified version
     const allSources = await this._pGetSources();
@@ -407,10 +401,10 @@ class CharacterBuilder {
       const _root = $("#window-root");
 
       //Create header
-      this.createHeader(_root);
+      this._createHeader(_root);
 
-      this.createTabs(_root); //Create the small tab buttons
-      this.createPanels(_root); //Create the panels that hold components
+      this._createTabs(_root); //Create the small tab buttons
+      this._createPanels(_root); //Create the panels that hold components
       
       //Try to load a character from cookies using a cookie uid
       const charInfo = existingUid? CookieManager.getCharacterInfo(existingUid).result : null;
@@ -436,27 +430,13 @@ class CharacterBuilder {
       this.compDescription = new ActorCharactermancerDescription(this);
       this.compSheet = new ActorCharactermancerSheet(this);
       
-      //This is a test to only have certain sources selected as active in the filter
-      //Note that this does not delete the sources, and they can still be toggled on again via the filter
-      //TODO: Get rid of this
-      const DEFAULT_SOURCES = [Parser.SRC_PHB, Parser.SRC_DMG, Parser.SRC_XGE, Parser.SRC_VGM, Parser.SRC_MPMM];
-      const testApplyDefaultSources = () => {
-          //HelperFunctions.setModalFilterSourcesStrings(this.compBackground.modalFilterBackgrounds, DEFAULT_SOURCES);
-          HelperFunctions.setModalFilterSourcesStrings(this.compRace.modalFilterRaces, DEFAULT_SOURCES);
-
-          //This is a simple way to toggle on homebrew sources
-          this.compClass.modalFilterClasses.pageFilter.sourceFilter._doSetPinsHomebrew({isAdditive:true});
-          this.compClass.modalFilterClasses.pageFilter.filterBox.fireChangeEvent();
-      }
-      
       //Call this to let the components load some content before we start using them
-      this.pLoad()
-      .then(() => this.renderComponents({charInfo})) //Then render the components
-      .then(() => testApplyDefaultSources()) //Use our test function to set only certain sources as active in the filter
+      this._pLoad()
+      .then(() => this._renderComponents({charInfo})) //Then render the components
       .then(() => this.e_switchTab(page)); //Then switch to the tab we want to start off with
     }
 
-    createTabs($wrp){
+    _createTabs($wrp){
         const tabHolder = $$`<div class="w-100 no-shrink ui-tab__wrp-tab-heads--border tab_button_holder"></div>`.appendTo($wrp);
         const createTabBtn = (label) => {
             return $$`<button class="btn btn-default ui-tab__btn-tab-head btn-sm">${label}</button>`.appendTo(tabHolder);
@@ -489,7 +469,7 @@ class CharacterBuilder {
 
         this.tabButtonParent = tabHolder;
     }
-    createPanels($wrp){
+    _createPanels($wrp){
         const newPanel = () => {return new CharacterBuilderPanel($(`<div class="ui-tab__wrp-tab-body ve-flex-col ui-tab__wrp-tab-body--border"></div>`).appendTo($wrp)); }
 
         this.tabClass = newPanel();
@@ -503,7 +483,7 @@ class CharacterBuilder {
         this.tabDescription = newPanel();
         this.tabSheet = newPanel();
     }
-    async pLoad(){
+    async _pLoad(){
         if(!SETTINGS.FILTERS){return;}
         await this.compRace.pLoad();
         await this.compBackground.pLoad();
@@ -513,7 +493,7 @@ class CharacterBuilder {
         await this.compSpell.pLoad();
         await this.compFeat.pLoad();
     }
-    renderComponents(opts){
+    _renderComponents(opts){
         //this.compClass.render(); //Goes on for quite long, and will trigger hooks for many ms after
         const doLoad = SETTINGS.USE_EXISTING_WEB && !!this.actor;
 
@@ -541,11 +521,11 @@ class CharacterBuilder {
       }).then(()=> {this.compSheet.render({charInfo: opts?.charInfo});});
     }
 
-    createHeader($wrp){
+    _createHeader($wrp){
 
       const btnBackToSelect = $$`<button>Return To Select</button>`;
       btnBackToSelect.click(() => {
-        this.returnToCharSelect();
+        this._returnToCharSelect();
       });
 
       const header = $$`
@@ -559,20 +539,19 @@ class CharacterBuilder {
 
     //#region Events
     e_switchTab(tabName){
-        //TODO: improve this
         let newActivePanel = null;
         let tabIx = 0;
         this.tabButtonParent.children().each(function() {$(this).removeClass("active");});
-        this.setActive(this.tabClass.$wrpTab, false);
-        this.setActive(this.tabRace.$wrpTab, false);
-        this.setActive(this.tabAbilities.$wrpTab, false);
-        this.setActive(this.tabBackground.$wrpTab, false);
-        this.setActive(this.tabEquipment.$wrpTab, false);
-        this.setActive(this.tabShop.$wrpTab, false);
-        this.setActive(this.tabSpells.$wrpTab, false);
-        this.setActive(this.tabFeats.$wrpTab, false);
-        this.setActive(this.tabDescription.$wrpTab, false);
-        this.setActive(this.tabSheet.$wrpTab, false);
+        this._setActive(this.tabClass.$wrpTab, false);
+        this._setActive(this.tabRace.$wrpTab, false);
+        this._setActive(this.tabAbilities.$wrpTab, false);
+        this._setActive(this.tabBackground.$wrpTab, false);
+        this._setActive(this.tabEquipment.$wrpTab, false);
+        this._setActive(this.tabShop.$wrpTab, false);
+        this._setActive(this.tabSpells.$wrpTab, false);
+        this._setActive(this.tabFeats.$wrpTab, false);
+        this._setActive(this.tabDescription.$wrpTab, false);
+        this._setActive(this.tabSheet.$wrpTab, false);
 
         switch(tabName){
             case "class": newActivePanel = this.tabClass; tabIx = 0; break;
@@ -588,7 +567,7 @@ class CharacterBuilder {
         }
         const pressedBtn = this.tabButtonParent.children().eq(tabIx);
         pressedBtn.addClass("active");
-        this.setActive(newActivePanel.$wrpTab, true);
+        this._setActive(newActivePanel.$wrpTab, true);
 
         //Write to localstorage that we are on this tab now, so if browser refreshes, we go back to it
         const cookie = CharacterBuilder.createStateCookie(tabName, CharacterBuilder.currentUid);
@@ -607,18 +586,13 @@ class CharacterBuilder {
         sourcesToDisplay: allSources,
         preEnabledSources: preEnabledSources
       });
-      //TODO: see if it was a cancel, not a confirm
       const result = await sourceSelector.pWaitForUserInput();
-      //if (result == null || result.sourceIds == null) { return; }
-      //TODO: clean this up, and include source info in the character save file instead
-      //Write the new sourceIds to localstorage, so next time website refreshes, they will be auto-enabled
-      //SourceManager.saveSourceIdsToStorage(result.sourceIds);
-      //temp
-      //localStorage.setItem("uploadedFileMetas", JSON.stringify(result.uploadedFileMetas));
-      //localStorage.setItem("customUrls", JSON.stringify(result.customUrls));
+      //If user just tried to simply exit the dialog without confirming any choices, an empty array should be returned
+      //Since the dialog won't let the user confirm without choosing at least one source, this is a good way to tell if user aborted
+      if(!result || result.length < 1){return;}
 
       //Then tell SourceManager that we have these new sourceIds, and let them take it from here
-      SourceManager.onUserChangedSources(result);
+      SourceManager.changeSources(result);
     }
     //#endregion
     //#region Getters
@@ -634,7 +608,7 @@ class CharacterBuilder {
     }
     //#endregion
     
-    returnToCharSelect(){
+    _returnToCharSelect(){
       this.teardown();
       const charSelect = new CharacterSelectScreen();
       charSelect.render();
@@ -643,7 +617,7 @@ class CharacterBuilder {
       CookieManager.setState(cookie);
     }
 
-    setActive($tab, active){
+    _setActive($tab, active){
         const hi = "ve-hidden";
         if(!$tab){return;}
         if(active && $tab.hasClass(hi)){$tab.removeClass(hi);}
@@ -707,7 +681,7 @@ class CookieManager {
   }
   /**
    * @param {string} uid
-   * @returns {{result:{_meta:any, character:any, sourceIds:any[]}, uid:string}}
+   * @returns {{result:{_meta:any, character:any}, uid:string}}
    */
   static getCharacterInfo(uid){
     const str = localStorage.getItem(`"char_"${uid}`);
@@ -719,7 +693,7 @@ class CookieManager {
     return {result: character, uid:uid};
   }
   /**
-   * @returns {{result:{_meta:any, character:any, _sourceIds:any[]}, uid:string}[]}
+   * @returns {{result:{_meta:any, character:any}, uid:string}[]}
    */
   static getAllCharacterInfos(){
     const registry = this.getCharacterRegistry();
@@ -734,18 +708,17 @@ class CookieManager {
    * @param {any} character
    * @param {string} uid
    */
-  static saveCharacterInfo(character, sourceIds, uid){
+  static saveCharacterInfo(character, uid){
     this.setCharacterToRegistry(uid);
-    character._sourceIds = sourceIds;
     const str = JSON.stringify(character);
     localStorage.setItem(`"char_"${uid}`, str);
   }
   /**
    * @param {any} character
    */
-  static saveNewCharacter(character, sourceIds){
+  static saveNewCharacter(character){
     const uid = this.createUid();
-    this.saveCharacterInfo(character, sourceIds, uid);
+    this.saveCharacterInfo(character, uid);
   }
   /**
    * @param {string} uid

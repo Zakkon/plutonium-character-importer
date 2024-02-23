@@ -419,16 +419,16 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
               const isProficient = !!proficiencies[attr];
               const modifier = this._getAbilityModifier(attr, totals.values[attr]) + (isProficient? profBonus : 0);
               const checkbox = $$`<input type="checkbox"></input>`;
-              //TODO: Add another class to it if expertise? this could change the color of the checkbox
-              //Alternatively, just create two smaller checkboxes instead?
-              //Alternatively, just replace the checkbox with an icon
-              //Check it if proficient or expertise
-              checkbox.prop("checked", isProficient);
+
+              let iconClass = "fa-regular fa-circle";
+              if(isProficient){iconClass = "fas fa-fw fa-check";}
+              //else if(isExpertised){iconClass = "fas fa-fw fa-check-double";}
+              const icon = $$`<i class="${iconClass} ptb2"></i>`;
 
               return $$`<li>
                   <label>${label}</label>
                   <label class="modifier">${modifier>=0?"+"+modifier : modifier}</label>
-                  ${checkbox}
+                  ${icon}
               </li>`;
           }
 
@@ -538,14 +538,7 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
               let iconClass = "fa-regular fa-circle";
               if(proficientSkills[skillName] == 1){score += profBonus; iconClass = "fas fa-fw fa-check";}
               else if(proficientSkills[skillName] == 2){score += (profBonus * 2); iconClass = "fas fa-fw fa-check-double";}
-
-              const icon = $$`<i class="${iconClass} ptb2"></i>`
-              const checkbox = $$`<input type="checkbox"></input>`;
-              //TODO: Add another class to it if expertise? this could change the color of the checkbox
-              //Alternatively, just create two smaller checkboxes instead?
-              //Alternatively, just replace the checkbox with an icon
-              //Check it if proficient or expertise
-              checkbox.prop("checked", proficientSkills[skillName] > 0);
+              const icon = $$`<i class="${iconClass} ptb2"></i>`;
               
               $$`<li>
               <label for="Acrobatics">${skillName} <span class="skill">(${Parser.SKILL_TO_ATB_ABV[skillName]})</span></label>
@@ -644,7 +637,7 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
           const profBonus = this._getProfBonus();
           const calcMeleeAttack = (it, strMod, dexMod, weaponProfs) => {
             const isProficient = !!weaponProfs[it.item.weaponCategory.toLowerCase()];
-            const attr = (!!it.item.property["F"] && dexMod > strMod)? dexMod : strMod; //If weapon is finesse and our dex is better, use dex
+            const attr = (!!it.item.property?.["F"] && dexMod > strMod)? dexMod : strMod; //If weapon is finesse and our dex is better, use dex
             const toHit = attr + (isProficient? profBonus : 0);
             const dmg = it.item.dmg1 + (attr>=0? "+" : "") + attr.toString();
             return {toHit:(toHit>=0? "+" : "")+toHit.toString(), dmg:dmg, dmgType:it.item.dmgType};
