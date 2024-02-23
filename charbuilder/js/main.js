@@ -502,6 +502,7 @@ class CharacterBuilder {
 
         this.compClass.render().then(() => {
 
+          if(doLoad){ this.compClass.setStateFromSaveFile(this.actor); }
           this.compRace.render();
           if(doLoad){this.compRace.setStateFromSaveFile(this.actor);}
           this.compAbility.render();

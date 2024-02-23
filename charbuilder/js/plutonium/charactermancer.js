@@ -509,7 +509,6 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
         //renderClassComponents_safe().then(() => renderSubclass_safe()).then(() => this._test_tryLoadFOS(ix));
         await renderClassComponents_safe();
         await renderSubclass_safe();
-        await this.loadFeatureOptionsSelectFromState(ix); //needs to be async so FOS components have time to create their subcpomponents
     }
 
     get modalFilterClasses() {
@@ -548,7 +547,12 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
       await this._modalFilterClasses.pPreloadHidden();
       if(this._actor){await this._doHandleExistingClassItems(this._actor.classes);}
     }
-
+    async setStateFromSaveFile(actor){
+        //Some of this loading logic has been moved to pLoad, which runs right before render
+        for (let ix = 0; ix < this._state.class_ixMax + 1; ++ix) {
+            await this.loadFeatureOptionsSelectFromState(ix); //needs to be async so FOS components have time to create their subcpomponents
+        }
+    }
     /**
      * Description
      * @param {{name:string, source:string, hash:string, isPrimary:boolean, subclass:{name:string, source:string, hash:string}}[]} classes
