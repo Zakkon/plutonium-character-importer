@@ -9492,3 +9492,13 @@ class AppSourceSelectorAppFilter extends AppFilter {
         return this._filterBox.toDisplay(values, ent.filterTypes, );
     }
 }
+
+class FilterUtil {
+    static SUB_HASH_PREFIX_LENGTH = 4;
+    static SUB_HASH_PREFIXES = new Set([...Object.values(FilterBox._SUB_HASH_PREFIXES), ...Object.values(FilterBase._SUB_HASH_PREFIXES)]);
+}
+class FilterTransientOptions {
+    constructor(opts) {
+        this.isExtendDefaultState = opts.isExtendDefaultState;
+    }
+}

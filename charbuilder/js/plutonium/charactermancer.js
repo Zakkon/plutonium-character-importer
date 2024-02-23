@@ -509,7 +509,7 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
         //renderClassComponents_safe().then(() => renderSubclass_safe()).then(() => this._test_tryLoadFOS(ix));
         await renderClassComponents_safe();
         await renderSubclass_safe();
-        this._test_tryLoadFOS(ix);
+        await this.loadFeatureOptionsSelectFromState(ix); //needs to be async so FOS components have time to create their subcpomponents
     }
 
     get modalFilterClasses() {
@@ -1324,6 +1324,7 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
     async _class_pRenderFeatureComps(ix, { $stgFeatureOptions: stgFeatureOptions }) {
         for (let i = 0; i < this.compsClassFeatureOptionsSelect[ix].length; ++i) {
             let component = this.compsClassFeatureOptionsSelect[ix][i];
+            
             //component._optionsSet[0].entity.entryData exists
             if ((await component.pIsNoChoice()) && !(await component.pIsAvailable())) {continue;}
             
@@ -1334,55 +1335,73 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
             await component.render(stgFeatureOptions);
         }
     }
-    _test_tryLoadFOS(ix){
+    async loadFeatureOptionsSelectFromState(classIx){
         //Try to load saved cached save data
-        if(SETTINGS.USE_EXISTING_WEB && this.loadedSaveData_FeatureOptSel && ix < this.loadedSaveData_FeatureOptSel.length){
-            if(this.loadedSaveData_FeatureOptSel[ix] != null){
-                this._test_loadFeatureOptSelectFromSaveFile(ix, this.loadedSaveData_FeatureOptSel[ix]);
+        if(SETTINGS.USE_EXISTING_WEB && this.loadedSaveData_FeatureOptSel && classIx < this.loadedSaveData_FeatureOptSel.length){
+            if(this.loadedSaveData_FeatureOptSel[classIx] != null){
+                await this._loadFeatureOptionsSelectFromState(classIx, this.loadedSaveData_FeatureOptSel[classIx]);
             }
             //Then wipe the cached save data so we cant accidentally set it again
-            this.loadedSaveData_FeatureOptSel[ix] = null;
+            this.loadedSaveData_FeatureOptSel[classIx] = null;
         }
     }
-    _test_loadFeatureOptSelectFromSaveFile(classIndex, saveData){
+    /**
+     * Description
+     * @param {any} classIx
+     * @param {{compIx:number, state:any, subCompDatas:{parentCompIx:number, subCompProp:string, subCompIx:number, state:any}[]}[]} saveData
+     * @returns {any}
+     */
+    async _loadFeatureOptionsSelectFromState(classIx, saveData){
         for(let fosData of saveData){ //Go through the feature opt sel data
 
-            const myComp = this.compsClassFeatureOptionsSelect[classIndex][fosData.compIx];
+            const myComp = this.compsClassFeatureOptionsSelect[classIx][fosData.compIx];
             if(myComp==null){
-                console.error(`Failed to grab the ix ${fosData.compIx} FOS component from class ${classIndex}`, fosData);
+                console.error(`Failed to grab the ix ${fosData.compIx} FOS component from class ${classIx}`, fosData);
                 continue;
             }
 
-            //Give state to subcomponents first
-            for(let subData of fosData.subCompDatas){
-                //Grab the subcomponent that we want to paste the state onto
-                const subComp = this._test_getFOSSubComponent(classIndex, subData.parentCompIx, subData.subCompProp, subData.subCompIx);
-                if(subComp==null){
-                    console.error("Failed to load data to FOS subcomponent", myComp, subData);
-                }
-                //Paste the state onto the subcomponent
-                const subState = subData.state;
-                for(let propName of Object.keys(subState)){
-                    let propValue = subState[propName];
-                    subComp._state[propName] = propValue;
-                }
-            }
-
-            //Then give state to ourselves
+            //First give state to ourselves
             const parentState = fosData.state;
             for(let propName of Object.keys(parentState)){
                 let propValue = parentState[propName];
+                if(propName == "ixsChosen"){continue;} //We do not want to fire the ixsChosen hook yet
                 myComp._state[propName] = propValue;
             }
+            const waitForHook = async () => {
+                myComp.__state["ixsChosen"] = fosData.state["ixsChosen"]; //Set the state without firing the hook
+                //Then manually call the render hook instead
+                await myComp._render_pHkIxsChosen({$stgSubChoiceData: myComp.$stgSubChoiceData});
+            };
+            waitForHook().then(()=>{
+                console.log("Applying state to FOS subcomponents");
+
+                //Then give state to subcomponents
+                //A problem here might be that our parents havent created the subcomponents yet
+                for(let subData of fosData.subCompDatas){
+                    //Grab the subcomponent that we want to paste the state onto
+                    const subComp = this._getFeatureOptionsSelectComponent(classIx, subData.parentCompIx, subData.subCompProp, subData.subCompIx);
+                    if(subComp==null){
+                        console.error("Failed to load data to FOS subcomponent", myComp, subData);
+                    }
+                    //Paste the state onto the subcomponent
+                    const subState = subData.state;
+                    for(let propName of Object.keys(subState)){
+                        let propValue = subState[propName];
+                        subComp._state[propName] = propValue;
+                    }
+                }
+            });
+
+            
+
             
         }
     }
-    _test_getFOSSubComponent(classIx, parentCompIx, subCompName, subCompIx){
+    _getFeatureOptionsSelectComponent(classIx, parentCompIx, subCompName, subCompIx){
         if(!this._compsClassFeatureOptionsSelect[classIx]?.length){
             console.error("FeatureOptionsSelect components have not been created for class " + classIx + " yet!");
         }
         try{
-
             return this._compsClassFeatureOptionsSelect[classIx][parentCompIx][subCompName][subCompIx];
         }
         catch(e){
@@ -2136,6 +2155,7 @@ class Charactermancer_AdditionalSpellsSelect extends BaseComponent {
         this._modalFilterSpells = opts.modalFilterSpells;
 
         this._additionalSpellsFlat = Charactermancer_AdditionalSpellsUtil.getFlatData(opts.additionalSpells);
+
     }
 
     get modalTitle() {
@@ -18355,6 +18375,7 @@ class Charactermancer_FeatureOptionsSelect extends BaseComponent {
 
     render($wrp) {
         const $stgSubChoiceData = $$`<div class="w-100 ve-flex-col mt-2"></div>`.hideVe();
+        this.$stgSubChoiceData = $stgSubChoiceData; //need this to be publicly accessible so we can call _render_pHkIxsChosen elsewhere 
 
         this._render_options();
 
@@ -18808,7 +18829,7 @@ class Charactermancer_FeatureOptionsSelect extends BaseComponent {
     _render_pHkIxsChosen_setCompSenses({ix, propSubComps, prop, entity, }, ) {
         const existingFvtt = Charactermancer_SenseSelect.getExistingFvttFromActor(this._actor);
         this[propSubComps][ix] = new Charactermancer_SenseSelect({
-            existing: Charactermancer_SenseSelect.getExisting(existingFvtt),
+            //existing: Charactermancer_SenseSelect.getExisting(existingFvtt),
             existingFvtt,
             senses: entity[prop] || entity.entryData[prop],
         });

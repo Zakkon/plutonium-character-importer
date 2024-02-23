@@ -512,7 +512,6 @@ class CharacterBuilder {
 
           this.compEquipment.pRenderStarting().then(() => this.compEquipment.pRenderShop())
             .then(() => {if(doLoad){this.compEquipment.setStateFromSaveFile(this.actor)}});
-          
           this.compSpell.pRender().then(() => {if(doLoad){this.compSpell.setStateFromSaveFile(this.actor);}});
           this.compFeat.render();
         
