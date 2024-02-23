@@ -3,20 +3,23 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 window.addEventListener('load', function () {
    
-    handleInit().then(() => handleReady().then(() => 
-    //
-    {
-      //Try to get a state cookie
-      const cookie = CookieManager.getState();
-      if(!cookie || !cookie.page || cookie.page == "select"){
-        const charSelect = new CharacterSelectScreen();
-        charSelect.render();
-        CookieManager.setState(CharacterBuilder.createStateCookie("select", null));
-      }
-      else{
-        SourceManager.defaultStart({actor:null, cookieUid: cookie.uid, page:cookie.page});
-      }
-    }));
+  //Run init, ready, and then load the program
+  handleInit().then(() => handleReady().then(() => 
+  {
+    //Try to get a state cookie (telling us which page the user last visited, and which character)
+    const cookie = CookieManager.getState();
+    //Fallback: go to character select screen
+    if(!cookie || !cookie.page || cookie.page == "select"){
+      const charSelect = new CharacterSelectScreen();
+      charSelect.render();
+      //Write a new cookie saying we are at char select screen
+      CookieManager.setState(CharacterBuilder.createStateCookie("select", null));
+    }
+    else {
+      //Tell sourcemanager to load sources to display the character who's uid was in the cookie, then switch to the right page
+      SourceManager.defaultStart({cookieUid: cookie.uid, page:cookie.page});
+    }
+  }));
 });
 async function handleInit(){
   //UtilGameSettings.prePreInit();
@@ -51,48 +54,46 @@ class SourceManager {
   static _curWindow;
 
   /**
-   * Starting function for the whole program. Loads source ids from local storage (or default ones as fallback),
+   * Fetches sourceIds from a saved character (or default ones as fallback),
    * and creates a character builder window that can play around with those sources
-   * @param {any} actor Can just be left as null, not used at the moment
-   * @param {string} cookieUid
+   * @param {string} cookieUid The uid which is attached to the character
+   * @param {string} page The page the character builder will jump to upon launch
    */
-  static async defaultStart({ actor: actor, cookieUid, page }) {
+  static async defaultStart({ cookieUid, page }) {
 
-    //Try to load source ids from localstorage
-    let sourceIds = await this._loadSourceIdsFromSave({actor, cookieUid});
-    //If that failed, load default source ids
-    if(!sourceIds){sourceIds = await this._getDefaultSourceIds({actor});}
-
-    const fileMetas = JSON.parse(localStorage.getItem("uploadedFileMetas"));
-    const customUrls = JSON.parse(localStorage.getItem("customUrls"));
+    //Try to load source ids from localstorage by referring to a character saved in localstorage under 'cookieUid'
+    let {sourceIds, uploadedFileMetas, customUrls} = await this._loadSourceIdsFromSave(cookieUid);
+    //If that failed, just load default source ids
+    if(!sourceIds){sourceIds = await this._getDefaultSourceIds(); uploadedFileMetas = []; customUrls = []; }
 
     //Cache which sources we chose, and let them process the source ids into ready data entries (classes, races, etc)
-    const data = await SourceManager._loadSources({sourceIds: sourceIds, uploadedFileMetas: fileMetas, customUrls: customUrls});
+    const data = await SourceManager._loadSources({sourceIds: sourceIds, uploadedFileMetas: uploadedFileMetas, customUrls: customUrls});
 
-    //Create the character builder UI for the first time
+    //Create the character builder UI, and try to navigate to the correct page, showing the correct character
     const window = new CharacterBuilder(data, cookieUid, page);
     this._curWindow = window;
   }
   
   /**
+   * Load sources and return parsed entities
    * @param {{sourceIds:any[], uploadedFileMetas:any, customUrls:any}} sourceInfo
    * @returns {{class:{}[], background:{}[], classFeature:{}[], race:{}[], monster:{}[], item:{}[]
   * , spell:{}[], subclassFeature:{}[], feat:{}[], optionalFeature:{}[], foundryClass:{}[]}}
   */
- static async _loadSources(sourceInfo){
-   //Process and post-process the data
-   //Get entities such as classes, races, backgrounds using the source ids
-   const content = await SourceManager._getOutputEntities(sourceInfo.sourceIds, sourceInfo.uploadedFileMetas, sourceInfo.customUrls, true);
-   //Then perform some post processing
-   const postProcessedData = SourceManager._postProcessAllSelectedData(content);
-   const mergedData = postProcessedData;
-   //Make sure that the data always has an array for classes, races, feats, etc, even if none were provided by the sources
-   SourceManager._DATA_PROPS_EXPECTED.forEach(propExpected => mergedData[propExpected] = mergedData[propExpected] || []);
-   SourceManager._setUsedSourceIds(sourceInfo.sourceIds);
-   SourceManager._testUploadedFileMetas = sourceInfo.uploadedFileMetas;
+  static async _loadSources(sourceInfo){
+    //Process and post-process the data
+    //Get entities such as classes, races, backgrounds using the source ids
+    const content = await SourceManager._getOutputEntities(sourceInfo.sourceIds, sourceInfo.uploadedFileMetas, sourceInfo.customUrls, true);
+    //Then perform some post processing
+    const postProcessedData = SourceManager._postProcessAllSelectedData(content);
+    const mergedData = postProcessedData;
+    //Make sure that the data always has an array for classes, races, feats, etc, even if none were provided by the sources
+    SourceManager._DATA_PROPS_EXPECTED.forEach(propExpected => mergedData[propExpected] = mergedData[propExpected] || []);
+    SourceManager._setUsedSourceIds(sourceInfo);
 
-   return mergedData;
- }
+    return mergedData;
+  }
+
   /**
    * Perform some post-processing on entities extracted from sources
    * @param {{class:{}[], background:{}[], classFeature:{}[], race:{}[], monster:{}[], item:{}[]
@@ -115,10 +116,9 @@ class SourceManager {
 
   /**
    * Get objects containing information about sources, such as urls, abbreviations and names. Doesn't include any game content itself
-   * @param {any} actor
    * @returns {{name:string, isDefault:boolean, cacheKey:string}[]}
    */
-  static async _pGetSources({ actor: actor }) {
+  static async _pGetSources() {
 
     const isStreamerMode = true;//Config.get('ui', 'isStreamerMode');
 
@@ -126,23 +126,19 @@ class SourceManager {
       cacheKey: '5etools-charactermancer',
       filterTypes: [UtilDataSource.SOURCE_TYP_OFFICIAL_ALL],
       isDefault: true,
-      pPostLoad: SourceManager._pPostLoad.bind(this, {
-        actor: actor
-      })
+      pPostLoad: SourceManager._pPostLoad.bind(this, {})
     }), ...UtilDataSource.getSourcesCustomUrl({
       pPostLoad: SourceManager._pPostLoad.bind(this, {
-        isBrewOrPrerelease: true,
-        actor: actor
+        isBrewOrPrerelease: true
       })
     }), ...UtilDataSource.getSourcesUploadFile({
       pPostLoad: SourceManager._pPostLoad.bind(this, {
-        isBrewOrPrerelease: true,
-        actor: actor
+        isBrewOrPrerelease: true
       })
     }), ...(await UtilDataSource.pGetSourcesPrerelease(ActorCharactermancerSourceSelector._BREW_DIRS, {
-      pPostLoad: SourceManager._pPostLoad.bind(this, { isPrerelease: true, actor: actor })
+      pPostLoad: SourceManager._pPostLoad.bind(this, { isPrerelease: true})
     })), ...(await UtilDataSource.pGetSourcesBrew(ActorCharactermancerSourceSelector._BREW_DIRS, {
-      pPostLoad: SourceManager._pPostLoad.bind(this, { isBrew: true, actor: actor })
+      pPostLoad: SourceManager._pPostLoad.bind(this, { isBrew: true})
     }))].filter(dataSource => !UtilWorldDataSourceSelector.isFiltered(dataSource));
   }
 
@@ -183,6 +179,11 @@ Renderer.spell.populateBrewLookup(await BrewUtil2.pGetBrewProcessed(), {isForce:
 
     return out;
   }
+
+  /**
+   * Callback function to handle parsing JSON for "core" content hosted on 5eTools
+   * @returns {any}
+   */
   static async _pLoadVetoolsSource() {
       const combinedSource = {};
       const [classResult, raceResult, backgroundResult, itemResults, spellResults, featResults, optionalFeatureResults]
@@ -200,7 +201,7 @@ Renderer.spell.populateBrewLookup(await BrewUtil2.pGetBrewProcessed(), {isForce:
   /**
    * Called when a source has been loaded
    * @param {any} data
-   * @param {{actor:any, isBrewOrPrerelease:boolean}} opts
+   * @param {{isBrewOrPrerelease:boolean}} opts
    * @returns {any} data
    */
   static async _pPostLoad(opts, data) {
@@ -251,20 +252,27 @@ Renderer.spell.populateBrewLookup(await BrewUtil2.pGetBrewProcessed(), {isForce:
    * @param {{sourceIds:any[], uploadedFileMetas:any, customUrls:any}} sourceInfo
    */
   static async onUserChangedSources(sourceInfo){
-    console.log("We are asked to change to these sources:", sourceInfo);
     //Cache which sources we chose, and let them process the source ids into ready data entries (classes, races, etc)
     const data = await SourceManager._loadSources(sourceInfo);
+    //Get a cookie explaining the existing character shown, and what page
+    let state = CookieManager.getState();
+    if(!state){
+      //This really shouldn't happen, but it is good form to have a fallback anyway
+      state = {uid: CharacterBuilder.uid, page:"class"};
+    }
     //Tear down the existing window
     this._curWindow.teardown();
     //Create a new window
-    const window = new CharacterBuilder(data);
+    const window = new CharacterBuilder(data, state.uid, state.page);
     this._curWindow = window;
   }
   /**
-   * @param {any} sourceIds
+   * @param {{sourceIds:any[], uploadedFileMetas:any[], customUrls:any[]}} opts
    */
-  static async _setUsedSourceIds(sourceIds){
-    SourceManager.cachedSourceIds = sourceIds;
+  static async _setUsedSourceIds(opts){
+    SourceManager.cachedSourceIds = opts.sourceIds;
+    SourceManager.cachedUploadedFileMetas = opts.uploadedFileMetas;
+    SourceManager.cachedCustomUrls = opts.customUrls;
   }
   static saveSourceIdsToStorage(sourceIds){
     //First, we need to compress the sourceIds into the minimal used information
@@ -272,16 +280,20 @@ Renderer.spell.populateBrewLookup(await BrewUtil2.pGetBrewProcessed(), {isForce:
     localStorage.setItem(SourceManager.cacheKey, JSON.stringify(min));
   }
   /**
-   * @param {any} {actor}
+   * @param {string} cookieUid 
    * @returns {{name:string, isDefault:boolean, cacheKey:string}[]}
    */
-  static async _loadSourceIdsFromSave({actor, cookieUid}){
+  static async _loadSourceIdsFromSave(cookieUid){
     //Try to load from localstorage safely
-    let sourceIdsMin = [];
+    let ids = [];
+    let metas = [];
+    let customUrls = [];
     try {
       const info = CookieManager.getCharacterInfo(cookieUid);
-      if(!info?.result?._sourceIds?.length){return null;}
-      sourceIdsMin = info.result._sourceIds;
+      if(!info?.result?._meta?.sourceIds?.length){return null;}
+      ids = info?.result._meta?.sourceIds;
+      metas = info?.result._meta?.uploadedFileMetas || [];
+      metas = info?.result._meta?.customUrls || [];
     }
     catch(e){
       console.error("Failed to parse saved source ids!");
@@ -289,21 +301,23 @@ Renderer.spell.populateBrewLookup(await BrewUtil2.pGetBrewProcessed(), {isForce:
     }
     //Assume something is wrong if no source id is in the array
     //TODO: there is a strange but rare usecase where user wants it this way?
-    if(sourceIdsMin.length < 1){return null;}
+    if(ids.length < 1){return null;}
     //Get all sources. These contain more info than is in the minified version
-    const allSources = await this._pGetSources({actor});
+    const allSources = await this._pGetSources();
 
     //Match the full sources to the minified sources we pulled from localstorage
     //Then return the full sources that were matched
-    return allSources.filter(src => {
+    const matchedSourceIds = allSources.filter(src => {
       let match = false; //loop will stop when match is made
-      for(let i = 0; !match && i < sourceIdsMin.length; ++i){
-        match = sourceIdsMin[i].name == src.name; //Simple name match for now
+      for(let i = 0; !match && i < ids.length; ++i){
+        match = ids[i].name == src.name; //Simple name match for now
       }
       return match;
     });
+
+    return {sourceIds: matchedSourceIds, uploadedFileMetas: metas, customUrls: customUrls}
   }
-  static async _getDefaultSourceIds({actor}){
+  static async _getDefaultSourceIds(){
     const isStreamerMode = true;
       //Create a source obj that contains all the official sources (PHB, XGE, TCE, etc)
       //This object will have the 'isDefault' property set to true
@@ -313,7 +327,7 @@ Renderer.spell.populateBrewLookup(await BrewUtil2.pGetBrewProcessed(), {isForce:
           cacheKey: '5etools-charactermancer',
           filterTypes: [UtilDataSource.SOURCE_TYP_OFFICIAL_ALL],
           isDefault: true,
-          pPostLoad: this._pPostLoad.bind(this, { actor: actor })
+          pPostLoad: this._pPostLoad.bind(this, { })
       });
 
       /* const allBrews = await Vetools.pGetBrewSources(...SourceManager._BREW_DIRS);
@@ -378,14 +392,15 @@ class CharacterBuilder {
     _featureSourceTracker;
     
     /**
-     * @param {{class:{}[], background:{}[], classFeature:{}[], race:{}[], monster:{}[], item:{}[]
-   * , spell:{}[], subclassFeature:{}[], feat:{}[], optionalFeature:{}[], foundryClass:{}[]}} data
-   * @param {string} existingUid
-     * @returns {CharacterBuilder}
-     */
+    * @param {{class:{}[], background:{}[], classFeature:{}[], race:{}[], monster:{}[], item:{}[]
+    * , spell:{}[], subclassFeature:{}[], feat:{}[], optionalFeature:{}[], foundryClass:{}[]}} data
+    * @param {string} existingUid
+    * @param {string} page
+    * @returns {CharacterBuilder}
+    */
     constructor(data, existingUid, page){
 
-      CharacterBuilder.currentUid = null;
+      CharacterBuilder.currentUid = null; //Reset the publicly readable uid
       this.parent = this;
       this._data = data;
 
@@ -397,12 +412,13 @@ class CharacterBuilder {
       this.createTabs(_root); //Create the small tab buttons
       this.createPanels(_root); //Create the panels that hold components
       
-      let charInfo = existingUid? CookieManager.getCharacterInfo(existingUid).result : null;
-      if(!!charInfo){
+      //Try to load a character from cookies using a cookie uid
+      const charInfo = existingUid? CookieManager.getCharacterInfo(existingUid).result : null;
+      if(!!charInfo){ //If that succeded, load the character stored in the cookie
         this.actor = charInfo.character;
-        CharacterBuilder.currentUid = existingUid;
+        CharacterBuilder.currentUid = existingUid; //And cache the uid we used, available publicly to read
       }
-      else{
+      else { //If that failed, just create a fresh uid for the blank character we are about to show
         CharacterBuilder.currentUid = CookieManager.createUid();
       }
 
@@ -419,11 +435,10 @@ class CharacterBuilder {
       this.compFeat = new ActorCharactermancerFeat(this);
       this.compDescription = new ActorCharactermancerDescription(this);
       this.compSheet = new ActorCharactermancerSheet(this);
-
-
       
       //This is a test to only have certain sources selected as active in the filter
       //Note that this does not delete the sources, and they can still be toggled on again via the filter
+      //TODO: Get rid of this
       const DEFAULT_SOURCES = [Parser.SRC_PHB, Parser.SRC_DMG, Parser.SRC_XGE, Parser.SRC_VGM, Parser.SRC_MPMM];
       const testApplyDefaultSources = () => {
           //HelperFunctions.setModalFilterSourcesStrings(this.compBackground.modalFilterBackgrounds, DEFAULT_SOURCES);
@@ -432,7 +447,6 @@ class CharacterBuilder {
           //This is a simple way to toggle on homebrew sources
           this.compClass.modalFilterClasses.pageFilter.sourceFilter._doSetPinsHomebrew({isAdditive:true});
           this.compClass.modalFilterClasses.pageFilter.filterBox.fireChangeEvent();
-
       }
       
       //Call this to let the components load some content before we start using them
@@ -582,9 +596,10 @@ class CharacterBuilder {
     }
     async e_changeSourcesDialog(){
       //Get all available sources
-      const allSources = await SourceManager._pGetSources({actor: this.actor});
+      const allSources = await SourceManager._pGetSources();
       //Get the names of the sources we already have set as enabled
       const preEnabledSources = SourceManager.cachedSourceIds;
+      //Open up the source selector window and wait for a reply
       const sourceSelector = new ActorCharactermancerSourceSelector({
         title: "Select Sources",
         filterNamespace: 'ActorCharactermancerSourceSelector_filter',
@@ -592,13 +607,15 @@ class CharacterBuilder {
         sourcesToDisplay: allSources,
         preEnabledSources: preEnabledSources
       });
+      //TODO: see if it was a cancel, not a confirm
       const result = await sourceSelector.pWaitForUserInput();
       //if (result == null || result.sourceIds == null) { return; }
+      //TODO: clean this up, and include source info in the character save file instead
       //Write the new sourceIds to localstorage, so next time website refreshes, they will be auto-enabled
-      SourceManager.saveSourceIdsToStorage(result.sourceIds);
+      //SourceManager.saveSourceIdsToStorage(result.sourceIds);
       //temp
-      localStorage.setItem("uploadedFileMetas", JSON.stringify(result.uploadedFileMetas));
-      localStorage.setItem("customUrls", JSON.stringify(result.customUrls));
+      //localStorage.setItem("uploadedFileMetas", JSON.stringify(result.uploadedFileMetas));
+      //localStorage.setItem("customUrls", JSON.stringify(result.customUrls));
 
       //Then tell SourceManager that we have these new sourceIds, and let them take it from here
       SourceManager.onUserChangedSources(result);
@@ -636,6 +653,12 @@ class CharacterBuilder {
       CharacterBuilder.currentUid = null;
       $(`#window-root`).empty();
     }
+    /**
+     * Create a cookie to remember which page and character the browser is viewing
+     * @param {string} tabName
+     * @param {string} charUid
+     * @returns {{uid:string, page:string}}
+     */
     static createStateCookie(tabName, charUid){
       return {
         page: tabName,
@@ -659,10 +682,20 @@ class CookieManager {
     const registry = this.getCharacterRegistry();
     return registry?.uids?.length || 0;
   }
+  /**
+   * @returns {{uid:string, page:string}}
+   */
   static getState(){
     const foundState = localStorage.getItem("lastState"); //may be null
     if(!foundState){return null;}
     return JSON.parse(foundState);
+  }
+  /**
+   * Saves the state where the user is (which page and which character), so refreshing the browser will put us back on the same page
+   * @param {{uid:string, page:string}} state
+   */
+  static setState(state){
+    localStorage.setItem("lastState", JSON.stringify(state));
   }
   /**
    * @param {string} uid
@@ -674,7 +707,7 @@ class CookieManager {
   }
   /**
    * @param {string} uid
-   * @returns {{result:{_meta:any, character:any, _sourceIds:any[]}, uid:string}}
+   * @returns {{result:{_meta:any, character:any, sourceIds:any[]}, uid:string}}
    */
   static getCharacterInfo(uid){
     const str = localStorage.getItem(`"char_"${uid}`);
@@ -696,10 +729,6 @@ class CookieManager {
       output.push(this.getCharacterInfo(registry.uids[i]));
     }
     return output;
-  }
-
-  static setState(state){
-    localStorage.setItem("lastState", JSON.stringify(state));
   }
   /**
    * @param {any} character

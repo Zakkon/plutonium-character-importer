@@ -14926,7 +14926,6 @@ class ActorCharactermancerDescription extends ActorCharactermancerBaseComponent 
 
         const getVal = (prop, fallback = "") => {
             const val = this.__state[prop] || fallback;
-            console.log("VAL", prop, val);
             return val;
         }
 

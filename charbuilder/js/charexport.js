@@ -46,10 +46,10 @@ class CharacterExportFvtt{
 
             //Create some meta information (so we can track where this class came from)
             metaDataStack.push({uid: data.cls.name+"|"+data.cls.source,
-                name:data.cls.name,
-                source:data.cls.source,
-                type:"class",
-                _data:CharacterExportFvtt.getSourceMetaData(data.cls, brewSourceIds)});
+                name: data.cls.name,
+                source: data.cls.source,
+                type: "class",
+                _data: CharacterExportFvtt.getSourceMetaData(data.cls, brewSourceIds)});
 
             //Check if high enough level for subclass here?
             if(data.sc){
@@ -163,60 +163,13 @@ class CharacterExportFvtt{
         };
 
         //Build meta
-        let brewSourcesUsed = [];
-        let fileSourcesUsed = [];
-        for(let meta of metaDataStack){
-            
-            //Check that source is not official
-            if(CharacterExportFvtt.isFromOfficialSource({source:meta.source})){continue;}
-
-            const matchedSources = await CharacterExportFvtt._test_MatchEntityToSource({name:meta.name, source:meta.source}, meta.type);
-            if(matchedSources.length < 0){
-                //Could not make a match
-                console.log(`Could not match ${meta.name} of type '${meta.type}' to any source`);
-                continue;
-            }
-            else if(matchedSources.length > 1){
-                //Resolve the conflict
-                matchedSources = [matchedSources[0]];//TEMPORARY FIX
-            }
-            const match = matchedSources[0];
-            if(!match){
-                console.log(`For some reason matched ${meta.name} of type '${meta.type}' as ${match}`);
-                continue;
-            }
-            console.log(`I think ${meta.name} is a ${meta.type} from ${match.filename}`);
-            //We need to determine if match is an uploaded file or not
-            const isUploaded = CharacterExportFvtt.isUploadedFileSource(match);
-            if(isUploaded){fileSourcesUsed.push(match);}
-            else{brewSourcesUsed.push(match);}
-        }
-
-        if(fileSourcesUsed.length > 0){
-            let names = "";
-            for(let n of fileSourcesUsed){
-                names += `${names.length>0? ", ":""}${n.filename}`; 
-            }
-
-            const doProceed = await InputUiUtil.pGetUserBoolean({
-                title: `Uploaded files are used`,
-                htmlDescription: `Content from the uploaded files (${names}) seem to be used by your character.
-                Be aware that should you wish to import this save anywhere else, you will need to include these files seperately.
-                Do you still wish to proceed?`,
-              });
-            //Perhaps show some info here that characters using content from non-enabled sources will break badly
-            if (!doProceed){return;}
-        }
-
-        
-
-        _meta.fileSourcesUsed = fileSourcesUsed;
-        _meta.brewSourcesUsed = brewSourcesUsed;
 
         //Optionally, instead of tracking each and every item, race, subclass, etc that we incorporated on our character,
         //we can just check which sources were enabled at the time of the exporting of the character
         //This does of course include bloat, but it's more accurate than what we have going right now
-        _meta.enabledBrew = brewSourceIds.map(srcId => SourceManager.minifySourceId(srcId));
+        _meta.sourceIds = SourceManager.cachedSourceIds;
+        _meta.uploadedFileMetas = SourceManager.cachedUploadedFileMetas;
+        _meta.customUrls = SourceManager.cachedUploadedCustomUrls;
 
         const output = {character: _char, _meta:_meta};
 
