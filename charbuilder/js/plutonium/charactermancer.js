@@ -10507,7 +10507,7 @@ class ActorCharactermancerSpell extends ActorCharactermancerBaseComponent {
       return this._filterValuesSpellsCache;
     }
     get filterBoxSpells() {
-      return this._pageFilterSpells?.["filterBox"];
+      return this._pageFilterSpells?.filterBox;
     }
     
     /**
@@ -10545,7 +10545,8 @@ class ActorCharactermancerSpell extends ActorCharactermancerBaseComponent {
       const view = $("<div class=\"fltr__mini-view btn-group\"></div>");
       const btnSaveCopy = $("<button class=\"btn btn-default btn-xs mr-1\" title=\"Save a copy of the current filters, to use when filtering spell lists during import of &quot;prepared spell&quot; casters. For example, if you want your Cleric's spell list to include only PHB spells, you would filter (using the interface above) for PHB spells, then click this button. Note that all the spells that you have selected as learned or that you have selected as prepared will be imported regardless.\">Set Prepared Spell Filter</button>").click(() => {
         this._filterValuesSpellsCache = this._pageFilterSpells.filterBox.getValues();
-        ui.notifications.info("Set!");
+        //ui.notifications.info("Set!");
+        console.log("Set!");
       });
       const btnIncludeUA = ComponentUiUtil.$getBtnBool(this, "spells_isIncludeUaEtcSpellLists", {
         '$ele': $("<button class=\"btn btn-default btn-xs\" title=\"Include spell lists defined in Unearthed Arcana, Plane Shift, and other semi-official products when generating the list of spells which can be learned/prepared.\">Include UA/etc. Spell Lists</button>")
@@ -12899,6 +12900,11 @@ class Charactermancer_Spell extends BaseComponent {
     }
 
     //const filterValues = this._compSpell.filterValuesSpellsCache || this._compSpell.filterBoxSpells.getValues();
+    /**
+     * Description
+     * @param {any} filterValues
+     * @returns {{isFormComplete:boolean, data:{spells:any[]}}}
+     */
     async pGetFormData(filterValues) {
         return {
             isFormComplete: (this._state.cntLearnedCantrips === this._state.maxLearnedCantrips || 0)

@@ -653,7 +653,7 @@ class CharacterExportFvtt{
      * @returns {{className:string, classSource:string, spellsByLvl:Charactermancer_Spell_SpellMeta[][]}[]}
      */
     static getAllSpells(compSpell){
-
+        const filterValues = compSpell.filterValuesSpellsCache || compSpell.filterBoxSpells.getValues();
         let spellsBySource = [];
         let forms = [];
         for(let j = 0; j < compSpell.compsSpellSpells.length; ++j){
@@ -662,7 +662,7 @@ class CharacterExportFvtt{
             if(!comp){continue;}
             let className = comp._className;
             let classSource = comp._classSource;
-            forms.push(compSpell.compsSpellSpells[j].pGetFormData());
+            forms.push(compSpell.compsSpellSpells[j].pGetFormData(filterValues));
             let spellsByLvl = compSpell.compsSpellSpells[j]._test_getKnownSpells().map(arr => arr.map(
                 spell => {return {name: spell.spell.name, source:spell.spell.source,
                     isLearned:spell.isLearned, isPrepared:spell.isPrepared, spell:spell.spell};}

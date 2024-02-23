@@ -1,5 +1,5 @@
 BUGS:
-    - Looks like cleric's innate spells create a bug when trying to save (lvl 1 life cleric)
+    
 WEB:
     - Use mirror2's utils-dataloader.js instead (free sidedatainterface to another file)
 
@@ -7,7 +7,7 @@ CSS:
     - Tidy up as much as possible into a single .css file
 
 SERIALIZIATION:
-    - Make the cookies or character save file remember filter settings on each of the components
+    - Make the cookies or character save file remember filter settings on each of the components?
 
 SHEET:
     - Ranged attacks
@@ -19,4 +19,4 @@ CLASS:
     - Button for removing a class
 
 EXPORT:
-    - 
+    
