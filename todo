@@ -1,60 +1,19 @@
 BUGS:
-Switching from Sorcerer class lvl 3 to rogue class lvl 3 creates double Expertise (lvl3) select components
-
+     
 WEB:
-    - Use mirror2's render.js instead
     - Use mirror2's utils-dataloader.js instead (free sidedatainterface to another file)
 
-CLASS
-- Make subclass dropdown be locked until high enough level
-- Make swapping between classes preserve level
-- Race image import
-- Fix Background roll tables, and make dice rollable
-- fix starting equipment choices
-- spell menu reacts on class change, creating error
-- Create exportable .json with character build info
-- Create a foundry dialog that json can be inputted into
-- Create a foundry script that parses through the json and understands which sources are used, then builds the character
-- Stop classes from sailing to the top of the list of selectable classes just because we applied some homebrew subclasses to it
-- Make active buttons look prettier (right now they look bad because i had to fix a bug where they wouldnt show box shadow when active)
-- Setting for wiping class load info completely, if that class is changed OR, setting for wiping all loaded data after UI elements have been set
-- Functionality for removing a class and all their states
+CSS:
+    - Tidy up as much as possible into a single .css file
 
-EXPORTABLE INFORMATION (json format is good enough)
-- Equipment - done
-- Coins - done
-- Classes (with level and subclasses) - done
-- Race - done
-- Background - done (needs custom background feature)
-- Ability Scores
-- Spells - done
-- Feats
-- Optional Class Features - done
-- 
+SERIALIZIATION:
+    - Make the cookies or character save file remember filter settings on each of the components
 
-LOADING SAVE FILES
-- Class - done
-- Subclass - done
-- HP increase mode
-- Race - done
-- Ability - done
-- Background - mostly done
+SHEET:
+    - Ranged attacks
+    - Cantrip attacks
+    - Better attack parsing overall
 
-SHEET DISPLAYABLE INFORMATION
-- Classes (with level and subclasses) - done
-- Race - done
-- Ability Scores
-- Background - done
-- HP
-- AC
-- Speed
-- Items + weight
-- Coins + weight
-- Spells
-- Proficiency Bonus
-- Initiative
-- Proficiencies (armor, weapon, tools, saves, skills)
-- Languages
-- Skills (show modifiers + proficiency & expertise)
-- Saves (show modifiers + proficiency)
-- Encumberance
+CLASS:
+    - Make subclass dropdown be locked until high enough level
+    - Button for removing a class
