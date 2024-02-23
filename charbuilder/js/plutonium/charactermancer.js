@@ -546,164 +546,73 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
     /**Load some information prior to first rendering. Just to do with loading from the modal and loading existing data from actor */
     async pLoad() {
       await this._modalFilterClasses.pPreloadHidden();
-      if(SETTINGS.USE_EXISTING_WEB){
-        if(this._actor){await this._test_doHandleExistingClassItems(this._actor.classes);}
-        return;
-      }
-      if(!SETTINGS.USE_EXISTING){return;}
-      await this._pLoad_pDoHandleExistingClassItems();
+      if(this._actor){await this._doHandleExistingClassItems(this._actor.classes);}
     }
-    
-    //#region Loading Existing
-    //#region FVTT
-    async _pLoad_pDoHandleExistingClassItems() {
-      const classItems = this._actor.items.filter(cls => cls.type === 'class');
-      const subclassItems = this._actor.items.filter(sc => sc.type === 'subclass');
 
-      //Collect metas
-      this._existingClassMetas = classItems.map(cls => {
-        const _clsIx = this._pLoad_getExistingClassIndex(cls);
-        const matchingSubclasses = subclassItems.find(sc => sc.system.classIdentifier === cls.system.identifier);
-        let _scIx = this._pLoad_getExistingSubclassIndex(_clsIx, matchingSubclasses);
-        const isPrimaryClass = this._actor.system?.details?.originalClass ? this._actor.system?.details?.originalClass === cls.id
-        : !!cls.flags?.[SharedConsts.MODULE_ID]?.isPrimaryClass;
-        const failMatchCls = ~_clsIx ? null : "Could not find class \"" + cls.name + "\" (\"" + UtilDocumentSource.getDocumentSourceDisplayString(cls) + "\") in loaded data. " + Charactermancer_Util.STR_WARN_SOURCE_SELECTION;
-        if (failMatchCls) {
-        ui.notifications.warn(failMatchCls);
-        console.warn(...LGT, failMatchCls, "Strict source matching is: " + Config.get("import", "isStrictMatching") + '.');
-        }
-        const failMatchSc = matchingSubclasses == null || ~_scIx ? null : "Could not find subclass \"" + matchingSubclasses.name + "\" in loaded data. " + Charactermancer_Util.STR_WARN_SOURCE_SELECTION;
-        if (failMatchSc) {
-        ui.notifications.warn(failMatchSc);
-        console.warn(...LGT, failMatchSc, "Strict source matching is: " + Config.get("import", "isStrictMatching") + '.');
-        }
-        return new ActorCharactermancerClass.ExistingClassMeta({
-        item: cls,
-        ixClass: _clsIx,
-        isUnknownClass: !~_clsIx,
-        ixSubclass: _scIx,
-        isUnknownSubclass: _scIx == null && !~_scIx,
-        level: Number(cls.system.levels || 0),
-        isPrimary: isPrimaryClass,
-        spellSlotLevelSelection: cls?.flags?.[SharedConsts.MODULE_ID]?.['spellSlotLevelSelection']
-        });
-      });
-
-      if (!this._existingClassMetas.length) { return; }
-
-      //Write to state
-      this._state.class_ixMax = this._existingClassMetas.length - 1;
-      for (let i = 0; i < this._existingClassMetas.length; ++i) {
-        const meta = this._existingClassMetas[i];
-        const { propIxClass: propIxClass, propIxSubclass: propIxSubclass } = ActorCharactermancerBaseComponent.class_getProps(i);
-        await this._pDoProxySetBase(propIxClass, meta.ixClass);
-        await this._pDoProxySetBase(propIxSubclass, meta.ixSubclass);
-        if (meta.isPrimary) { this._state.class_ixPrimaryClass = i; }
-      }
-      //Set first class as primary, if none is marked already
-      if (!this._existingClassMetas.some(meta => meta.isPrimary)) { this._state.class_ixPrimaryClass = 0; }
-    }
-    _pLoad_getExistingClassIndex(cls) {
-        const moduleFlags = cls.flags?.[SharedConsts.MODULE_ID];
-        if (moduleFlags?.propDroppable === 'class' && moduleFlags?.source && moduleFlags?.hash) {
-            const ix = this._data.class.findIndex(_cls => moduleFlags.source === _cls.source
-                && moduleFlags.hash === UrlUtil.URL_TO_HASH_BUILDER[UrlUtil.PG_CLASSES](_cls));
-            if (~ix) { return ix; }
-        }
-        const _classNameLower = (IntegrationBabele.getOriginalName(cls) || '').toLowerCase().trim();
-
-        const clsIndex = this._data.class.findIndex(_cls => {
-            return _classNameLower === _cls.name.toLowerCase().trim() &&
-            (!Config.get("import", "isStrictMatching") ||
-            (UtilDocumentSource.getDocumentSource(cls).source || '').toLowerCase() === Parser.sourceJsonToAbv(_cls.source).toLowerCase());
-        });
-        if (~clsIndex) { return clsIndex; }
-
-        const filteredName = /^(.*?)\(.*\)$/.exec(_classNameLower);
-        if (!filteredName) { return -1; }
-        return this._data.class.findIndex(_cls => {
-            return filteredName[1].trim() === _cls.name.toLowerCase().trim()
-            && (!Config.get("import", "isStrictMatching") ||
-            (UtilDocumentSource.getDocumentSource(cls).source || '').toLowerCase() === Parser.sourceJsonToAbv(_cls.source).toLowerCase());
-        });
-    }
-    _pLoad_getExistingSubclassIndex(clsIx, subclasses) {
-      if (!subclasses || !~clsIx) { return null;  }
-      const classInfo = this._data['class'][clsIx];
-      const flag = subclasses.flags?.[SharedConsts.MODULE_ID];
-      if (flag?.["propDroppable"] === "subclass" && flag?.["source"] && flag?.["hash"]) {
-        const match = classInfo.subclasses.findIndex(sc => flag.source === sc.source && flag.hash === UrlUtil.URL_TO_HASH_BUILDER.subclass(sc));
-        if (~match) {return match;}
-      }
-      return classInfo.subclasses.findIndex(sc => (IntegrationBabele.getOriginalName(subclasses) || '').toLowerCase().trim() === sc.name.toLowerCase().trim() && (!Config.get("import", 'isStrictMatching') || (UtilDocumentSource.getDocumentSource(subclasses).source || '').toLowerCase() === Parser.sourceJsonToAbv(sc.source).toLowerCase()));
-    }
-    //#endregion
-    //#region WEB
-    //#endregion
     /**
      * Description
      * @param {{name:string, source:string, hash:string, isPrimary:boolean, subclass:{name:string, source:string, hash:string}}[]} classes
      * @returns {any}
      */
-    async _test_doHandleExistingClassItems(classes){
+    async _doHandleExistingClassItems(classes){
 
         if(!classes){return;}
-      //Collect metas
-      this._existingClassMetas = classes.map(cls => {
-        const _clsIx = this._test_getExistingClassIndex(cls);
-        let _scIx = this.test_getExistingSubclassIndex(_clsIx, cls.subclass);
-        const isPrimaryClass = cls.isPrimary || false;
+        //Collect metas
+        this._existingClassMetas = classes.map(cls => {
+            const _clsIx = this._test_getExistingClassIndex(cls);
+            let _scIx = this.test_getExistingSubclassIndex(_clsIx, cls.subclass);
+            const isPrimaryClass = cls.isPrimary || false;
 
-        const failMatchCls = ~_clsIx ? null : "Could not find class \"" + cls.name + "\" (\"" 
-            + UtilDocumentSource.getDocumentSourceDisplayString(cls) + "\") in loaded data. " + Charactermancer_Util.STR_WARN_SOURCE_SELECTION;
-        if (failMatchCls) {
-            //ui.notifications.warn(failMatchCls);
-            console.warn(...LGT, failMatchCls, "Strict source matching is: " + Config.get("import", "isStrictMatching") + '.');
-        }
-        const failMatchSc = ~_scIx ? null : "Could not find subclass \"" + cls.subclass.name + "\" in loaded data. " + Charactermancer_Util.STR_WARN_SOURCE_SELECTION;
-        if (failMatchSc) {
-            //ui.notifications.warn(failMatchSc);
-            console.warn(...LGT, failMatchSc, "Strict source matching is: " + Config.get("import", "isStrictMatching") + '.');
-        }
+            const failMatchCls = ~_clsIx ? null : "Could not find class \"" + cls.name + "\" (\"" 
+                + UtilDocumentSource.getDocumentSourceDisplayString(cls) + "\") in loaded data. " + Charactermancer_Util.STR_WARN_SOURCE_SELECTION;
+            if (failMatchCls) {
+                //ui.notifications.warn(failMatchCls);
+                console.warn(...LGT, failMatchCls, "Strict source matching is: " + Config.get("import", "isStrictMatching") + '.');
+            }
+            const failMatchSc = ~_scIx ? null : "Could not find subclass \"" + cls.subclass.name + "\" in loaded data. " + Charactermancer_Util.STR_WARN_SOURCE_SELECTION;
+            if (failMatchSc) {
+                //ui.notifications.warn(failMatchSc);
+                console.warn(...LGT, failMatchSc, "Strict source matching is: " + Config.get("import", "isStrictMatching") + '.');
+            }
 
-        //Should be (class level - 1) or 0, whichever is higher
-        const classLevel = Math.max((cls.level||0) - 1, 0); //Keep in mind that our save file schema currently stores levels with base 1, whereas in this program we could 0 as lvl 1
-        //Create one ExistingClassMeta per class
-        return new ActorCharactermancerClass.ExistingClassMeta({
-            item: cls, //Class data object
-            ixClass: _clsIx, //index of this class
-            isUnknownClass: !~_clsIx,
-            ixSubclass: _scIx, //index of the subclass
-            isUnknownSubclass: _scIx == null && !~_scIx,
-            level: classLevel, //level
-            isPrimary: isPrimaryClass, //is this the primary class?
-            //TEMPFIX 'spellSlotLevelSelection': cls?.flags?.[SharedConsts.MODULE_ID]?.['spellSlotLevelSelection']
+            //Should be (class level - 1) or 0, whichever is higher
+            const classLevel = Math.max((cls.level||0) - 1, 0); //Keep in mind that our save file schema currently stores levels with base 1, whereas in this program we could 0 as lvl 1
+            //Create one ExistingClassMeta per class
+            return new ActorCharactermancerClass.ExistingClassMeta({
+                item: cls, //Class data object
+                ixClass: _clsIx, //index of this class
+                isUnknownClass: !~_clsIx,
+                ixSubclass: _scIx, //index of the subclass
+                isUnknownSubclass: _scIx == null && !~_scIx,
+                level: classLevel, //level
+                isPrimary: isPrimaryClass, //is this the primary class?
+                //TEMPFIX 'spellSlotLevelSelection': cls?.flags?.[SharedConsts.MODULE_ID]?.['spellSlotLevelSelection']
+            });
         });
-      });
 
-      if (!this._existingClassMetas.length) { return; }
+        if (!this._existingClassMetas.length) { return; }
       
-      //Write to state
-      this._state.class_ixMax = this._existingClassMetas.length - 1;
-      for (let i = 0; i < this._existingClassMetas.length; ++i) {
-        const meta = this._existingClassMetas[i];
-        const { propIxClass: propIxClass, propIxSubclass: propIxSubclass } = ActorCharactermancerBaseComponent.class_getProps(i);
-        await this._pDoProxySetBase(propIxClass, meta.ixClass);
-        await this._pDoProxySetBase(propIxSubclass, meta.ixSubclass);
-        if (meta.isPrimary) { this._state.class_ixPrimaryClass = i; }
-      }
-      //Set first class as primary, if none is marked already
-      if (!this._existingClassMetas.some(meta => meta.isPrimary)) { this._state.class_ixPrimaryClass = 0; }
-
-      //Prepare some data for FeatureOptionsSelect components to load into their state (only once) after first render
-      if(SETTINGS.USE_EXISTING_WEB){
-        this.loadedSaveData_FeatureOptSel = [];
-        for(let classIndex = 0; classIndex < classes.length; ++classIndex){
-            const cls = classes[classIndex];
-            if(!cls.featureOptSel){ this.loadedSaveData_FeatureOptSel.push(null); continue;}
-            this.loadedSaveData_FeatureOptSel.push(cls.featureOptSel);
+        //Write to state
+        this._state.class_ixMax = this._existingClassMetas.length - 1;
+        for (let i = 0; i < this._existingClassMetas.length; ++i) {
+            const meta = this._existingClassMetas[i];
+            const { propIxClass: propIxClass, propIxSubclass: propIxSubclass } = ActorCharactermancerBaseComponent.class_getProps(i);
+            await this._pDoProxySetBase(propIxClass, meta.ixClass);
+            await this._pDoProxySetBase(propIxSubclass, meta.ixSubclass);
+            if (meta.isPrimary) { this._state.class_ixPrimaryClass = i; }
         }
-      }
+        //Set first class as primary, if none is marked already
+        if (!this._existingClassMetas.some(meta => meta.isPrimary)) { this._state.class_ixPrimaryClass = 0; }
+
+        //Prepare some data for FeatureOptionsSelect components to load into their state (only once) after first render
+        if(SETTINGS.USE_EXISTING_WEB){
+            this.loadedSaveData_FeatureOptSel = [];
+            for(let classIndex = 0; classIndex < classes.length; ++classIndex){
+                const cls = classes[classIndex];
+                if(!cls.featureOptSel){ this.loadedSaveData_FeatureOptSel.push(null); continue;}
+                this.loadedSaveData_FeatureOptSel.push(cls.featureOptSel);
+            }
+        }
     }
     async pLoadLate(){
         
@@ -1110,9 +1019,11 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
                         const chooseOptions =  proficiencies[0]; //Proficiencies is an array, usually only with one entry
                         //This should be a secure way to get the options we have to pick from, regardless if it is choose from, or choose any
                         //TODO: improve this save/load system, maybe just copy over states instead
+                        
                         if(comp._available[0].choose){
                             const numToPick = comp._available[0].choose[0].count;
-                            const namesToPickFrom = comp._available[0].choose[0].from;
+                            const namesToPickFrom = comp._available[0].choose[0].from.map(n=>n.name.toLowerCase());
+                            const staticNames = comp._available[0].static? comp._available[0].static.map(n=>n.name.toLowerCase()) : [];
 
                             let mode = "skills";
                             if(propCompsClass == "_compsClassToolProficiencies"){mode = "tools"};
@@ -1121,24 +1032,30 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
                             if(mode == "skills"){chosenProficiencies = this._actor.classes[ix].skillProficiencies?.data?.skillProficiencies;}
                             else if (mode == "tools"){chosenProficiencies = this._actor.classes[ix].toolProficiencies?.data?.toolProficiencies;}
 
-
+                            console.log("CHOSEN PROFS", chosenProficiencies);
                             //Its possible that one class outputs null on either tools or skills because they dont provide an option
                             const chosenNames = !!chosenProficiencies? Object.keys(chosenProficiencies) : [];
-                            for(let i = 0; i < chosenNames.length && i < numToPick; ++i){
+                            console.log("COMP:", namesToPickFrom, numToPick, chosenNames.length);
+                            for(let i = 0; i < chosenNames.length; ++i){ //Not going to double-check that we aren't adding more proficiencies than numToPick
                                 //Make sure we go from a {name:string} to just an array of strings, then match index
                                 //push to lowercase just for simplicity
-                                let ixOf = namesToPickFrom.map(n=>n.name.toLowerCase()).indexOf(chosenNames[i].toLowerCase());
+                                const profName = chosenNames[i].toLowerCase();
+                                let profIx = namesToPickFrom.indexOf(profName);
+                                console.log("name", profName, profIx);
                                 //Make sure a match is made
-                                if(ixOf<0){
-                                    console.warn("Failed to match ", chosenNames[i].toLowerCase(), "to any option in",
-                                        namesToPickFrom.map(n=>n.name.toLowerCase()));
+                                if(profIx<0){
+                                    if(staticNames.includes(profName)){
+                                        continue; //This was just tool part of the static choices, no need for alarm
+                                    }
+                                    console.warn("Failed to match ", profName, "to any option in",
+                                        namesToPickFrom);
                                 }
                                 else{
-                                    //TODO: change 0 to ix?
-                                    const prop = `otherProfSelect_0__isActive_${ixOf}`;
+                                    const prop = `otherProfSelect_${ix}__isActive_${profIx}`;
                                     comp._state[prop] = true;
                                 }
                             }
+                            console.log("COMP STATE", comp.__state);
                         }
                         
                     }

@@ -733,6 +733,8 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
       hkSpells();
 
       const hkSpellDC = () => {
+        $divSpellAttackMod.empty();
+        $divSpellDC.empty();
         //Show spellcasting modifier (prof bonus + ability modifier (differs between classes))
         //Look through each class
         let classData = ActorCharactermancerSheet.getClassData(this._parent.compClass);

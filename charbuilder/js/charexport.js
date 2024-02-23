@@ -39,6 +39,7 @@ class CharacterExportFvtt{
             };
             //Add some data to block that may or may not always be in our given data (depends on class)
             //TODO: Language, etc here?
+            console.log("COMPCLASS", builder.compClass);
             if(data.skillProficiencies){block.skillProficiencies = data.skillProficiencies;}
             if(data.toolProficiencies){block.toolProficiencies = data.toolProficiencies;}
             if(data.featureOptSel){block.featureOptSel = data.featureOptSel;}
