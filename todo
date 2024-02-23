@@ -1,5 +1,5 @@
 BUGS:
-    - Class starting tool proficiency not being saved/loaded correctly
+     
 WEB:
     - Use mirror2's utils-dataloader.js instead (free sidedatainterface to another file)
     - Add UI notifications
