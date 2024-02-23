@@ -2,6 +2,7 @@ BUGS:
     
 WEB:
     - Use mirror2's utils-dataloader.js instead (free sidedatainterface to another file)
+    - Add UI notifications
 
 CSS:
     - Tidy up as much as possible into a single .css file
