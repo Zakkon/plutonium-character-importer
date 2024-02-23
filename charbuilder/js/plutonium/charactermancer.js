@@ -1018,7 +1018,6 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
                     if(SETTINGS.TRANSFER_CHOICES || (this._actor.classes[ix].name == cls.name && this._actor.classes[ix].source == cls.source)){
                         const chooseOptions =  proficiencies[0]; //Proficiencies is an array, usually only with one entry
                         //This should be a secure way to get the options we have to pick from, regardless if it is choose from, or choose any
-                        //TODO: improve this save/load system, maybe just copy over states instead
                         
                         if(comp._available[0].choose){
                             const numToPick = comp._available[0].choose[0].count;
@@ -1032,16 +1031,13 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
                             if(mode == "skills"){chosenProficiencies = this._actor.classes[ix].skillProficiencies?.data?.skillProficiencies;}
                             else if (mode == "tools"){chosenProficiencies = this._actor.classes[ix].toolProficiencies?.data?.toolProficiencies;}
 
-                            console.log("CHOSEN PROFS", chosenProficiencies);
                             //Its possible that one class outputs null on either tools or skills because they dont provide an option
                             const chosenNames = !!chosenProficiencies? Object.keys(chosenProficiencies) : [];
-                            console.log("COMP:", namesToPickFrom, numToPick, chosenNames.length);
                             for(let i = 0; i < chosenNames.length; ++i){ //Not going to double-check that we aren't adding more proficiencies than numToPick
                                 //Make sure we go from a {name:string} to just an array of strings, then match index
                                 //push to lowercase just for simplicity
                                 const profName = chosenNames[i].toLowerCase();
                                 let profIx = namesToPickFrom.indexOf(profName);
-                                console.log("name", profName, profIx);
                                 //Make sure a match is made
                                 if(profIx<0){
                                     if(staticNames.includes(profName)){
@@ -1055,7 +1051,6 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
                                     comp._state[prop] = true;
                                 }
                             }
-                            console.log("COMP STATE", comp.__state);
                         }
                         
                     }
