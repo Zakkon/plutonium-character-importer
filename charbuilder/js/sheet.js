@@ -789,6 +789,7 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
 
           this._getOurItems().then(result => {
             $divEquipment.empty();
+            $divCarry.empty();
             let outStr = "";
             for(let it of result.startingItems){
               outStr += (outStr.length>0? ", " : "") + (it.quantity>1? it.quantity+"x " : "") + it.item.name;
