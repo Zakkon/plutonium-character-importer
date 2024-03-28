@@ -1,8 +1,7 @@
 BUGS:
-    - Going down in level and then up again will not re-render FOS components
-    - FOS subcomponents are getting their states set even after spells are renderered, even though they should be before
+    - Going down in level and then up again will not re-render FOS components (seems fixed)
+    - FOS subcomponents are getting their states set even after spells are renderered, even though they should be before (shouldnt be a big issue)
 WEB:
-    - Use mirror2's utils-dataloader.js instead (free sidedatainterface to another file)
     - Add UI notifications
     - Test custom urls for content (+ save/load/exportFvtt)
     - Test custom uploaded files for content (+ save/load/exportFvtt)
@@ -16,13 +15,12 @@ SERIALIZIATION:
     - Save json from uploaded homebrew files to a cookie
 
 SHEET:
-    - Ranged attacks
     - Cantrip attacks
     - Better attack parsing overall
 
 CLASS:
     - Make subclass dropdown be locked until high enough level
-    - Button for removing a class
+    - Button for removing a class (verify that class indices dont get messed up)
 
 EXPORT:
     - Include entities from uploaded homebrew files in export to FVTT

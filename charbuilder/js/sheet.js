@@ -639,7 +639,14 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
           const profBonus = this._getProfBonus();
           const calcMeleeAttack = (it, strMod, dexMod, weaponProfs) => {
             const isProficient = !!weaponProfs[it.item.weaponCategory.toLowerCase()];
-            const attr = (!!it.item.property?.["F"] && dexMod > strMod)? dexMod : strMod; //If weapon is finesse and our dex is better, use dex
+            const attr = (it.item.property?.includes("F") && dexMod > strMod)? dexMod : strMod; //If weapon is finesse and our dex is better, use dex
+            const toHit = attr + (isProficient? profBonus : 0);
+            const dmg = it.item.dmg1 + (attr>=0? "+" : "") + attr.toString();
+            return {toHit:(toHit>=0? "+" : "")+toHit.toString(), dmg:dmg, dmgType:it.item.dmgType};
+          }
+          const calcRangedAttack = (it, strMod, dexMod, weaponProfs) => {
+            const isProficient = !!weaponProfs[it.item.weaponCategory.toLowerCase()];
+            const attr = dexMod; //For now, always assume all ranged weapons use dex
             const toHit = attr + (isProficient? profBonus : 0);
             const dmg = it.item.dmg1 + (attr>=0? "+" : "") + attr.toString();
             return {toHit:(toHit>=0? "+" : "")+toHit.toString(), dmg:dmg, dmgType:it.item.dmgType};
@@ -647,6 +654,7 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
           const printWeaponAttack = (it) => {
             const isMeleeWeapon = it.item._typeListText.includes("melee weapon");
             const isRangedWeapon = it.item._typeListText.includes("ranged weapon");
+            const isMeleeAndThrown = isMeleeWeapon && it.item.property?.includes("T");
             if(!isMeleeWeapon && !isRangedWeapon){console.error("weapon type not recognized:", it.item, it.item._typeListText);}
 
             if(isMeleeWeapon){
@@ -654,7 +662,16 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
               let str = `<i>Melee Weapon Attack</i>, ${result.toHit} to hit, ${result.dmg} ${Parser.dmgTypeToFull(result.dmgType)}.`;
               $$`<div><b>${it.item.name}.</b> ${str}</div>`.appendTo($attacksTextArea);
             }
-            //TODO: ranged weapons
+            else if(isRangedWeapon){
+              const result = calcRangedAttack(it, strMod, dexMod, weaponProfs);
+              let str = `<i>Ranged Weapon Attack</i>, Range ${it.item.range} ft, ${result.toHit} to hit, ${result.dmg} ${Parser.dmgTypeToFull(result.dmgType)}.`;
+              $$`<div><b>${it.item.name}.</b> ${str}</div>`.appendTo($attacksTextArea);
+            }
+            if(isMeleeAndThrown && !isRangedWeapon){
+              const result = calcRangedAttack(it, strMod, dexMod, weaponProfs);
+              let str = `<i>Ranged Weapon Attack</i>, Range ${it.item.range} ft, ${result.toHit} to hit, ${result.dmg} ${Parser.dmgTypeToFull(result.dmgType)}.`;
+              $$`<div><b>${it.item.name} (Thrown).</b> ${str}</div>`.appendTo($attacksTextArea);
+            }
           }
 
           for(let it of result.startingItems){

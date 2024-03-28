@@ -425,11 +425,13 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
             this._addHookBase("class_ixPrimaryClass", primaryBtnHook);
             primaryBtnHook();
 
-           /*  removeClassBtn = $("<button class=\"btn btn-5et btn-xs mr-2\"></button>").click(() => {console.log("Remove class " + ix);
+           removeClassBtn = $("<button class=\"btn btn-5et btn-xs mr-2\"></button>").click(() => {console.log("Remove class " + ix);
 
                 this.wipeClassState(ix);
                 //Honestly, we might just have to re-render all the class components
                 //If we delete class of index 1, that means class of inded 2 should become 1, and that breaks so many hooks
+                //A better approach could just be to mark index 1 as unused. When the character is serialized, THEN we rearrange indices
+                classChoicePanelsWrapper.remove();
             });
             const removeClassBtnHook = () => {
                 removeClassBtn.text("Remove Class")
@@ -438,7 +440,7 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
                 .prop("disabled", this._state.class_ixPrimaryClass === ix);
             };
             this._addHookBase("class_ixPrimaryClass", removeClassBtnHook);
-            removeClassBtnHook(); */
+            removeClassBtnHook();
         }
 
        
@@ -1540,7 +1542,7 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
         for(let comp of this.compsClassFeatureOptionsSelect[ix]){
             if(comp) { wipe(comp); }
         }
-        //We need to reduce class_ixMax
+        //We need to reduce class_ixMax, OR mark this class index as unused somehow
         //This should be enough wiping for now
     }
 
