@@ -20,7 +20,8 @@ SHEET:
 
 CLASS:
     - Make subclass dropdown be locked until high enough level
-    - Button for removing a class (verify that class indices dont get messed up)
+    - Make sure when class is removed, that the Feats menu understands that and doesnt allow feat choices from that class
+    - Make sure ASI choices are removed from classes that are marked as removed
 
 EXPORT:
     - Include entities from uploaded homebrew files in export to FVTT

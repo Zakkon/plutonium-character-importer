@@ -19,6 +19,20 @@ class ActorCharactermancerBaseComponent extends BaseComponent {
         'propTargetLevel': "class_" + ix + "_targetLevel"
       };
     }
+    //This is static! Make sure to clear this once we switch viewed character
+    static deletedClassIndices = [];
+    
+    /**
+     * Returns true if a class with this index has been marked as deleted.
+     * @param {number} ix
+     * @returns {boolean}
+     */
+    static class_isDeleted(ix){
+        return this.deletedClassIndices.includes(ix);
+    }
+    static class_clearDeleted(){
+        this.deletedClassIndices = []
+    }
     _shared_renderEntity_stgOtherProficiencies({
         $stg: element,
         ent: entity,
@@ -506,6 +520,14 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
             ${holder_dispClass}
             ${disp_subclass}
         </div>`.appendTo(parentDiv_right);
+
+        const onHookPulse = () => { 
+            //If class is marked as deleted, then hide the ui
+            if(ActorCharactermancerBaseComponent.class_isDeleted(ix)){
+                sidebarContent.hideVe();
+            }
+        }
+        this._parent.compClass.addHookBase("class_pulseChange", onHookPulse);
 
         //TEMPFIX
         //renderClassComponents_safe().then(() => renderSubclass_safe()).then(() => this._test_tryLoadFOS(ix));
@@ -1543,6 +1565,19 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
             if(comp) { wipe(comp); }
         }
         //We need to reduce class_ixMax, OR mark this class index as unused somehow
+        //Simplest is probably to just mark the class as unused. It will be ignored until the next time we save
+        ActorCharactermancerBaseComponent.deletedClassIndices.push(ix);
+        this.state.class_pulseChange = !this.state.class_pulseChange;
+
+        //List all classes
+        for(let i = 0; i <= this._state.class_ixMax; ++i){
+            if(ActorCharactermancerBaseComponent.class_isDeleted(i)){continue;}
+            const clsInfo = ActorCharactermancerBaseComponent.class_getProps(i);
+            const cls = this.getClass_({propIxClass:clsInfo.propIxClass});
+            console.log(cls);
+        }
+
+
         //This should be enough wiping for now
     }
 
@@ -10153,7 +10188,7 @@ class ActorCharactermancerSpell extends ActorCharactermancerBaseComponent {
         await this._spell_pRenderFilterBox(leftContent);
         //For each class, render a section
         for (let classIx = 0; classIx < this._parent.compClass.state.class_ixMax + 1; ++classIx) {
-          this._spell_renderClassSection(leftContent, rightContent, dispSpell, classIx);
+            this._spell_renderClassSection(leftContent, rightContent, dispSpell, classIx);
         }
         //Prepare a hook if another class is added/removed
         const refreshClassMax = () => {
@@ -10237,6 +10272,9 @@ class ActorCharactermancerSpell extends ActorCharactermancerBaseComponent {
      * @returns {any}
      */
     _spell_renderClassSection(div1, div2, dispSpell, classIndex) {
+        
+        if(ActorCharactermancerBaseComponent.class_isDeleted(classIndex)){return;}
+
         const {
           propIxClass: propIxClass,
           propIxSubclass: propIxSubclass,
@@ -10323,10 +10361,19 @@ class ActorCharactermancerSpell extends ActorCharactermancerBaseComponent {
           $wrpLeftInner: wrpLeftInner,
           $wrpRightInner: wrpRightInner
         });
+        const onHookPulse = () => { 
+            //If class is marked as deleted, then hide the ui
+            if(ActorCharactermancerBaseComponent.class_isDeleted(classIndex)){
+                wrpLeftInner.hideVe();
+                wrpRightInner.hideVe();
+            }
+        }
         const hook_onChangeAbilityScores = this._hk_onChangeAbilityScores.bind(this, classIndex);
+        
         this._parent.compClass.addHookBase(propIxClass, hook_onChangeClass);
         this._parent.compClass.addHookBase(propIxSubclass, hook_onChangeSubclass);
         this._parent.compClass.addHookBase(propTargetLevel, hook_onChangeLevel);
+        this._parent.compClass.addHookBase("class_pulseChange", onHookPulse);
         this._parent.compAbility.addHookAbilityScores(hook_onChangeAbilityScores);
         //Fire the onChangeClass hook straight away, to build the UI
         hook_onChangeClass();
@@ -10367,75 +10414,75 @@ class ActorCharactermancerSpell extends ActorCharactermancerBaseComponent {
     compEntity: compEntity,
     fnGetEntity: fnGetEntity
     }) {
-    const content = $$`<div class="ve-flex-col"></div>`.hideVe();
-    const hkLevelChange = () => {
-        const existingLevel = this._parent.compClass.getExistingClassTotalLevels_();
-        const newLevel = this._parent.compClass.state.class_totalLevels;
-        if (this[compAdditionalSpells]) {
-        this[compAdditionalSpells].curLevel = existingLevel;
-        this[compAdditionalSpells].targetLevel = Math.max(1, newLevel);
-        const { min, max, isAnyCantrips } = this._parent.compClass.class_getMinMaxSpellLevel();
-        this[compAdditionalSpells].spellLevelLow = min;
-        this[compAdditionalSpells].spellLevelHigh = max;
-        this[compAdditionalSpells].isAnyCantrips = isAnyCantrips;
-        }
-    };
-    this._parent.compClass.addHookBase("class_totalLevels", hkLevelChange);
-    this._parent.compClass.addHookBase("class_pulseChange", hkLevelChange);
-    const header = $("<h2 class=\"m-0 b-0 py-1\"></h2>");
-    const minimizer = $("<div class=\"py-1 clickable ve-muted\">[‒]</div>").click(() => {
-        minimizer.text(minimizer.text() === "[+]" ? "[‒]" : "[+]");
-        contentWrapper.toggleVe();
-    });
-    const contentWrapper = $$`<div class="ve-flex-col w-100"> ${content} </div>`;
-    const mainWrapper = $$`<div class="ve-flex-col w-100 mb-2">
-            <div class="split-v-center">
-                ${header}
-                ${minimizer}
-            </div>
+        const content = $$`<div class="ve-flex-col"></div>`.hideVe();
+        const hkLevelChange = () => {
+            const existingLevel = this._parent.compClass.getExistingClassTotalLevels_();
+            const newLevel = this._parent.compClass.state.class_totalLevels;
+            if (this[compAdditionalSpells]) {
+            this[compAdditionalSpells].curLevel = existingLevel;
+            this[compAdditionalSpells].targetLevel = Math.max(1, newLevel);
+            const { min, max, isAnyCantrips } = this._parent.compClass.class_getMinMaxSpellLevel();
+            this[compAdditionalSpells].spellLevelLow = min;
+            this[compAdditionalSpells].spellLevelHigh = max;
+            this[compAdditionalSpells].isAnyCantrips = isAnyCantrips;
+            }
+        };
+        this._parent.compClass.addHookBase("class_totalLevels", hkLevelChange);
+        this._parent.compClass.addHookBase("class_pulseChange", hkLevelChange);
+        const header = $("<h2 class=\"m-0 b-0 py-1\"></h2>");
+        const minimizer = $("<div class=\"py-1 clickable ve-muted\">[‒]</div>").click(() => {
+            minimizer.text(minimizer.text() === "[+]" ? "[‒]" : "[+]");
+            contentWrapper.toggleVe();
+        });
+        const contentWrapper = $$`<div class="ve-flex-col w-100"> ${content} </div>`;
+        const mainWrapper = $$`<div class="ve-flex-col w-100 mb-2">
+                <div class="split-v-center">
+                    ${header}
+                    ${minimizer}
+                </div>
 
-            ${contentWrapper}
-        </div>`.hideVe().appendTo($wrpLeft);
-    const hkPulse = () => {
-        content.empty();
-        const e = fnGetEntity();
-        let hasAdditionalSpells = false;
-        if (e && e.additionalSpells) {
-            hasAdditionalSpells = true;
-            content.showVe();
-            this[compAdditionalSpells] = new Charactermancer_AdditionalSpellsSelect({
-                spellDatas: this._data.spell,
-                additionalSpells: e.additionalSpells,
-                modalFilterSpells: this._modalFilterSpells
-            });
-            this[compAdditionalSpells].render(content);
-            const fnAlwaysPrepared = () => this._compsSpellSpells.filter(Boolean).forEach(comp => comp[compAlwaysPreparedSpells]
-                = MiscUtil.copy(this[compAdditionalSpells].spellsAlwaysPrepared));
-            this[compAdditionalSpells].addHookAlwaysPreparedSpells(fnAlwaysPrepared);
-            fnAlwaysPrepared();
-            const fnExpanded = () => this._compsSpellSpells.filter(Boolean).forEach(comp => comp[propExpandedSpells]
-                = MiscUtil.copy(this[compAdditionalSpells].spellsExpanded));
-            this[compAdditionalSpells].addHookExpandedSpells(fnExpanded);
-            fnExpanded();
-            const fnAlwaysKnown = () => this._compsSpellSpells.filter(Boolean).forEach(comp => comp[propAlwaysKnownSpells]
-                = MiscUtil.copy(this[compAdditionalSpells].spellsAlwaysKnown));
-            this[compAdditionalSpells].addHookAlwaysKnownSpells(fnAlwaysKnown);
-            fnAlwaysKnown();
-        }
-        else {
-        content.hideVe();
-        this[compAdditionalSpells] = null;
-        this._compsSpellSpells.filter(Boolean).forEach(comp => comp[propExpandedSpells] = []);
-        }
-        if (e && hasAdditionalSpells) {
-            mainWrapper.showVe();
-            header.text(e.name);
-        }
-        else { mainWrapper.hideVe(); }
-        hkLevelChange();
-    };
-    compEntity.addHookBase(propPulse, hkPulse);
-    hkPulse();
+                ${contentWrapper}
+            </div>`.hideVe().appendTo($wrpLeft);
+        const hkPulse = () => {
+            content.empty();
+            const e = fnGetEntity();
+            let hasAdditionalSpells = false;
+            if (e && e.additionalSpells) {
+                hasAdditionalSpells = true;
+                content.showVe();
+                this[compAdditionalSpells] = new Charactermancer_AdditionalSpellsSelect({
+                    spellDatas: this._data.spell,
+                    additionalSpells: e.additionalSpells,
+                    modalFilterSpells: this._modalFilterSpells
+                });
+                this[compAdditionalSpells].render(content);
+                const fnAlwaysPrepared = () => this._compsSpellSpells.filter(Boolean).forEach(comp => comp[compAlwaysPreparedSpells]
+                    = MiscUtil.copy(this[compAdditionalSpells].spellsAlwaysPrepared));
+                this[compAdditionalSpells].addHookAlwaysPreparedSpells(fnAlwaysPrepared);
+                fnAlwaysPrepared();
+                const fnExpanded = () => this._compsSpellSpells.filter(Boolean).forEach(comp => comp[propExpandedSpells]
+                    = MiscUtil.copy(this[compAdditionalSpells].spellsExpanded));
+                this[compAdditionalSpells].addHookExpandedSpells(fnExpanded);
+                fnExpanded();
+                const fnAlwaysKnown = () => this._compsSpellSpells.filter(Boolean).forEach(comp => comp[propAlwaysKnownSpells]
+                    = MiscUtil.copy(this[compAdditionalSpells].spellsAlwaysKnown));
+                this[compAdditionalSpells].addHookAlwaysKnownSpells(fnAlwaysKnown);
+                fnAlwaysKnown();
+            }
+            else {
+            content.hideVe();
+            this[compAdditionalSpells] = null;
+            this._compsSpellSpells.filter(Boolean).forEach(comp => comp[propExpandedSpells] = []);
+            }
+            if (e && hasAdditionalSpells) {
+                mainWrapper.showVe();
+                header.text(e.name);
+            }
+            else { mainWrapper.hideVe(); }
+            hkLevelChange();
+        };
+        compEntity.addHookBase(propPulse, hkPulse);
+        hkPulse();
     }
 
     get modalFilterSpells() {

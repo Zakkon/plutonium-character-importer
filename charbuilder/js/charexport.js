@@ -405,17 +405,30 @@ class CharacterExportFvtt{
         const primaryClassIndex = compClass._state.class_ixPrimaryClass;
         //If we have 2 classes, this will be 1
         const highestClassIndex = compClass._state.class_ixMax;
+        let deletedClassesCount = 0;
 
         const classList = [];
         for(let i = 0; i <= highestClassIndex; ++i){
             const isPrimary = i == primaryClassIndex;
             //Get a string property that will help us grab actual class data
-            const { propIxClass: propIxClass, propIxSubclass: propIxSubclass, propCurLevel:propCurLevel, propTargetLevel: propTargetLevel } =
+            let { propIxClass: propIxClass, propIxSubclass: propIxSubclass, propCurLevel:propCurLevel, propTargetLevel: propTargetLevel } =
             ActorCharactermancerBaseComponent.class_getProps(i);
+            const isDeleted = ActorCharactermancerBaseComponent.class_isDeleted(i);
+            if(isDeleted){deletedClassesCount++; continue;}
+
             //Grab actual class data
             const cls = compClass.getClass_({propIxClass: propIxClass});
             if(!cls){continue;}
             const targetLevel = compClass._state[propTargetLevel];
+            if(deletedClassesCount>0){
+                //If there were deleted classes before us, we need to shift the indices
+                //Create a lower index
+                const newProps = ActorCharactermancerBaseComponent.class_getProps(i-deletedClassesCount);
+                //Use the new index instead
+                propIxClass = newProps.propIxClass;
+                propIxSubclass = newProps.propIxSubclass;
+            }
+
             const block = {
                 cls: cls,
                 isPrimary: isPrimary,

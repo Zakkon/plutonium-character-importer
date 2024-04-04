@@ -6,6 +6,9 @@ class CharacterSelectScreen {
     myContent;
 
     render(){
+
+        ActorCharactermancerBaseComponent.class_clearDeleted();
+
         const _root = $("#window-root");
 
         const content = $$`<div></div>`;
@@ -70,8 +73,16 @@ class CharacterSelectScreen {
         let totalLevels = 0;
         for(let ix = 0; ix < charData?.classes?.length || 0; ++ix){
             const d = charData.classes[ix];
+            const mode = "classOnly";
             totalLevels += d.level;
-            classString += `${d.name}${d.subclass? `/${d.subclass.name}` : ""}`;
+            if(mode == "classOnly"){
+                if(ix>0){classString+="/";}
+                classString += `${d.name}`;
+            }
+            else { //classSubclass
+                if(ix>0){classString+=" ";}
+                classString += `${d.name}${d.subclass? `/${d.subclass.name}` : ""}`;
+            }
         }
         if(classString == ""){classString = "No class";}
         let nameString = charData.about?.name || "Unnamed Character";

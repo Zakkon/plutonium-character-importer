@@ -396,6 +396,7 @@ class CharacterBuilder {
     */
     constructor(data, existingUid, page){
 
+      ActorCharactermancerBaseComponent.class_clearDeleted();
       CharacterBuilder.currentUid = null; //Reset the publicly readable uid
       this.parent = this;
       this._data = data;

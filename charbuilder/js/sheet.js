@@ -250,6 +250,7 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
           if(!classData?.length){ $lblClass.html(textOut); return; }
           for(let i = 0; i < classData.length; ++i){
               const d = classData[i];
+              if(d.isDeleted){continue;}
               textOut += `${textOut.length > 0? " / " : ""}${d.cls.name} ${d.targetLevel}${d.sc? ` (${d.sc.name})` : ""}`;
               //Try to get features from class
               let classFeaturesText = "";
@@ -950,7 +951,8 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
                 isPrimary: isPrimary,
                 propIxClass: propIxClass,
                 propIxSubclass:propIxSubclass,
-                targetLevel:targetLevel
+                targetLevel:targetLevel,
+                isDeleted:ActorCharactermancerBaseComponent.class_isDeleted(i),
             }
             //Now we want to ask compClass if there is a subclass selected for this index
             const sc = compClass.getSubclass_({cls:cls, propIxSubclass:propIxSubclass});
@@ -1510,7 +1512,9 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
         //Go through each component that can add spells
         for(let j = 0; j < compSpells.compsSpellSpells.length; ++j)
         {
+            //console.log(compSpells.compsSpellSpells);
             const comp1 = compSpells.compsSpellSpells[j];
+            if(comp1 == null){continue;} //Switching classes can make components here be null
             //Go through each level for the component
             for(let spellLevelIx = 0; spellLevelIx < comp1._compsLevel.length; ++spellLevelIx)
             {
