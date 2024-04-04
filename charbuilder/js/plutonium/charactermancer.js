@@ -10222,12 +10222,14 @@ class ActorCharactermancerSpell extends ActorCharactermancerBaseComponent {
         const data = actor.spellsBySource;
 
 
-        for(let classIx = 0; classIx < data.length; ++classIx){
+
+        for(let j = 0; j < data.length; ++j){
                 //Assume this is for a class, and it is going to _compsSpellSpells
                 //const ix = this._getIxOfSpell(src.spellsByLvl[0][0].spell);
+                const classIx = data[j].ix; //Not 100% sure about this one
 
-                for(let lvlIx = 0; lvlIx < data[classIx].spellsByLvl.length; ++lvlIx){
-                    for(let sp of  data[classIx].spellsByLvl[lvlIx]){
+                for(let lvlIx = 0; lvlIx < data[j].spellsByLvl.length; ++lvlIx){
+                    for(let sp of  data[j].spellsByLvl[lvlIx]){
                         this.markSpellAsLearnedKnown(classIx, sp);
                     }
                 }

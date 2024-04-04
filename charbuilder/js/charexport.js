@@ -122,11 +122,14 @@ class CharacterExportFvtt{
         //#endregion
 
         //#region SPELLS
-        const spells = await CharacterExportFvtt.getAllSpells(builder.compSpell);
-        for(let srcIx = 0; srcIx < spells.length; ++srcIx){
-            let spellSource = spells[srcIx];
+        const spellSources = await CharacterExportFvtt.getAllSpellSources(builder.compSpell);
+        //Loop through each source for spells
+        for(let srcIx = 0; srcIx < spellSources.length; ++srcIx){
+            let spellSource = spellSources[srcIx];
+            //Loop through each spell level in the source
             for(let lvlix = 0; lvlix < spellSource.spellsByLvl.length; ++lvlix){
                 let lvl = spellSource.spellsByLvl[lvlix];
+                //Loop through each spell in the spell level
                 for(let spix = 0; spix < lvl.length; ++spix){
                     let sp = lvl[spix];
                     //Create some meta information (so we know where the spell came from)
@@ -138,9 +141,9 @@ class CharacterExportFvtt{
                 }
                 spellSource.spellsByLvl[lvlix] = lvl;
             }
-            spells[srcIx] = spellSource;
+            spellSources[srcIx] = spellSource;
         }
-        _char.spellsBySource = spells;
+        _char.spellsBySource = spellSources;
         //#endregion
 
         //Feats
@@ -665,7 +668,7 @@ class CharacterExportFvtt{
      * @param {ActorCharactermancerSpell} compSpell
      * @returns {{className:string, classSource:string, spellsByLvl:Charactermancer_Spell_SpellMeta[][]}[]}
      */
-    static getAllSpells(compSpell){
+    static getAllSpellSources(compSpell){
         const filterValues = compSpell.filterValuesSpellsCache || compSpell.filterBoxSpells.getValues();
         let spellsBySource = [];
         let forms = [];
@@ -680,7 +683,7 @@ class CharacterExportFvtt{
                 spell => {return {name: spell.spell.name, source:spell.spell.source,
                     isLearned:spell.isLearned, isPrepared:spell.isPrepared, spell:spell.spell};}
             ));
-            spellsBySource.push({className: className, classSource:classSource, spellsByLvl: spellsByLvl});
+            spellsBySource.push({className: className, classSource:classSource, ix:j, spellsByLvl: spellsByLvl});
         }
         return spellsBySource;
     }

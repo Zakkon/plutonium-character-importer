@@ -684,9 +684,11 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
             printWeaponAttack(it);
             
           }
-          //TODO: cantrip attacks
+          
+        //TODO: cantrip attacks
+        //Get cantrips
+        //const cantrips = ActorCharactermancerSheet.getAllSpellsKnown(this._parent.compSpell)[0];
         });
-        
       }
       this._parent.compEquipment._compEquipmentShopGold._addHookBase("itemPurchases", hkCalcAttacks);
       this._parent.compEquipment._compEquipmentCurrency._addHookBase("cpRolled", hkCalcAttacks);
@@ -707,7 +709,7 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
           const spellsListStr = (spells) => {
             let spellsStr = "";
             for(let i = 0; i < spells.length; ++i){
-                spellsStr += spells[i];
+                spellsStr += spells[i].name;
                 if(i+1 < spells.length){spellsStr += ", ";}
             }
             return spellsStr;
@@ -1522,7 +1524,7 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
                 const subcomponent = comp1._compsLevel[spellLevelIx];
                 const known = subcomponent.getSpellsKnown(true); //Get the spells known by that subcomponent
                 for(let i = 0; i < known.length; ++i){
-                    spellsBylevel[spellLevelIx].push(known[i].spell.name);
+                    spellsBylevel[spellLevelIx].push(known[i].spell);
                 }
             }
         }
