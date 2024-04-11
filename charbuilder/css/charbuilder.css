@@ -7,6 +7,7 @@ body {
     background-color: #f0f0f0;
     color: #333;
     margin: 20px;
+    line-height: normal !important;
 }
 
 h1 {
@@ -253,6 +254,7 @@ input.form-control, textarea.form-control {
 }
 .hugRight{
     float:right;
+    margin-right: 2px;
 }
 .character-builder-header{
     flex-direction: row;
@@ -329,4 +331,11 @@ input.form-control, textarea.form-control {
 .character-builder-description .inputtext > li {
     width: 100%;
     flex-direction: column;
+}
+
+.manc__list-row-button {
+    padding: 0 2px !important;
+    font-size: 12px !important;
+    line-height: 14px !important;
+    border: 2px outset rgb(227,227,227) !important;
 }

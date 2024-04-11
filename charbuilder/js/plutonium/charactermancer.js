@@ -439,7 +439,7 @@ class ActorCharactermancerClass extends ActorCharactermancerBaseComponent {
             this._addHookBase("class_ixPrimaryClass", primaryBtnHook);
             primaryBtnHook();
 
-           removeClassBtn = $("<button class=\"btn btn-5et btn-xs mr-2\"></button>").click(() => {console.log("Remove class " + ix);
+           removeClassBtn = $("<button class=\"btn btn-5et btn-xs mr-2\"></button>").click(() => {
 
                 this.wipeClassState(ix);
                 //Honestly, we might just have to re-render all the class components

@@ -709,8 +709,11 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
           const spellsListStr = (spells) => {
             let spellsStr = "";
             for(let i = 0; i < spells.length; ++i){
-                spellsStr += spells[i].name;
+                let uid = spells[i].name.toLowerCase() + "|" + spells[i].source.toLowerCase();
+                //spellsStr += spells[i].name;
+                spellsStr += Renderer.get().render(`{@spell ${uid}}`);
                 if(i+1 < spells.length){spellsStr += ", ";}
+                
             }
             return spellsStr;
           };
@@ -719,8 +722,11 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
           
           const spellsKnownByLvl = ActorCharactermancerSheet.getAllSpellsKnown(this._parent.compSpell);
           //List cantrips known (these never change)
-          $$`<div class="mb10"><b>Cantrips Known: </b><i>${spellsListStr(spellsKnownByLvl[0])}</i></div>`.appendTo($divSpells);
+          const cantripDiv = $$`<div class="mb10"><b>Cantrips Known: </b><i>${spellsListStr(spellsKnownByLvl[0])}</i></div>`.appendTo($divSpells);
           //Add a bit of a spacing here
+          //$(`<div class="ve-flex-v-center"></div>`).fastSetHtml(Renderer.get().render(`{@spell ${"command|phb"}}`)).appendTo(cantripDiv);
+          //$(`<div class="ve-flex-v-center"></div>`).fastSetHtml(Renderer.get().render(`{@spell ${"acid splash|phb"}}`)).appendTo(cantripDiv);
+          //cantripDiv.fastSetHtml(Renderer.get().render(`{@spell ${"command|phb"}}`));
 
           $$`<div><b>Prepared Spells</b></div>`.appendTo($divSpells);
           for(let lvl = 1; lvl < spellsKnownByLvl.length; ++lvl){
@@ -742,6 +748,12 @@ class ActorCharactermancerSheet extends ActorCharactermancerBaseComponent{
               }
               const slots = ActorCharactermancerSheet.getSpellSlotsAtLvl(lvl, this._parent.compClass);
               $$`<div class="mb10">${str} (${slots} slots): <i>${spellsListStr(knownSpellsAtLvl)}</i></div>`.appendTo($divSpells);
+
+              for(let spell of knownSpellsAtLvl){
+                console.log("SPELL");
+                let uid = spell.name.toLowerCase() + "|" + spell.source.toLowerCase();
+                console.log(spell, uid);
+              }
           }
 
           hkCalcAttacks(); //Calculate attacks as well, since it displays cantrip attacks

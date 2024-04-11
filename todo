@@ -1,6 +1,7 @@
 BUGS:
     - Going down in level and then up again will not re-render FOS components (seems fixed)
     - FOS subcomponents are getting their states set even after spells are renderered, even though they should be before (shouldnt be a big issue)
+    - verify if url-linked spells on the sheet work for 3rd party homebrew (or your own homebrew)
 WEB:
     - Add UI notifications
     - Test custom urls for content (+ save/load/exportFvtt)
@@ -13,6 +14,9 @@ CSS:
 SERIALIZIATION:
     - Make the cookies or character save file remember filter settings on each of the components?
     - Save json from uploaded homebrew files to a cookie
+
+CHARSELECT:
+    - Make "View" button enter a viewing mode, wherein no choices can be changed
 
 SHEET:
     - Cantrip attacks
